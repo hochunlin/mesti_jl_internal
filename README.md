@@ -1,3 +1,3 @@
 # mesti_jl_internal
 
-Internal use for developing mesti.jl
+Internal communications for developing mesti.jl
