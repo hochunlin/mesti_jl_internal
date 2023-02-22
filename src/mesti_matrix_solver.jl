@@ -910,8 +910,7 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
         if opts.use_METIS
             # Use the METIS package to compute ordering.
             # This typically gives a more sparse factorization, so the memory usage is lower and the factorization and solve stages will be faster. But the analyze stage will be much slower.
-            
-            !(id,7,5)
+            set_icntl!(id,7,5)
         else
             # use AMD to computer ordering by default
             set_icntl!(id,7,0)
