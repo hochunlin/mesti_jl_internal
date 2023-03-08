@@ -51,7 +51,7 @@ input.polarization = "both"
 # Output to both sides with both polarizations
 output.side = "both"
 output.polarization = "both"
-(S, channels, info)= mesti2s(syst, input, output, opts)
+(S, channels, info)= mesti2s(syst, input, output)
 
 # Compare the scattering matrix to the analytic prediction.
 channels_kz = channels.low.kzdx_all[channels.low.ind_prop]
