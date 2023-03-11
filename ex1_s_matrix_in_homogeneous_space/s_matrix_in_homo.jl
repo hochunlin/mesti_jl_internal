@@ -5,7 +5,7 @@
 # Include mesti2s.jl
 include("mesti2s.jl")
 # The environmental variable for MUMPS3 (it should be the path to libraries of MUMPS)
-ENV["MUMPS_PREFIX"] = "/project/cwhsu_38/hochunli/mumps_5_5_0_par_build/src"
+ENV["MUMPS_PREFIX"] = "/project/cwhsu_38/hochunli/carc_help/shared_lib/lib"
 
 # Load the essential modules 
 using MUMPS3 # MUMPS-julia interface
