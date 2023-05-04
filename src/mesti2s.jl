@@ -1,5 +1,6 @@
-###### Update on 20230216
 ###### Update on 20230402 for 2D TM computations
+###### Update on 20230504 for single-precision MUMPS option
+
 using SparseArrays
 using LinearAlgebra
 using Statistics
@@ -464,6 +465,10 @@ end
           opts.verbal_solver (boolean scalar; optional, defaults to false):
              Whether to have the solver print detailed information to the standard
              output. Note the behavior of output from MUMPS depends on compiler.
+          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to false):
+             Whether to use single precision version of MUMPS; used only when 
+             opts.solver = "MUMPS". Using single precision version of MUMPS can 
+             reduce memory usage and computing time.
           opts.use_METIS (boolean scalar; optional, defaults to false):
              Whether to use METIS (instead of the default AMD) to compute the
              ordering in MUMPS. Using METIS can sometimes reduce memory usage
@@ -494,6 +499,10 @@ end
           opts.nthreads_OMP (positive integer scalar; optional):
              Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
              environment variable.
+          opts.parallel_dependency_graph (logical scalar; optional):
+             If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+             This typically improve the time performance, but marginally increase 
+             the memory usage.
           opts.iterative_refinement (boolean scalar; optional, defaults to false):
              Whether to use iterative refinement in MUMPS to lower round-off
              errors. Iterative refinement can only be used when opts.solver =
@@ -943,19 +952,20 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     #    opts.solver
     #    opts.method
     #    opts.verbal_solver
+    #    opts.use_single_precision_MUMPS
     #    opts.use_METIS
     #    opts.nrhs
     #    opts.store_ordering
     #    opts.ordering
     #    opts.analysis_only
     #    opts.nthreads_OMP
+    #    opts.parallel_dependency_graph    
     #    opts.iterative_refinement
     #    
     #    opts.use_BLR
     #    opts.threshold_BLR
     #    opts.icntl_36
     #    opts.icntl_38
-    #    opts.use_keep_401_1
 
     # Set up the homogeneous-space channels on the two sides
     k0dx = (2*pi/syst.wavelength)*(syst.dx)

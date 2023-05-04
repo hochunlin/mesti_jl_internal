@@ -1,13 +1,15 @@
 ###### Update on 20230216
+###### Update on 20230504 for single-precision MUMPS option
+
 using SparseArrays
 using LinearAlgebra
 using Statistics
 using Printf
 
 mutable struct Matrices
-    A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Nothing}
-    B::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing}
-    C::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing,String}
+    A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Nothing}
+    B::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing}
+    C::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing,String}
     Matrices() = new()
 end
 
@@ -19,7 +21,8 @@ mutable struct Opts
     clear_BC::Integer
     clear_syst::Integer    
     clear_memory::Integer     
-    verbal_solver::Integer  
+    verbal_solver::Integer 
+    use_single_precision_MUMPS::Integer
     use_METIS::Integer    
     nrhs::Integer 
     store_ordering::Integer
@@ -34,7 +37,7 @@ mutable struct Opts
     icntl_36::Integer
     icntl_38::Integer
     
-    use_keep_401_1::Integer
+    parallel_dependency_graph::Integer
     
     exclude_PML_in_field_profiles::Integer
     
@@ -78,150 +81,158 @@ mutable struct Info
 end
 
 """
-    #MESTI_MATRIX_SOLVER! Computes C*inv(A)*B or inv(A)*B.
-    #   (X, info) = MESTI_MATRIX_SOLVER(A, B) returns X = inv(A)*B for sparse matrix
-    #   A and (sparse or dense) matrix B, with the information of the computation
-    #   returned in structure "info".
-    #
-    #   (S, info) = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
-    #   C is either sparse or dense. When the MUMPS3 is available, this is done by 
-    #   computing the Schur complement of an augmented matrix K = [A,B;C,0] through 
-    #   a partial factorization.
-    #
-    #   (X, info) = MESTI_MATRIX_SOLVER(A, B, opts) and
-    #   (S, info) = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
-    #   specified with structure "opts" of the input arguments.
-    #
-    #   === Input Arguments ===
-    #   A (sparse matrix; required):
-    #      Matrix A in the C*inv(A)*B or inv(A)*B returned.
-    #   B (numeric matrix; required):
-    #      Matrix B in the C*inv(A)*B or inv(A)*B returned.
-    #   C (numeric matrix or "transpose(B)" or nothing; optional):
-    #      Matrix C in the C*inv(A)*B returned.
-    #         If C = transpose(B), the user can set C = "transpose(B)" as a
-    #      character vector, which will be replaced by transpose(B) in the code. If
-    #      matrix A is symmetric, C = "transpose(B)", and opts.method = "APF", the
-    #      matrix K = [A,B;C,0] will be treated as symmetric when computing its
-    #      Schur complement to lower computing time and memory usage.
-    #         To compute X = inv(A)*B, the user can simply omit C from the input
-    #      argument if there is no need to change the default opts. If opts is
-    #      needed, the user can set C = nothing here.
-    #   opts (scalar structure; optional):
-    #      A structure that specifies the options of computation; defaults to an
-    #      undefined Opts() structure. It can contain the following fields (all optional):
-    #      opts.verbal (logical scalar; optional, defaults to true):
-    #         Whether to print system information and timing to the standard output.
-    #      opts.is_symmetric_A (logical scalar; optional):
-    #         Whether matrix A is symmetric or not. This is only used when
-    #         opts.solver = "MUMPS", in which case opts.is_symmetric_A will be
-    #         determined by the issymmetric(A) command if not specified by user.
-    #   opts.solver (character vector; optional):
-    #      The solver used for sparse matrix factorization. Available choices are
-    #      (case-insensitive):
-    #         "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
-    #                    interface MUMPS3.jl must be installed.
-    #         "JULIA" -  (default when MUMPS is not available) Uses the built-in 
-    #                    lu() function in JULIA, which uses UMFPACK. 
-    #      MUMPS is faster and uses less memory than lu(), and is required for
-    #      the APF method.
-    #      opts.method (character vector; optional):
-    #         The solution method. Available choices are (case-insensitive):
-    #            "APF" - Augmented partial factorization. C*inv(A)*B is obtained
-    #                    through the Schur complement of an augmented matrix
-    #                    K = [A,B;C,0] using a partial factorization. Must have
-    #                    opts.solver = "MUMPS". This is the most efficient method,
-    #                    but it cannot be used for computing X=inv(A)*B or with
-    #                    iterative refinement.
-    #            "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
-    #                    through C*inv(U)*inv(L)*B with optimized grouping. Must
-    #                    have opts.solver = "JULIA". This is slightly better than
-    #                    "FS" when MUMPS is not available, but it cannot be used for
-    #                    computing X=inv(A)*B.
-    #            "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-    #                    with forward and backward substitutions, and project with
-    #                    C as C*inv(A)*B = C*X. Here, opts.solver can be either
-    #                    "MUMPS" or "JULIA", and it can be used for computing
-    #                    X=inv(A)*B or with iterative refinement.
-    #            "C*inv(U)*inv(L)*B"   - Same as "FG".    
-    #            "factorize_and_solve" - Same as "FS".
-    #         By default, if C is given and opts.iterative_refinement = false, then
-    #         "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
-    #         used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
-    #         used.
-    #      opts.verbal_solver (logical scalar; optional, defaults to false):
-    #         Whether to have the solver print detailed information to the standard
-    #         output. Note the behavior of output from MUMPS depends on compiler.
-    #      opts.clear_memory (logical scalar; optional, defaults to false):
-    #         Whether or not to clear variables to reduce peak memory usage. When
-    #         opts.clear_memory = true, the following variables may be cleared in
-    #         the caller's workspace if they exist: A, B, C. Some other variables
-    #         inside mesti_matrix_solver() will be cleared too. However, currently,
-    #         we are trying to figure out how to do it in JULIA language.
-    #      opts.use_METIS (logical scalar; optional, defaults to false):
-    #         Whether to use METIS (instead of the default AMD) to compute the
-    #         ordering in MUMPS. Using METIS can sometimes reduce memory usage
-    #         and/or factorization and solve time, but it typically takes longer at
-    #         the analysis (i.e., ordering) stage.
-    #      opts.nrhs (positive integer scalar; optional):
-    #         The number of right-hand sides (number of columns of matrix B) to
-    #         consider simultaneously, used only when opts.method =
-    #         "factorize_and_solve" and C is given. Defaults to 1 if
-    #         opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
-    #         opts.iterative_refinement = false, 4 otherwise.
-    #      opts.store_ordering (logical scalar; optional, defaults to false):
-    #         Whether to store the ordering sequence (permutation) for matrix A or
-    #         matrix K; only possible when opts.solver = "MUMPS". If
-    #         opts.store_ordering = true, the ordering will be returned in
-    #         info.ordering.
-    #      opts.ordering (positive integer vector; optional):
-    #         A user-specified ordering sequence for matrix A or matrix K, used only
-    #         when opts.solver = "MUMPS". Using the ordering from a previous
-    #         computation can speed up the analysis stage, but the matrix size must
-    #         be the same.
-    #      opts.nthreads_OMP (positive integer scalar; optional):
-    #         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
-    #         environment variable.
-    #      opts.iterative_refinement (logical scalar; optional, defaults to false):
-    #         Whether to use iterative refinement in MUMPS to lower round-off
-    #         errors. Iterative refinement can only be used when opts.solver =
-    #         "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
-    #         case opts.nrhs must equal 1. When iterative refinement is used, the
-    #         relevant information will be returned in info.itr_ref_nsteps,
-    #         info.itr_ref_omega_1, and info.itr_ref_omega_2.
-    #
-    #   === Output Arguments ===
-    #   S (full numeric matrix):
-    #      C*inv(A)*B or inv(A)*B.
-    #   info (scalar structure):
-    #      A structure that contains the following fields:
-    #      info.opts (scalar structure):
-    #         The final "opts" used, excluding the user-specified matrix ordering.
-    #      info.timing_init (numeric scalar):
-    #         Timing of the initial stages, in seconds
-    #      info.timing_build (numeric scalar):
-    #         Timing of the building stages, in seconds
-    #      info.timing_analyze (numeric scalar):
-    #         Timing of the analyzing stages, in seconds
-    #      info.timing_factorize (numeric scalar):
-    #         Timing of the factorizing stages, in seconds
-    #      info.timing_solve (numeric scalar):
-    #         Timing of the solving stages, in seconds    
-    #      info.timing_total (numeric scalar):
-    #         Timing of the total, in seconds    
-    #      info.ordering_method (character vector; optional):
-    #         Ordering method used in MUMPS.
-    #      info.ordering (positive integer vector; optional):
-    #         Ordering sequence returned by MUMPS when opts.store_ordering = true.
-    #      info.itr_ref_nsteps (integer vector; optional):
-    #         Number of steps of iterative refinement for each input, if
-    #         opts.iterative_refinement = true; 0 means no iterative refinement.
-    #      info.itr_ref_omega_1 (real vector; optional):
-    #         Scaled residual omega_1 at the end of iterative refinement for each
-    #         input; see MUMPS user guide section 3.3.2 for definition.
-    #      info.itr_ref_omega_2 (real vector; optional):
-    #         Scaled residual omega_2 at the end of iterative refinement for each
-    #         input; see MUMPS user guide section 3.3.2 for definition.
+    MESTI_MATRIX_SOLVER! Computes C*inv(A)*B or inv(A)*B.
+       (X, info) = MESTI_MATRIX_SOLVER(A, B) returns X = inv(A)*B for sparse matrix
+       A and (sparse or dense) matrix B, with the information of the computation
+       returned in structure "info".
+    
+       (S, info) = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
+       C is either sparse or dense. When the MUMPS3 is available, this is done by 
+       computing the Schur complement of an augmented matrix K = [A,B;C,0] through 
+       a partial factorization.
+    
+       (X, info) = MESTI_MATRIX_SOLVER(A, B, opts) and
+       (S, info) = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
+       specified with structure "opts" of the input arguments.
+    
+       === Input Arguments ===
+       A (sparse matrix; required):
+          Matrix A in the C*inv(A)*B or inv(A)*B returned.
+       B (numeric matrix; required):
+          Matrix B in the C*inv(A)*B or inv(A)*B returned.
+       C (numeric matrix or "transpose(B)" or nothing; optional):
+          Matrix C in the C*inv(A)*B returned.
+             If C = transpose(B), the user can set C = "transpose(B)" as a
+          character vector, which will be replaced by transpose(B) in the code. If
+          matrix A is symmetric, C = "transpose(B)", and opts.method = "APF", the
+          matrix K = [A,B;C,0] will be treated as symmetric when computing its
+          Schur complement to lower computing time and memory usage.
+             To compute X = inv(A)*B, the user can simply omit C from the input
+          argument if there is no need to change the default opts. If opts is
+          needed, the user can set C = nothing here.
+       opts (scalar structure; optional):
+          A structure that specifies the options of computation; defaults to an
+          undefined Opts() structure. It can contain the following fields (all optional):
+          opts.verbal (logical scalar; optional, defaults to true):
+             Whether to print system information and timing to the standard output.
+          opts.is_symmetric_A (logical scalar; optional):
+             Whether matrix A is symmetric or not. This is only used when
+             opts.solver = "MUMPS", in which case opts.is_symmetric_A will be
+             determined by the issymmetric(A) command if not specified by user.
+       opts.solver (character vector; optional):
+          The solver used for sparse matrix factorization. Available choices are
+          (case-insensitive):
+             "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
+                        interface MUMPS3.jl must be installed.
+             "JULIA" -  (default when MUMPS is not available) Uses the built-in 
+                        lu() function in JULIA, which uses UMFPACK. 
+          MUMPS is faster and uses less memory than lu(), and is required for
+          the APF method.
+          opts.method (character vector; optional):
+             The solution method. Available choices are (case-insensitive):
+                "APF" - Augmented partial factorization. C*inv(A)*B is obtained
+                        through the Schur complement of an augmented matrix
+                        K = [A,B;C,0] using a partial factorization. Must have
+                        opts.solver = "MUMPS". This is the most efficient method,
+                        but it cannot be used for computing X=inv(A)*B or with
+                        iterative refinement.
+                "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+                        through C*inv(U)*inv(L)*B with optimized grouping. Must
+                        have opts.solver = "JULIA". This is slightly better than
+                        "FS" when MUMPS is not available, but it cannot be used for
+                        computing X=inv(A)*B.
+                "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+                        with forward and backward substitutions, and project with
+                        C as C*inv(A)*B = C*X. Here, opts.solver can be either
+                        "MUMPS" or "JULIA", and it can be used for computing
+                        X=inv(A)*B or with iterative refinement.
+                "C*inv(U)*inv(L)*B"   - Same as "FG".    
+                "factorize_and_solve" - Same as "FS".
+             By default, if C is given and opts.iterative_refinement = false, then
+             "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
+             used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
+             used.
+          opts.verbal_solver (logical scalar; optional, defaults to false):
+             Whether to have the solver print detailed information to the standard
+             output. Note the behavior of output from MUMPS depends on compiler.
+          opts.clear_memory (logical scalar; optional, defaults to false):
+             Whether or not to clear variables to reduce peak memory usage. When
+             opts.clear_memory = true, the following variables may be cleared in
+             the caller's workspace if they exist: A, B, C. Some other variables
+             inside mesti_matrix_solver() will be cleared too. However, currently,
+             we are trying to figure out how to do it in JULIA language.
+          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to false):
+            Whether to use single precision version of MUMPS; used only when 
+            opts.solver = "MUMPS". Using single precision version of MUMPS can 
+            reduce memory usage and computing time.
+          opts.use_METIS (logical scalar; optional, defaults to false):
+             Whether to use METIS (instead of the default AMD) to compute the
+             ordering in MUMPS. Using METIS can sometimes reduce memory usage
+             and/or factorization and solve time, but it typically takes longer at
+             the analysis (i.e., ordering) stage.
+          opts.nrhs (positive integer scalar; optional):
+             The number of right-hand sides (number of columns of matrix B) to
+             consider simultaneously, used only when opts.method =
+             "factorize_and_solve" and C is given. Defaults to 1 if
+             opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
+             opts.iterative_refinement = false, 4 otherwise.
+          opts.store_ordering (logical scalar; optional, defaults to false):
+             Whether to store the ordering sequence (permutation) for matrix A or
+             matrix K; only possible when opts.solver = "MUMPS". If
+             opts.store_ordering = true, the ordering will be returned in
+             info.ordering.
+          opts.ordering (positive integer vector; optional):
+             A user-specified ordering sequence for matrix A or matrix K, used only
+             when opts.solver = "MUMPS". Using the ordering from a previous
+             computation can speed up the analysis stage, but the matrix size must
+             be the same.
+          opts.nthreads_OMP (positive integer scalar; optional):
+             Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
+             environment variable.
+          opts.parallel_dependency_graph (logical scalar; optional):
+             If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+             This typically improve the time performance, but marginally increase 
+             the memory usage.
+          opts.iterative_refinement (logical scalar; optional, defaults to false):
+             Whether to use iterative refinement in MUMPS to lower round-off
+             errors. Iterative refinement can only be used when opts.solver =
+             "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
+             case opts.nrhs must equal 1. When iterative refinement is used, the
+             relevant information will be returned in info.itr_ref_nsteps,
+             info.itr_ref_omega_1, and info.itr_ref_omega_2.
+    
+       === Output Arguments ===
+       S (full numeric matrix):
+          C*inv(A)*B or inv(A)*B.
+       info (scalar structure):
+          A structure that contains the following fields:
+          info.opts (scalar structure):
+             The final "opts" used, excluding the user-specified matrix ordering.
+          info.timing_init (numeric scalar):
+             Timing of the initial stages, in seconds
+          info.timing_build (numeric scalar):
+             Timing of the building stages, in seconds
+          info.timing_analyze (numeric scalar):
+             Timing of the analyzing stages, in seconds
+          info.timing_factorize (numeric scalar):
+             Timing of the factorizing stages, in seconds
+          info.timing_solve (numeric scalar):
+             Timing of the solving stages, in seconds    
+          info.timing_total (numeric scalar):
+             Timing of the total, in seconds    
+          info.ordering_method (character vector; optional):
+             Ordering method used in MUMPS.
+          info.ordering (positive integer vector; optional):
+             Ordering sequence returned by MUMPS when opts.store_ordering = true.
+          info.itr_ref_nsteps (integer vector; optional):
+             Number of steps of iterative refinement for each input, if
+             opts.iterative_refinement = true; 0 means no iterative refinement.
+          info.itr_ref_omega_1 (real vector; optional):
+             Scaled residual omega_1 at the end of iterative refinement for each
+             input; see MUMPS user guide section 3.3.2 for definition.
+          info.itr_ref_omega_2 (real vector; optional):
+             Scaled residual omega_2 at the end of iterative refinement for each
+             input; see MUMPS user guide section 3.3.2 for definition.
 """
 function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=nothing)
     opts = deepcopy(opts)
@@ -407,12 +418,24 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         else
             str_ordering = " with AMD ordering"
         end
-
+        
+        # Use double-precision MUMPS by default
+        if ~isdefined(opts, :use_single_precision_MUMPS)
+            opts.use_single_precision_MUMPS = false
+        elseif ~isa(opts.use_single_precision_MUMPS, Bool)
+            throw(ArgumentError("opts.use_single_precision_MUMPS must be a boolean, if given."))   
+        end                            
+        if opts.use_single_precision_MUMPS
+            str_MUMPS_precision = " in single-precision"
+        else
+            str_MUMPS_precision = " in double-precision"
+        end        
+        
         # We don't use KEEP(401) = 1 by default        
-        if ~isdefined(opts, :use_keep_401_1)
-            opts.use_keep_401_1 = false
-        elseif ~isa(opts.use_keep_401_1, Bool)
-            throw(ArgumentError("opts.use_keep_401_1 must be a boolean, if given."))    
+        if ~isdefined(opts, :parallel_dependency_graph)
+            opts.parallel_dependency_graph = false
+        elseif ~isa(opts.parallel_dependency_graph, Bool)
+            throw(ArgumentError("opts.parallel_dependency_graph must be a boolean, if given."))    
         end
 
         # We don't use BLR by default
@@ -483,6 +506,10 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             @warn("opts.use_METIS is only used when opts.solver = \"MUMPS\"; will be ignored.")
         end
 
+        if isdefined(opts, :use_single_precision_MUMPS)
+            @warn("opts.use_single_precision_MUMPS is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        end
+        
         if isdefined(opts, :store_ordering) && opts.store_ordering == true
             throw(ArgumentError("opts.store_ordering = true can only be used when opts.solver = \"MUMPS\"."))
         end
@@ -537,6 +564,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     elseif opts.verbal
         #@printf("< Method: %s using %s%s%s%s%s >\n", opts.method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K)
         @printf("< Method: %s using %s", opts.method, opts.solver)
+        if ~isa(str_MUMPS_precision, Nothing); @printf("%s", str_MUMPS_precision); end        
         if ~isa(str_nrhs, Nothing); @printf("%s", str_nrhs); end
         if ~isa(str_ordering, Nothing); @printf("%s", str_ordering); end
         if ~isa(str_itr_ref, Nothing); @printf("%s", str_itr_ref); end
@@ -702,7 +730,19 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                 if opts.solver == "MUMPS"
                     set_job!(id,3) # what to do: solve
                     set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
-                    provide_rhs!(id,matrices.B) # no need to loop since we keep everything
+                    if opts.use_single_precision_MUMPS
+                        if eltype(matrices.B) == ComplexF64
+                            provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B))
+                        elseif eltype(matrices.B) == Float64
+                            provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int64}, matrices.B))
+                        elseif eltype(matrices.B) == Complex{Int64}
+                            provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int64}, matrices.B))
+                        else eltype(matrices.B) == Int64
+                            provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int64}, matrices.B))
+                        end
+                    else
+                        provide_rhs!(id,matrices.B) # no need to loop since we keep everything     
+                    end
                     invoke_mumps!(id)  # perform the solve
                     if id.infog[1] < 0; error("$(MUMPS_error_message(id.infog))"); end # check for errors    
                     S = get_sol(id) # X = id.SOL
@@ -735,7 +775,19 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                         in_list = k:min(k+opts.nrhs-1, M_in)
                         set_job!(id,3)  # what to do: solve
                         set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
-                        provide_rhs!(id,matrices.B[:,in_list])
+                        if opts.use_single_precision_MUMPS
+                            if eltype(matrices.B) == ComplexF64
+                                provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B[:,in_list]))
+                            elseif eltype(matrices.B) == Float64
+                                provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int64}, matrices.B[:,in_list]))
+                            elseif eltype(matrices.B) == Complex{Int64}
+                                provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int64}, matrices.B[:,in_list]))
+                            else eltype(matrices.B) == Int64
+                                provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int64}, matrices.B[:,in_list]))
+                            end
+                        else
+                            provide_rhs!(id,matrices.B[:,in_list])
+                        end
                         invoke_mumps!(id)  # perform the solve
                         if id.infog[1] < 0; error(MUMPS_error_message(id.infog)); end # check for errors
                         S[:,in_list] = matrices.C*get_sol(id) # X = id.SOL
@@ -805,7 +857,7 @@ end
 
 
 ## Call JULIA's lu() to factorize matrix A
-function JULIA_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts)
+function JULIA_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts)
 
     if opts.verbal; @printf("Factorizing ... "); end
     t1 = time()
@@ -830,7 +882,7 @@ end
 
 
 ## Call MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
-function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int64},Nothing} = nothing, par = 1::Int64)
+function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int64},Nothing} = nothing, par = 1::Int64)
 
     ## Initialize MUMPS
     N = size(A,1)
@@ -840,6 +892,19 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
         sym = 0  # specify that matrix A is not symmetric
     end
     
+    if opts.use_single_precision_MUMPS
+        # Convert the element data type of A to the single-precision     
+        if eltype(A) == ComplexF64
+            A = convert(SparseMatrixCSC{ComplexF32, Int64}, A)
+        elseif eltype(A) == Float64
+            A = convert(SparseMatrixCSC{Float32, Int64}, A)
+        elseif eltype(A) == Complex{Int64}
+            A = convert(SparseMatrixCSC{Complex{Int32}, Int64}, A)
+        else eltype(A) == Int64
+            A = convert(SparseMatrixCSC{Int32, Int64}, A)
+        end
+    end
+        
     MPI.Initialized() ? nothing : MPI.Init()
     id = Mumps(A, sym=sym, par=par) # get the default parameters    
 
@@ -892,8 +957,9 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     ## Analysis stage
     if opts.verbal; @printf("Analyzing   ... "); end
     t1 = time()
-    if opts.use_keep_401_1
-        # KEEP(401) = 1: dependency graph for the calculation is split and processed independently by OpenMP threads. This should improve the time for the numerical phases (factorization and solution).
+    if opts.parallel_dependency_graph
+        # Split dependency graph and processed independently by OpenMP threads.
+        # This typically improve the time performance, but marginally increase the memory usage in full multithread.
         set_keep!(id,401,1)
     end
     set_job!(id,1) # what to do: analysis  
