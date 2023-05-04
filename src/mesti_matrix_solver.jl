@@ -1,5 +1,4 @@
 ###### Update on 20230216
-###### Note: tell MUMPS that the RHS is sparse in line 721 and line 688 (It may cause errors.)
 using SparseArrays
 using LinearAlgebra
 using Statistics
@@ -349,7 +348,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             use_C = false
         else
             # In other cases, we may as well allocate the memory for C now
-            matrices.C = transpose(matrices.B)
+            matrices.C = permutedims(matrices.B, (2,1))
             use_C = true
         end
     else
@@ -702,8 +701,8 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             if return_X # Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
                 if opts.solver == "MUMPS"
                     set_job!(id,3) # what to do: solve
+                    set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
                     provide_rhs!(id,matrices.B) # no need to loop since we keep everything
-                    # set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse, but it is possible to cause error message in Julia.
                     invoke_mumps!(id)  # perform the solve
                     if id.infog[1] < 0; error("$(MUMPS_error_message(id.infog))"); end # check for errors    
                     S = get_sol(id) # X = id.SOL
@@ -735,8 +734,8 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                     for k = 1:opts.nrhs:M_in
                         in_list = k:min(k+opts.nrhs-1, M_in)
                         set_job!(id,3)  # what to do: solve
+                        set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
                         provide_rhs!(id,matrices.B[:,in_list])
-                        # set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse, but it is possible to cause error message in Julia.
                         invoke_mumps!(id)  # perform the solve
                         if id.infog[1] < 0; error(MUMPS_error_message(id.infog)); end # check for errors
                         S[:,in_list] = matrices.C*get_sol(id) # X = id.SOL
@@ -757,7 +756,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                     for k = 1:opts.nrhs:M_in
                         in_list = k:min(k+opts.nrhs-1, M_in)
                         # Forward and backward substitutions + undo scaling and ordering
-                        S[:,in_list] = matrices.CQ*Matrix(U\(L\(P*(R\matrices.B[:,in_list]))))
+                        S[:,in_list] = CQ*Matrix(U\(L\(P*(R\matrices.B[:,in_list]))))
                     end
                 end
             end
