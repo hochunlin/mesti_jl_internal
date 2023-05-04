@@ -1,5 +1,5 @@
 ###### Update on 20230216
-
+###### Update on 20230330 for 2D TM computations
 using SparseArrays
 using LinearAlgebra
 using Statistics
@@ -20,15 +20,15 @@ end
 
 mutable struct Syst
     # Below are used in both mesti() and mesti2s()    
-    epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}
-    epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}
-    epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}
+    epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}
+    epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
     length_unit::String
     wavelength::Number
     dx::Real
-    xBC::String
+    xBC::Union{String,Nothing}
     yBC::String
-    kx_B::Number
+    kx_B::Union{Number,Nothing}
     ky_B::Number
 
     # Below are used in mesti() only
@@ -65,13 +65,24 @@ end
        (nx_Ex, ny_Ex, nz_Ex) is the number of sites Ex is discretized onto. Same notation for Ey and Ez.
        Ex = reshape((inv(A)*B)[nt_Ex,:], nx_Ex, ny_Ex, nz_Ex, :).
        Ey = reshape((inv(A)*B)[nt_Ey,:], nx_Ey, ny_Ey, nz_Ey, :).
-       Ez = reshape((inv(A)*B)[nt_Ez,:], nx_Ez, ny_Ez, nz_Ez, :).    
-    
+       Ez = reshape((inv(A)*B)[nt_Ez,:], nx_Ez, ny_Ez, nz_Ez, :).
+
+       (Ex, info) = MESTI(syst, B) returns the spatial field profiles
+       of Ex(y,z) for 2D transverse-magnetic (TM) fields satisfying
+       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = source(y,z).
+         The returned 'Ex' is a 3D array, with Ex(:,:,i) being the field profile
+       of Ex given the i-th input source profile. The information of the computation is returned in structure 'info'.
+         MESTI uses finite-difference discretization on the Yee lattice, after which
+       the differential operator becomes an (ny_Ex*nz_Ex)-by-(ny_Ex*nz_Ex) sparse matrix A
+       where (ny_Ex, nz_Ex) is the number of sites Ex is discretized onto, and
+       Ex = reshape(inv(A)*B, ny_Ex, nz_Ex, []).
+
        (S, info) = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
        inv(A)*B is projected onto the output channels or locations of interest
        through matrix C; each row of matrix "C" is a distinct output projection
-       profile, discretized into a 1-by-(nt_Ex*nt_Ey*nt_Ez) vector in the same order as matrix
-       A. When the MUMPS3 is available, this is done by computing the Schur complement of an 
+       profile, discretized into a 1-by-(nt_Ex*nt_Ey*nt_Ez) vector for 3D or
+       1-by-(ny_Ex*nz_Ex) vector for 2D TM fields in the same order as matrix A.
+       When the MUMPS is available, this is done by computing the Schur complement of an 
        augmented matrix K = [A,B;C,0] through a partial factorization.
     
        (S, info) = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
@@ -80,7 +91,7 @@ end
        C*inv(A0)*B - S0 from a reference system A0 for which the scattering matrix
        S0 is known.
     
-       (nx_Ex, ny_Ex, nz_Ex, info) = MESTI(syst, B, opts),
+       (Ex, Ey, Ez, info) = MESTI(syst, B, opts),
        (S, info) = MESTI(syst, B, C, opts), and
        (S, info) = MESTI(syst, B, C, D, opts) allow detailed options to be
        specified with structure "opts".
@@ -99,15 +110,17 @@ end
        syst (Syst struct; required):
           A structure that specifies the system, used to build the FDFD matrix A.
           It contains the following fields:
-          syst.epsilon_xx (numeric array, real or complex):
-             An nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
+          syst.epsilon_xx (numeric array or matrix, real or complex):
+             For 3D, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
              profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
              epsilon_xx(n,m,l) averaged over a square with area (syst.dx)^2 centered at
              the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
-          syst.epsilon_yy (numeric array, real or complex):    
+             For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
+             profile epsilon_xx(y,z).
+          syst.epsilon_yy (numeric array or nothing, real or complex):    
              Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
              analogous to syst.epsilon_xx.
-          syst.epsilon_zz (numeric array, real or complex):    
+          syst.epsilon_zz (numeric array or nothing, real or complex):    
              Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
              analogous to syst.epsilon_xx.
           syst.length_unit (string; optional):
@@ -141,7 +154,7 @@ end
                    addition to.
                 direction (string; optional): Direction(s) where PML is
                    placed. Available choices are (case-insensitive):
-                      "all" - (default) PML in x, y, and z directions
+                      "all" - (default) PML in x, y, and z directions for 3D and PML in y and z directions for 2D TM
                       "x"   - PML in x direction
                       "y"   - PML in y direction
                       "z"   - PML in y direction    
@@ -204,7 +217,7 @@ end
                 "SC-PML" - stretched-coordinate PML
              The two are mathematically equivalent, but using SC-PML has lower 
              condition number.
-          syst.xBC (string; optional):
+          syst.xBC (string or nothing; optional):
              Boundary condition (BC) at the two ends in x direction, effectively
              specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
                         Ey(n,m,l) at n=0 and n=nx_Ey+1,
@@ -232,14 +245,16 @@ end
                 syst.xBC = "Bloch" if syst.kx_B is given; otherwise syst.xBC = "PEC"
              The choice of syst.xBC has little effect on the numerical accuracy
              when PML is used.
+                For 2D TM fields, xBC = nothing.
           syst.yBC (string; optional):
              Boundary condition in y direction, analogous to syst.xBC.
           syst.zBC (string; optional):
              Boundary condition in z direction, analogous to syst.xBC.
-          syst.kx_B (real scalar; optional):
+          syst.kx_B (real scalar or nothing; optional):
              Bloch wave number in x direction, in units of 1/syst.length_unit.
              syst.kx_B is only used when syst.xBC = "Bloch". It is allowed to
              specify a complex-valued syst.kx_B, but a warning will be displayed.
+             For 2D TM fields, kx_B = nothing.
           syst.ky_B (real scalar; optional):
              Bloch wave number in y direction, analogous to syst.kx_B.
           syst.kz_B (real scalar; optional):
@@ -247,7 +262,7 @@ end
        B (numeric matrix or vector of source structure; required):
           Matrix specifying the input source profiles B in the C*inv(A)*B - D or
           C*inv(A)*B or inv(A)*B returned. When the input argument B is a matrix,
-          it is directly used, and size(B,1) must equal nt_Ex*nt_Ey*nt_Ez; 
+          it is directly used, and size(B,1) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case; 
           each column of B specifies a source profile, placed on the grid points of E.
              Note that matrix A is (syst.dx)^2 times the differential operator and
           is unitless, so each column of B is (syst.dx)^2 times the i*omega*mu_0*[Jx;Jy;Jz] on
@@ -260,22 +275,29 @@ end
           resulting matrix B. If for every column of matrix B, all of its nonzero
           elements are spatially located within a cuboid (e.g., block sources),
           one can use the following fields:
-             Bx_struct.pos (six-element integer vector): Bx_struct.pos =
+             Bx_struct.pos (six-element integer vector or four-element integer vector): Bx_struct.pos =
                 [n1, m1, l1, d, w, h] specifies the location and the size of the
                 cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
                 the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
-                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, height, and width 
+                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
                 of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
                 of the higher-index corner of the cuboid.
-             Bx_struct.data (2D or 4D numeric array): nonzero elements of matrix B for x component
+                For 2D TM case, users only need to specify [m1, l1, w, h].
+             Bx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix B for x component
                 within the cuboid specified by Bx_struct.pos.
-                   When it is a 4D array, Bx_struct.data[n',m',l',a] is the a-th input
+                   When it is a 4D array (general 3D system), Bx_struct.data[n',m',l',a] is the a-th input
                 source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
                 B[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Bx_struct.data[:,:,:,a] gives the
                 sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
                 size(Bx_struct.data) must equal (d, w, h, number of inputs).
+                    When it is a 3D array (2D system), Bx_struct.data(m',l',a) is the a-th input
+                source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
+                Bx(m+(l-1)*ny, a). In other words, Bx_struct.data(:,:,a) gives the
+                sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
+                size(Bx_struct.data, [1,2]) must equal [w, h], and
+                size(Bx_struct.data, 3) is the number of inputs.
                    Alternatively, Bx_struct.data can be a 2D array that is
-                equivalent to reshape(data_in_4D_array, d*w*h, :), in which case
+                equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
                 size(Bx_struct.data, 2) is the number of inputs; in this case,
                 Bx_struct.data can be a sparse matrix, and its sparsity will be
                 preserved when building matrix B.
@@ -327,8 +349,8 @@ end
        C (numeric matrix, vector of source structure, or "transpose(B)"; optional):
           Matrix specifying the output projections in the C*inv(A)*B - D or
           C*inv(A)*B returned. When the input argument C is a matrix, it is
-          directly used, and size(C,2) must equal nt_Ex*nt_Ey*nt_Ez; each row of C 
-          specifies a projection profile, placed on the grid points of E.
+          directly used, and size(C,2) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case;
+          each row of C specifies a projection profile, placed on the grid points of E.
              Scattering matrix computations often have C = transpose(B); if that
           is the case, the user can set C = "transpose(B)" as a string,
           and it will be replaced by transpose(B) in the code.
@@ -343,22 +365,29 @@ end
           (e.g., projection of fields on a line), one can set the input argument C
           to be a structure array (referred to as Cx_struct below) with the
           following fields:
-             Cx_struct.pos (six-element integer vector): Cx_struct.pos =
+             Cx_struct.pos (six-element integer vector or four-element integer vector): Cx_struct.pos =
                 [n1, m1, l1, d, w, h] specifies the location and the size of the
                 cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
                 the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
-                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, height, and width 
+                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
                 of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
                 of the higher-index corner of the cuboid.
-             Cx_struct.data (2D or 4D numeric array): nonzero elements of matrix C for x component
+                For 2D TM case, users only need to specify [m1, l1, w, h].
+             Cx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix C for x component
                 within the cuboid specified by Cx_struct.pos.
-                   When it is a 4D array, Cx_struct.data[n',m',l',a] is the a-th input
+                   When it is a 4D array (general 3D system), Cx_struct.data[n',m',l',a] is the a-th input
                 source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
                 C[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Cx_struct.data[:,:,:,a] gives the
                 sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
                 size(Cx_struct.data) must equal (d, w, h, number of inputs).
+                    When it is a 3D array (2D system), Cx_struct.data(m',l',a) is the a-th input
+                source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
+                Cx(m+(l-1)*ny, a). In other words, Cx_struct.data(:,:,a) gives the
+                sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
+                size(Cx_struct.data, [1,2]) must equal [w, h], and
+                size(Cx_struct.data, 3) is the number of inputs.
                    Alternatively, Cx_struct.data can be a 2D array that is
-                equivalent to reshape(data_in_4D_array, d*w*h, :), in which case
+                equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
                 size(Cx_struct.data, 2) is the number of inputs; in this case,
                 Cx_struct.data can be a sparse matrix, and its sparsity will be
                 preserved when building matrix C.
@@ -509,16 +538,21 @@ end
        S (full numeric matrix or 3D array):
           The generalized scattering matrix S = C*inv(A)*B or S = C*inv(A)*B - D.
        ---or when users do not specify C---
-          When opts.exclude_PML_in_field_profiles = false,    
+          When opts.exclude_PML_in_field_profiles = false,
+          For 3D system,
        Ex (4D array):
           Electrical field profile for Ex component
           (nx_Ex, ny_Ex, nz_Ex, number of inputs) = size(Ex)
        Ey (4D array):
-          Electrical field profile for Ex component
+          Electrical field profile for Ey component
           (nx_Ey, ny_Ey, nz_Ey, number of inputs) = size(Ey)
        Ez (4D array):
-          Electrical field profile for Ex component
+          Electrical field profile for Ez component
           (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
+          For 2D TM case,
+       Ex (3D array):
+          Electrical field profile for Ex component
+          (ny_Ex, nz_Ex, number of inputs) = size(Ex)
        When opts.exclude_PML_in_field_profiles = true, the PML pixels
           (specified by syst.PML.npixels) are excluded from Ex, Ey, and Ez on each
           side where PML is used.    
@@ -558,7 +592,7 @@ end
     
        See also: mesti_build_fdfd_matrix, mesti_matrix_solver!, mesti2s
 """
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String,Nothing}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Nothing}, opts::Union{Opts,Nothing})
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String,Nothing}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Nothing}, opts::Union{Opts,Nothing})
     
     if ~(stacktrace()[2].func == :mesti2s)
         syst = deepcopy(syst); opts = deepcopy(opts)
@@ -572,15 +606,32 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
     
-    # Number of grid points in x, y, and z for Ex, Ey, and Ez
-    (nx_Ex, ny_Ex, nz_Ex) = size(syst.epsilon_xx)
-    (nx_Ey, ny_Ey, nz_Ey) = size(syst.epsilon_yy)
-    (nx_Ez, ny_Ez, nz_Ez) = size(syst.epsilon_zz)
+    # Check if 2D TM fields are required
+    if ndims(syst.epsilon_xx) == 2
+        use_2D_TM = true
+        if isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing) || isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)
+            @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
+        end
+    end
     
-    # Total number of grid points for Ex, Ey, and Ez    
-    nt_Ex = nx_Ex*ny_Ex*nz_Ex
-    nt_Ey = nx_Ey*ny_Ey*nz_Ey
-    nt_Ez = nx_Ez*ny_Ez*nz_Ez        
+    if ~use_2D_TM
+        # Number of grid points in x, y, and z for Ex, Ey, and Ez
+        (nx_Ex, ny_Ex, nz_Ex) = size(syst.epsilon_xx)
+        (nx_Ey, ny_Ey, nz_Ey) = size(syst.epsilon_yy)
+        (nx_Ez, ny_Ez, nz_Ez) = size(syst.epsilon_zz)
+
+        # Total number of grid points for Ex, Ey, and Ez    
+        nt_Ex = nx_Ex*ny_Ex*nz_Ex
+        nt_Ey = nx_Ey*ny_Ey*nz_Ey
+        nt_Ez = nx_Ez*ny_Ez*nz_Ez   
+    else
+        # Consider 2D TM field: Ex(y,z)
+        # Number of grid points in y and z for Ex
+        (ny_Ex, nz_Ex) = size(syst.epsilon_xx)
+        
+        # Total number of grid points for Ex
+        nt_Ex = ny_Ex*nz_Ex
+    end
 
     # Check that the user did not accidentally use options only in mesti2s()
     if isdefined(syst, :epsilon_low) && ~isa(syst.epsilon_low, Nothing)
@@ -596,24 +647,26 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         syst.zPML = nothing        
     end
     
-    # Check boundary condition in x
-    if isdefined(syst, :kx_B) 
-        if isdefined(syst, :xBC) && lowercase(syst.xBC) != "bloch"
-            throw(ArgumentError("When syst.kx_B is given, syst.xBC must be \"Bloch\" if specified."))
+    if ~use_2D_TM
+        # Check boundary condition in x
+        if isdefined(syst, :kx_B) 
+            if isdefined(syst, :xBC) && lowercase(syst.xBC) != "bloch"
+                throw(ArgumentError("When syst.kx_B is given, syst.xBC must be \"Bloch\" if specified."))
+            end
+            syst.xBC = "Bloch"
+            # mesti_build_fdfd_matrix() uses (kx_B,ky_B,kz_B)*periodicity as the input arguments xBC, yBC, and zBC for Bloch BC
+            xBC = (syst.kx_B)*(nx_Ex*syst.dx) # dimensionless
+        else
+            # Defaults to Dirichlet boundary condition unless syst.kx_B is given
+            if ~isdefined(syst, :xBC)
+                syst.xBC = "PEC"
+            elseif ~(lowercase(syst.xBC) in ["bloch", "periodic", "pec", "pmc", "pecpmc", "pmcpec"])
+                throw(ArgumentError("syst.xBC = \"$(syst.xBC)\" is not a supported option; type ''? mesti'' for supported options."))
+            elseif lowercase(syst.xBC) == "bloch"
+                throw(ArgumentError("syst.xBC = \"Bloch\" but syst.kx_B is not given."))
+            end
+            xBC = syst.xBC
         end
-        syst.xBC = "Bloch"
-        # mesti_build_fdfd_matrix() uses (kx_B,ky_B,kz_B)*periodicity as the input arguments xBC, yBC, and zBC for Bloch BC
-        xBC = (syst.kx_B)*(nx_Ex*syst.dx) # dimensionless
-    else
-        # Defaults to Dirichlet boundary condition unless syst.kx_B is given
-        if ~isdefined(syst, :xBC)
-            syst.xBC = "PEC"
-        elseif ~(lowercase(syst.xBC) in ["bloch", "periodic", "pec", "pmc", "pecpmc", "pmcpec"])
-            throw(ArgumentError("syst.xBC = \"$(syst.xBC)\" is not a supported option; type ''? mesti'' for supported options."))
-        elseif lowercase(syst.xBC) == "bloch"
-            throw(ArgumentError("syst.xBC = \"Bloch\" but syst.kx_B is not given."))
-        end
-        xBC = syst.xBC
     end
 
     # Check boundary condition in y
@@ -623,7 +676,11 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         end
         syst.yBC = "Bloch"
         # mesti_build_fdfd_matrix() uses (kx_B,ky_B,kz_B)*periodicity as the input arguments xBC, yBC, and zBC for Bloch BC
-        yBC = (syst.ky_B)*(ny_Ey*syst.dx) # dimensionless
+        if ~use_2D_TM
+            yBC = (syst.ky_B)*(ny_Ey*syst.dx) # dimensionless
+        else
+            yBC = (syst.ky_B)*(ny_Ex*syst.dx) # dimensionless
+        end
     else
         # Defaults to Dirichlet boundary condition unless syst.ky_B is given
         if ~isdefined(syst, :yBC)
@@ -643,7 +700,11 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         end
         syst.zBC = "Bloch"
         # mesti_build_fdfd_matrix() uses (kx_B,ky_B,kz_B)*periodicity as the input arguments xBC, yBC, and zBC for Bloch BC
-        zBC = (syst.kz_B)*(nz_Ez*syst.dx) # dimensionless
+        if ~use_2D_TM
+            zBC = (syst.kz_B)*(nz_Ez*syst.dx) # dimensionless
+        else
+            zBC = (syst.kz_B)*(nz_Ex*syst.dx) # dimensionless
+        end
     else
         # Defaults to Dirichlet boundary condition unless syst.kz_B is given
         if ~isdefined(syst, :zBC)
@@ -657,17 +718,20 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
 
     # Convert BC to take care of lowercase or uppercase
-    xBC = convert_BC(xBC, "x")
     yBC = convert_BC(yBC, "y")
     zBC = convert_BC(zBC, "z")        
     
-    # Check number of grid points with the boundary conditions
-    if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
-    if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
-    if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
-    check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
-    check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
-    check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+    if ~use_2D_TM
+        xBC = convert_BC(xBC, "x")
+        
+        # Check number of grid points with the boundary conditions
+        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
+        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
+        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
+        check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
+        check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
+        check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+    end
 
     # Defaults to no PML anywhere
     if ~isdefined(syst, :PML) 
@@ -677,7 +741,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         syst.PML = [syst.PML]
     end
                
-    # Parse the user-specified PML parameters to PML on the four sides
+    # Parse the user-specified PML parameters to PML on the six sides
     # PML_list = [xPML_low, xPML_high, yPML_low, yPML_high, zPML_low, zPML_high]
     PML_list = Vector{PML}(undef, 6)
     str_sides = ["-x", "+x", "-y", "+y", "-z", "+z"]
@@ -687,8 +751,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     for ii = 1:length(syst.PML)
         PML_ii = syst.PML[ii]
               
-        # Number of PML pixels must be given
-        # Other fields are optional and will be checked in mesti_build_fdfd_matrix()
+        # Check that the user did not accidentally use options only in mesti2s()
         if isdefined(PML_ii, :npixels_spacer) && ~isa(PML_ii.npixels_spacer, Nothing)
             @warn "syst.PML[$(ii)] field \"npixels_spacer\" is not used in mesti() and will be ignored."
             PML_ii.npixels_spacer = nothing
@@ -704,7 +767,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             use_PML = true
         end
                 
-        # If PML is specified, we put it on both x, y, and z directions by default
+        # If PML is specified, we put it on both x, y, and z directions by default for 3D, and both y and z directions by default for 2D
         if ~isdefined(PML_ii, :direction)
             PML_ii.direction = "all"
         elseif ~(lowercase(PML_ii.direction) in ["all", "x", "y", "z"])
@@ -722,11 +785,26 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         # 1=xPML_low, 2=xPML_high, 3=yPML_low, 4=yPML_high, 5=zPML_low, 6=zPML_high 
         if lowercase(PML_ii.direction) == "all" # x & y & z
             if lowercase(PML_ii.side) == "both" # low & high
-                ind_ii = [1,2,3,4,5,6]
+                if ~use_2D_TM
+                    ind_ii = [1,2,3,4,5,6]
+                else
+                    # For 2D TM fields Ex(y,z), only put PML on y and z directions
+                    ind_ii = [3,4,5,6]
+                end
             elseif PML_ii.side == "-"
-                ind_ii = [1,3,5]
+                if ~use_2D_TM
+                    ind_ii = [1,3,5]
+                else
+                    # For 2D TM fields Ex(y,z), only put PML on y and z directions
+                    ind_ii = [3,5]
+                end
             else # PML_ii.side == "+"
-                ind_ii = [2,4,6]
+                if ~use_2D_TM
+                    ind_ii = [2,4,6]
+                else
+                    # For 2D TM fields Ex(y,z), only put PML on y and z directions
+                    ind_ii = [4,6]
+                end
             end
         elseif lowercase(PML_ii.direction) == "x"
             if lowercase(PML_ii.side) == "both" # low & high
@@ -773,8 +851,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
     
     # Convert to three separate PML vector for mesti_build_fdfd_matrix()
-
-    xPML = PML_list[1:2] # [xPML_low, xPML_high]
+    if ~use_2D_TM
+        xPML = PML_list[1:2] # [xPML_low, xPML_high]
+    end
     yPML = PML_list[3:4] # [yPML_low, yPML_high]
     zPML = PML_list[5:6] # [zPML_low, zPML_high]
     
@@ -910,10 +989,14 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             @printf("            ... ")
         else            
             called_from_mesti2s = false
-            @printf("===System size=== \n")                   
-            @printf("nx_Ex = %d, ny_Ex = %d; nz_Ex = %d \n", nx_Ex, ny_Ex, nz_Ex)
-            @printf("nx_Ey = %d, ny_Ey = %d; nz_Ey = %d \n", nx_Ey, ny_Ey, nz_Ey)
-            @printf("nx_Ez = %d, ny_Ez = %d; nz_Ez = %d \n", nx_Ez, ny_Ez, nz_Ez)
+            @printf("===System size=== \n")
+            if ~use_2D_TM
+                @printf("nx_Ex = %d, ny_Ex = %d; nz_Ex = %d \n", nx_Ex, ny_Ex, nz_Ex)
+                @printf("nx_Ey = %d, ny_Ey = %d; nz_Ey = %d \n", nx_Ey, ny_Ey, nz_Ey)
+                @printf("nx_Ez = %d, ny_Ez = %d; nz_Ez = %d \n", nx_Ez, ny_Ez, nz_Ez)
+            else
+                @printf("ny_Ex = %d; nz_Ex = %d for Ex(y,z) \n", ny_Ex, nz_Ex)
+            end
             if use_PML
                 @printf("%s on ", syst.PML_type)
                 for ind_side = 1:6
@@ -925,8 +1008,10 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             else
                 @printf("no PML; ")
             end
-            @printf("xBC = %s", syst.xBC)
-            if lowercase(syst.xBC) == "bloch"; @printf(" (kx_B = %.4f)", syst.kx_B); end
+            if ~use_2D_TM
+                @printf("xBC = %s", syst.xBC)
+                if lowercase(syst.xBC) == "bloch"; @printf(" (kx_B = %.4f)", syst.kx_B); end
+            end
             @printf("; yBC = %s", syst.yBC)
             if lowercase(syst.yBC) == "bloch"; @printf(" (ky_B = %.4f)", syst.ky_B); end
             @printf("; zBC = %s", syst.zBC)
@@ -941,18 +1026,34 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     matrices = Matrices()
     
     # Build the input matrix B from its nonzero elements specified by user
-    component = ["x", "y", "z"]  
-    nx_list = [nx_Ex, nx_Ey, nx_Ez]
-    ny_list = [ny_Ex, ny_Ey, ny_Ez]
-    nz_list = [nz_Ex, nz_Ey, nz_Ez]
-    nt_list = [nt_Ex, nt_Ey, nt_Ez]
+    component = ["x", "y", "z"] 
+    if ~use_2D_TM 
+        nx_list = [nx_Ex, nx_Ey, nx_Ez]
+        ny_list = [ny_Ex, ny_Ey, ny_Ez]
+        nz_list = [nz_Ex, nz_Ey, nz_Ez]
+        nt_list = [nt_Ex, nt_Ey, nt_Ez]
+    else
+        nx_list = 1     # For computational use only
+        ny_list = ny_Ex
+        nz_list = nz_Ex
+        nt_list = nt_Ex
+    end
     
-    if isa(B,Vector{Source_struct})     
-        if length(B) != 3
-            throw(ArgumentError("The length of B must equal 3, when B is a vector of Source_struct."))
+    if isa(B,Vector{Source_struct})
+        if ~use_2D_TM
+            if length(B) != 3
+                throw(ArgumentError("The length of B must equal 3, when B is a vector of Source_struct."))
+            end
+            B_ii = Vector(undef, 3)
+        else
+            if length(B) != 1
+                throw(ArgumentError("The length of B must equal 1 for 2D case."))
+            end
+            B_ii = Vector(undef, 1)
         end
-        B_ii = Vector(undef, 3)
-        # Loop over Bx, By, and Bz
+        
+        # Loop over Bx, By, and Bz for 3D
+        # Only have Bx for 2D
         for ii = 1:length(B)
             B_struct = B[ii]   
             global M
@@ -978,8 +1079,12 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     # Loop over different source locations
                     for jj = 1:length(B_struct.pos)
                         pos = B_struct.pos[jj]
-                        if ~(length(pos)==6 && minimum(pos)>0)
-                            throw(ArgumentError("B[$(ii)].pos[$(jj)] must be a positive integer vector with 6 elements."))
+                        if use_2D_TM 
+                            if use_2D_TM && ~(length(pos) == 4 && minimum(pos)>0)
+                                throw(ArgumentError("B[$(ii)].pos[$(jj)] must be a positive integer vector with 4 elements for 2D case."))
+                            elseif ~use_2D_TM && ~(length(pos)==6 && minimum(pos)>0)
+                                throw(ArgumentError("B[$(ii)].pos[$(jj)] must be a positive integer vector with 6 elements for 3D case."))
+                            end
                         end
                     end
                 else
@@ -997,13 +1102,14 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                 elseif ~isdefined(B_struct, :pos)
                     use_iv_pairs = true
                 else
-                    for ii = 1:length(B_struct.pos)
-                        pos = B_struct.pos[ii]
-                        if ~((pos[4] == nx_list[ii] && pos[5] == ny_list[ii]) || pos[6] == 1)
+                    for jj = 1:length(B_struct.pos)
+                        pos = B_struct.pos[jj]
+                        if (~use_2D_TM && ~((pos[4] == nx_list[ii] && pos[5] == ny_list[ii]) || pos[6] == 1)) || (use_2D_TM && ~(pos[3] == ny_list[ii] || pos[4] == 1))
                             use_iv_pairs = true
                         end
                     end
                 end
+                
                 if use_iv_pairs
                     # Construct matrix B_ii from the complete set of index-value pairs
                     N_tot = 0; # total number of nonzero elements in B_ii
@@ -1019,12 +1125,17 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     # Build matrix B incrementally
                     B_ii[ii] = spzeros(nt_list[ii], 0)
                 end
+                
                 # Loop over different positions of the input source
                 for jj = 1:length(B_struct.data)
                     data = B_struct.data[jj]
                     if isdefined(B_struct, :pos)
                         # B_struct(ii).pos specifies a cuboid inside (nx, ny, nz); (n1, m1, l1) and (n2, m2, l2) are its two diagonal corners
+                        # For 2D TM field Ex(y,z), we only consider y, z directions; so we set n1 = n2 = 1 (pos[4] = 1), and the two diagonal corners of this cuboid becomes (1, m1, l1) and (1, m2, l2)
                         pos = B_struct.pos[jj]
+                        if use_2D_TM && length(pos) == 4
+                            pos = [1, pos[1], pos[2], 1, pos[3], pos[4]]
+                        end
                         n1 = pos[1] # first index in x
                         m1 = pos[2] # first index in y
                         l1 = pos[3] # first index in z           
@@ -1032,6 +1143,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                         m2 = m1 + pos[5] - 1 # last index in y
                         l2 = l1 + pos[6] - 1 # last index in z
                         nxyz_data = pos[4]*pos[5]*pos[6]; # number of elements in this cuboid
+                        
                         if n1 > nx_list[ii]
                             temp = @eval $(Symbol(string("nx_","E","$(component[ii])")))
                             throw(ArgumentError("B[$ii].pos[$jj][1] = $(n1) exceeds nx_E$(component[ii]) = $(temp)."))
@@ -1043,21 +1155,25 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                             throw(ArgumentError("B[$ii].pos[$jj][3] = $(m1) exceeds nz_E$(component[ii]) = $(temp)."))
                         elseif n2 > nx_list[ii]
                             temp = @eval $(Symbol(string("nx_","E","$(component[ii])")))
-                            throw(ArgumentError("B[$ii].pos[$jj][1] + B[$ii].pos[$jj][4] - 1 = $(n2) nx_E$(component[ii]) = $(temp)."))
+                            throw(ArgumentError("B[$ii].pos[$jj][1] + B[$ii].pos[$jj][4] - 1 = $(n2) exceeds nx_E$(component[ii]) = $(temp)."))
                         elseif m2 > ny_list[ii]
                             temp = @eval $(Symbol(string("ny_","E","$(component[ii])")))
-                            throw(ArgumentError("B[$ii].pos[$jj][2] + B[$ii].pos[$jj][5] - 1 = $(m2) ny_E$(component[ii]) = $(temp)."))                       
+                            throw(ArgumentError("B[$ii].pos[$jj][2] + B[$ii].pos[$jj][5] - 1 = $(m2) exceeds ny_E$(component[ii]) = $(temp)."))                       
                         elseif l2 > nz_list[ii]
                             temp = @eval $(Symbol(string("nz_","E","$(component[ii])")))
-                            throw(ArgumentError("B[$ii].pos[$jj][3] + B[$ii].pos[$jj][6] - 1 = $(l2) nz_E$(component[ii]) = $(temp)."))                       
-                        elseif ~(ndims(data) == 2 || ndims(data) == 4)
-                            throw(ArgumentError("B[$ii].data[$jj] must be a 2D or 4D numeric array when B[$ii].pos[$jj] is given."))
+                            throw(ArgumentError("B[$ii].pos[$jj][3] + B[$ii].pos[$jj][6] - 1 = $(l2) exceeds nz_E$(component[ii]) = $(temp)."))                       
+                        elseif (~use_2D_TM && ~(ndims(data) == 2 || ndims(data) == 4)) || (use_2D_TM && ~(ndims(data) == 2 || ndims(data) == 3))
+                            throw(ArgumentError("B[$ii].data[$jj] must be a 2D or 4D numeric array for 3D systems, or a 2D or 3D numeric array for 2D systems, when B[$ii].pos[$jj] is given."))
                         end
 
                         if ndims(data) == 2
                             M_ii = size(data, 2) # number of inputs
                         else
-                            M_ii = size(data, 4) # number of inputs
+                            if ~use_2D_TM
+                                M_ii = size(data, 4) # number of inputs
+                            else
+                                M_ii = size(data, 3) # number of inputs
+                            end
                         end
                         if use_iv_pairs
                             # convert to linear indices
@@ -1120,11 +1236,16 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                 B_ii[ii] = spzeros(nt_list[ii], M)
             end
         end
-        if ~(size(B_ii[1],2) == size(B_ii[2],2) && size(B_ii[1],2) == size(B_ii[3],2))
-            throw(ArgumentError("B cannot have different number of inputs for x, y, or z components."))                        
+        if ~use_2D_TM
+            if ~(size(B_ii[1],2) == size(B_ii[2],2) && size(B_ii[1],2) == size(B_ii[3],2))
+                throw(ArgumentError("B cannot have different number of inputs for x, y, or z components."))                     
+            end
+            # B=[Bx; By; Bz]
+            matrices.B = [B_ii[1]; B_ii[2]; B_ii[3]]   
+        else
+            # B = Bx for 2D TM field
+            matrices.B = B_ii[1]
         end
-        # B=[Bx; By; Bz]
-        matrices.B = [B_ii[1]; B_ii[2]; B_ii[3]]   
         if opts.clear_BC
             B_ii = nothing
             GC.gc()
@@ -1132,13 +1253,22 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
     
     if isa(C,Vector{Source_struct})
-        if length(C) != 3
-            throw(ArgumentError("The length of C must equal 3, when C is a vector of Source_struct."))
-        end        
-        C_ii = Vector(undef, 3)
-        # Loop over Cx, Cy, and Cz        
+        if ~use_2D_TM
+            if length(C) != 3
+                throw(ArgumentError("The length of C must equal 3, when C is a vector of Source_struct."))
+            end
+            C_ii = Vector(undef, 3)
+        else
+            if length(C) != 1
+                throw(ArgumentError("The length of C must equal 1 for 2D case."))
+            end
+            C_ii = Vector(undef, 1)
+        end
+       
+        # Loop over Cx, Cy, and Cz
+        # Only have Cx for 2D
         for ii = 1:length(C)
-            C_struct = C[ii]
+            C_struct = C[ii]   
             global M
             if isdefined(C_struct, :isempty) && ~isa(C_struct.isempty, Bool)
                 throw(ArgumentError("If input argument C[$(ii)] have field \"isempty\" and it must be a boolean scalar."))
@@ -1162,8 +1292,12 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     # Loop over different source locations                
                     for jj = 1:length(C_struct.pos)
                         pos = C_struct.pos[jj]
-                        if ~(length(pos)==6 && minimum(pos)>0)
-                            throw(ArgumentError("C[$(ii)].pos[$(jj)] must be a positive integer vector with 6 elements."))
+                        if use_2D_TM 
+                            if use_2D_TM && ~(length(pos) == 4 && minimum(pos)>0)
+                                throw(ArgumentError("C[$(ii)].pos[$(jj)] must be a positive integer vector with 4 elements for 2D case."))
+                            elseif ~use_2D_TM && ~(length(pos)==6 && minimum(pos)>0)
+                                throw(ArgumentError("C[$(ii)].pos[$(jj)] must be a positive integer vector with 6 elements for 3D case."))
+                            end
                         end
                     end
                 else
@@ -1181,9 +1315,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                 elseif ~isdefined(C_struct, :pos)
                     use_iv_pairs = true
                 else
-                    for ii = 1:length(C_struct.pos)
-                        pos = C_struct.pos[ii]
-                        if ~((pos[4] == nx_list[ii] && pos[5] == ny_list[ii]) || pos[6] == 1)
+                    for jj = 1:length(C_struct.pos)
+                        pos = C_struct.pos[jj]
+                        if (~use_2D_TM && ~((pos[4] == nx_list[ii] && pos[5] == ny_list[ii]) || pos[6] == 1)) || (use_2D_TM && ~(pos[3] == ny_list[ii] || pos[4] == 1))
                             use_iv_pairs = true
                         end
                     end
@@ -1208,7 +1342,11 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     data = C_struct.data[jj]
                     if isdefined(C_struct, :pos)
                         # C_struct(ii).pos specifies a cuboid inside (nx, ny, nz); (n1, m1, l1) and (n2, m2, l2) are its two diagonal corners
+                        # For 2D TM field Ex(y,z), we only consider y, z directions; so we set n1 = n2 = 1 (pos[4] = 1), and the two diagonal corners of this cuboid becomes (1, m1, l1) and (1, m2, l2)
                         pos = C_struct.pos[jj]
+                        if use_2D_TM && length(pos) == 4
+                            pos = [1, pos[1], pos[2], 1, pos[3], pos[4]]
+                        end
                         n1 = pos[1] # first index in x
                         m1 = pos[2] # first index in y
                         l1 = pos[3] # first index in z           
@@ -1234,20 +1372,24 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                         elseif l2 > nz_list[ii]
                             temp = @eval $(Symbol(string("nz_","E","$(component[ii])")))
                             throw(ArgumentError("C[$ii].pos[$jj][3] + C[$ii].pos[$jj][6] - 1 = $(l2) nz_E$(component[ii]) = $(temp)."))                      
-                        elseif ~(ndims(data) == 2 || ndims(data) == 4)
-                            throw(ArgumentError("C[$ii].data[$jj] must be a 2D or 4D numeric array when C[$ii].pos[$jj] is given."))
+                        elseif (~use_2D_TM && ~(ndims(data) == 2 || ndims(data) == 4)) || (use_2D_TM && ~(ndims(data) == 2 || ndims(data) == 3))
+                            throw(ArgumentError("C[$ii].data[$jj] must be a 2D or 4D numeric array for 3D systems, or a 2D or 3D numeric array for 2D systems, when C[$ii].pos[$jj] is given."))
                         end
 
                         if ndims(data) == 2
                             M_ii = size(data, 2) # number of inputs
                         else
-                            M_ii = size(data, 4) # number of inputs
+                            if ~use_2D_TM
+                                M_ii = size(data, 4) # number of inputs
+                            else
+                                M_ii = size(data, 3) # number of inputs
+                            end
                         end
                         if use_iv_pairs
                             # convert to linear indices
-                            n_list = repeat((n1:n2), 1, pos(5), pos(6))
-                            m_list = repeat(transpose(m1:m2), pos(4), 1, pos(6))
-                            l_list = repeat(reshape((l1:l2),1,1,:), pos(4), pos(5), 1)
+                            n_list = repeat((n1:n2), 1, pos[5], pos[6])
+                            m_list = repeat(transpose(m1:m2), pos[4], 1, pos[6])
+                            l_list = repeat(reshape((l1:l2),1,1,:), pos[4], pos[5], 1)
                             #ind = LinearIndices((nx_list[ii], ny_list[ii], nz_list[ii]))[CartesianIndex.(n_list, m_list, l_list)]
                             ind = Base._sub2ind((nx_list[ii], ny_list[ii], nz_list[ii]), n_list, m_list, l_list)
                         end
@@ -1277,7 +1419,8 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                         nxyz_before = Base._sub2ind((nx_list[ii], ny_list[ii], nz_list[ii]), n1, m1, l1) - 1
                         #nxyz_after = nt_list[ii] - LinearIndices((nx_list[ii], ny_list[ii], nz_list[ii]))[CartesianIndex(n2, m2, l2)]
                         nxyz_after = nt_list[ii] - Base._sub2ind((nx_list[ii], ny_list[ii], nz_list[ii]), n2, m2, l2)
-                        C_ii[ii] = [C_ii[ii]; [spzeros(M_ii, nxyz_before) transpose(reshape(data, nxyz_data, M_ii)) spzeros(M_ii, nxyz_after)]]
+                        #C_ii[ii] = [C_ii[ii]; [spzeros(M_ii, nxyz_before) transpose(reshape(data, nxyz_data, M_ii)) spzeros(M_ii, nxyz_after)]]
+                        C_ii[ii] = permutedims([transpose(C_ii[ii]) [spzeros(nxyz_before, M_ii); reshape(data, nxyz_data, M_ii); spzeros(nxyz_after, M_ii)]],(2,1))
                     end                
                 end
                 if use_iv_pairs
@@ -1304,25 +1447,43 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                 C_ii[ii] = spzeros(M, nt_list[ii])
             end
         end
-        if size(C_ii[1],1) != size(C_ii[2],1) || size(C_ii[1],1) != size(C_ii[3],1)
-            throw(ArgumentError("C cannot have different number of inputs for x, y, or z components."))                        
-        end        
-        # C = [Cx Cy Cz]
-        matrices.C = [C_ii[1] C_ii[2] C_ii[3]]    
+        if ~use_2D_TM
+            if size(C_ii[1],1) != size(C_ii[2],1) || size(C_ii[1],1) != size(C_ii[3],1)
+                throw(ArgumentError("C cannot have different number of inputs for x, y, or z components."))                     
+            end
+            # C = [Cx Cy Cz]
+            matrices.C = [C_ii[1] C_ii[2] C_ii[3]] 
+        else
+            # C = Cx for 2D TM field
+            matrices.C = C_ii[1]
+        end
         if opts.clear_BC
             C_ii = nothing
             GC.gc()
         end
-    end    
+    end
+    
     # Check matrix sizes
     (sz_B_1, sz_B_2) = size(matrices.B)
-    if sz_B_1 != nt_Ex+nt_Ey+nt_Ez
-        throw(ArgumentError("size(matrices.B,1) must equal nt_Ex+nt_Ey+nt_Ez; size(matrices.B,1) = $(sz_B_1), nt_Ex+nt_Ey+nt_Ez = $(nt_Ex+nt_Ey+nt_Ez).")) 
+    # nt_list = [nt_Ex, nt_Ey, nt_Ez] for 3D
+    # nt_list = nt_Ex for 2D TM
+    if sz_B_1 != sum(nt_list)
+        if ~use_2D_TM
+            throw(ArgumentError("size(matrices.B,1) must equal nt_Ex+nt_Ey+nt_Ez for 3D systems; size(matrices.B,1) = $(sz_B_1), nt_Ex+nt_Ey+nt_Ez = $(nt_Ex+nt_Ey+nt_Ez).")) 
+        else
+            throw(ArgumentError("size(matrices.B,1) must equal nt_Ex for 2D systems; size(matrices.B,1) = $(sz_B_1), nt_Ex = $(nt_Ex)."))
+        end
     end
     if ~opts.return_field_profile && ~use_transpose_B
         (sz_C_1, sz_C_2) = size(matrices.C)
-        if sz_C_2 != nt_Ex+nt_Ey+nt_Ez
-            throw(ArgumentError("size(matrices.C,2) must equal nt_Ex+nt_Ey+nt_Ez; size(matrices.C,2) = $(sz_C_2), nt_Ex+nt_Ey+nt_Ez = $(nt_Ex+nt_Ey+nt_Ez)."))
+        # nt_list = [nt_Ex, nt_Ey, nt_Ez] for 3D
+        # nt_list = nt_Ex for 2D TM
+        if sz_C_2 != sum(nt_list)
+            if ~use_2D_TM
+                throw(ArgumentError("size(matrices.C,2) must equal nt_Ex+nt_Ey+nt_Ez for 3D systems; size(matrices.C,2) = $(sz_C_2), nt_Ex+nt_Ey+nt_Ez = $(nt_Ex+nt_Ey+nt_Ez)."))
+            else
+                throw(ArgumentError("size(matrices.C,2) must equal nt_Ex for 2D systems; size(matrices.C,2) = $(sz_C_2), nt_Ex = $(nt_Ex)."))
+            end
         end
     elseif ~isa(D, Nothing)
         sz_C_1 = sz_B_2 # to-be used before subtracting D, taking C = transpose(B)
@@ -1337,12 +1498,16 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     ## Part 2.2: Build matrix A by calling mesti_build_fdfd_matrix()
     if (sz_B_2 == 0 || (~opts.return_field_profile && ~use_transpose_B && sz_C_1 == 0)) && ~(isdefined(opts, :store_ordering) && opts.store_ordering)
         # No need to build A if length(S) = 0 and we don't need to keep the ordering
-        matrices.A = spzeros(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
+        matrices.A = spzeros(sum(nt_list), sum(nt_list))
         is_symmetric_A = true
     else
         # Build the finite-difference differential operator
         k0dx = (2*pi/syst.wavelength)*(syst.dx)
-        (matrices.A, is_symmetric_A, xPML, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, syst.epsilon_yy, syst.epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
+        if ~use_2D_TM
+            (matrices.A, is_symmetric_A, xPML, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, syst.epsilon_yy, syst.epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
+        else
+            (matrices.A, is_symmetric_A, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, k0dx, yBC, zBC, yPML, zPML, use_UPML)
+        end
     end
     if opts.clear_memory
         GC.gc()    
@@ -1369,8 +1534,10 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     
     info.timing_init = info.timing_init + timing_init
     info.timing_build = info.timing_build + timing_build_BC + timing_build_A # combine with build time for K
-    if xPML[1].npixels != 0 && xPML[2].npixels != 0        
-        info.xPML = xPML
+    if ~use_2D_TM
+        if xPML[1].npixels != 0 && xPML[2].npixels != 0        
+            info.xPML = xPML
+        end
     end
     if yPML[1].npixels != 0 && yPML[2].npixels != 0        
         info.yPML = yPML
@@ -1413,46 +1580,78 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     return S, info
 end
 
-# The follwoing are mesti functions to take different number of input arguments, but all of them will
+# The following are mesti functions to take different number of input arguments, but all of them will
 # call the mesti main function.
 
 # When syst and B are specified; return the three components of the field profiles.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}})
-    opts = Opts()
-    (Ex, Ey, Ez, info) = mesti(syst, B, opts)    
-    return Ex, Ey, Ez, info
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}})
+    opts = Opts() 
+    
+    # Check if 2D TM fields are required
+    if ndims(syst.epsilon_xx) == 2
+        use_2D_TM = true
+    end
+    
+    if ~use_2D_TM
+        (Ex, Ey, Ez, info) = mesti(syst, B, opts)
+        return Ex, Ey, Ez, info
+    else
+        (Ex, info) = mesti(syst, B, opts)
+        return Ex, info
+    end
 end
 
 # When syst, B, and opts are specified; return the three components of the field profiles.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, opts::Opts)
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, opts::Opts)
     
-    (S, info) = mesti(syst, B, nothing, nothing, opts)    
+    (S, info) = mesti(syst, B, nothing, nothing, opts)
+    
+    # Check if 2D TM fields are required
+    if ndims(syst.epsilon_xx) == 2
+        use_2D_TM = true
+    end
 
     t1 = time()
 
     # Number of inputs
     M = size(S,2)
+    
+    if ~use_2D_TM
+        # Number of grid points in x, y, and z for Ex, Ey, and Ez
+        (nx_Ex, ny_Ex, nz_Ex) = size(syst.epsilon_xx)
+        (nx_Ey, ny_Ey, nz_Ey) = size(syst.epsilon_yy)
+        (nx_Ez, ny_Ez, nz_Ez) = size(syst.epsilon_zz)  
 
-    # Number of grid points in x, y, and z for Ex, Ey, and Ez
-    (nx_Ex, ny_Ex, nz_Ex) = size(syst.epsilon_xx)
-    (nx_Ey, ny_Ey, nz_Ey) = size(syst.epsilon_yy)
-    (nx_Ez, ny_Ez, nz_Ez) = size(syst.epsilon_zz)  
-
-    # Total number of grid points for Ex, Ey, and Ez    
-    nt_Ex = nx_Ex*ny_Ex*nz_Ex
-    nt_Ey = nx_Ey*ny_Ey*nz_Ey
-    nt_Ez = nx_Ez*ny_Ez*nz_Ez        
+        # Total number of grid points for Ex, Ey, and Ez    
+        nt_Ex = nx_Ex*ny_Ex*nz_Ex
+        nt_Ey = nx_Ey*ny_Ey*nz_Ey
+        nt_Ez = nx_Ez*ny_Ez*nz_Ez        
+    else
+        # Number of grid points in y and z for Ex
+        (ny_Ex, nz_Ex) = size(syst.epsilon_xx)
+        
+        # Total number of grid points for Ex
+        nt_Ex = ny_Ex*nz_Ex
+    end
     
     if info.opts.exclude_PML_in_field_profiles
         # Exclude the PML pixels from the returned field profiles
-        n_start = 1; n_Ex_end = nx; n_Ey_end = nx; 
-        Ex = reshape(S[1:nt_Ex, :], nx_Ex, ny_Ex, nz_Ex, M)[(info.xPML[1].npixels+1):(nx_Ex-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ex-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ex-info.zPML[2].npixels),:]
-        Ey = reshape(S[nt_Ex+1:nt_Ex+nt_Ey, :], nx_Ey, ny_Ey, nz_Ey, M)[(info.xPML[1].npixels+1):(nx_Ey-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ey-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ey-info.zPML[2].npixels),:]
-        Ez = reshape(S[nt_Ex+nt_Ey+1:nt_Ex+nt_Ey+nt_Ez, :], nx_Ez, ny_Ez, nz_Ez, M)[(info.xPML[1].npixels+1):(nx_Ez-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ez-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ez-info.zPML[2].npixels),:]  
+        if ~use_2D_TM
+            n_start = 1; n_Ex_end = nx; n_Ey_end = nx; 
+            Ex = reshape(S[1:nt_Ex, :], nx_Ex, ny_Ex, nz_Ex, M)[(info.xPML[1].npixels+1):(nx_Ex-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ex-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ex-info.zPML[2].npixels),:]
+            Ey = reshape(S[nt_Ex+1:nt_Ex+nt_Ey, :], nx_Ey, ny_Ey, nz_Ey, M)[(info.xPML[1].npixels+1):(nx_Ey-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ey-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ey-info.zPML[2].npixels),:]
+            Ez = reshape(S[nt_Ex+nt_Ey+1:nt_Ex+nt_Ey+nt_Ez, :], nx_Ez, ny_Ez, nz_Ez, M)[(info.xPML[1].npixels+1):(nx_Ez-info.xPML[2].npixels),(info.yPML[1].npixels+1):(ny_Ez-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ez-info.zPML[2].npixels),:]
+        else
+            Ex = reshape(S[1:nt_Ex, :], ny_Ex, nz_Ex, M)[(info.yPML[1].npixels+1):(ny_Ex-info.yPML[2].npixels),(info.zPML[1].npixels+1):(nz_Ex-info.zPML[2].npixels),:]
+        end
     else
-        Ex = reshape(S[1:nt_Ex, :], nx_Ex, ny_Ex, nz_Ex, M)
-        Ey = reshape(S[nt_Ex+1:nt_Ex+nt_Ey, :], nx_Ey, ny_Ey, nz_Ey, M)
-        Ez = reshape(S[nt_Ex+nt_Ey+1:nt_Ex+nt_Ey+nt_Ez, :], nx_Ez, ny_Ez, nz_Ez, M)         
+        if ~use_2D_TM
+            Ex = reshape(S[1:nt_Ex, :], nx_Ex, ny_Ex, nz_Ex, M)
+            Ey = reshape(S[nt_Ex+1:nt_Ex+nt_Ey, :], nx_Ey, ny_Ey, nz_Ey, M)
+            Ez = reshape(S[nt_Ex+nt_Ey+1:nt_Ex+nt_Ey+nt_Ez, :], nx_Ez, ny_Ez, nz_Ez, M)
+        else
+            Ex = reshape(S[1:nt_Ex, :], ny_Ex, nz_Ex, M)
+        end
     end
     
     t2 = time()
@@ -1462,8 +1661,12 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     info.timing_total = info.timing_total + t2 - t1 # Add the little bit of post-processing time
     if info.opts.verbal
         @printf("          Total elapsed time: %7.3f secs\n", info.timing_total) 
-    end   
-    return Ex, Ey, Ez, info
+    end
+    if ~use_2D_TM
+        return Ex, Ey, Ez, info
+    else
+        return Ex, info
+    end
 end
 
 # When syst, B, and C are specified; return the scattering matrix.
