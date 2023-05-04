@@ -1,4 +1,5 @@
 ###### Update on 20220915
+###### Update on 20230314 for 2D TM computations
 using LinearAlgebra
 using SparseArrays
 using Statistics
@@ -45,7 +46,6 @@ end
           epsilon_xx is a nx_Ex-by-ny_Ex-by-nz_Ex numeric array (real or complex)
           discretizing the relative permittivity profile on Ex-sites. nx_Ex/ny_Ex/nz_Ex 
           is the total number of grids for Ex in x/y/z-direction.
-          points for Ex/Ey/Ez.
        epsilon_yy (array; required):
           epsilon_yy is a nx_Ey-by-ny_Ey-by-nz_Ey numeric array (real or complex)
           discretizing the relative permittivity profile on Ey-sites. nx_Ey/ny_Ey/nz_Ey 
@@ -57,7 +57,6 @@ end
        k0dx (numeric scalar, real or complex; required):
           Normalized frequency k0*dx = (2*pi/vacuum_wavelength)*dx.
        xBC (character vector or numeric scalar; required):
-          syst.xBC (string; optional):
              Boundary condition (BC) at the two ends in x direction, effectively
              specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
                         Ey(n,m,l) at n=0 and n=nx_Ey+1,
@@ -147,174 +146,294 @@ end
        zPML (two-element vector):
           PML parameters used on the low and high sides of z direction, if any.
 """
-function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}, epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3}}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Vector{PML} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
     # Make deepcopy of them to avoid mutating input argument 
     xPML = deepcopy(xPML); yPML = deepcopy(yPML); zPML = deepcopy(zPML);
-
-    # Number of grid points in x, y, and z for Ex, Ey, and Ez
-    (nx_Ex, ny_Ex, nz_Ex) = size(epsilon_xx)
-    (nx_Ey, ny_Ey, nz_Ey) = size(epsilon_yy)
-    (nx_Ez, ny_Ez, nz_Ez) = size(epsilon_zz)
-
-    # Convert BC to take care of lowercase or uppercase
-    xBC = convert_BC(xBC, "x")
-    yBC = convert_BC(yBC, "y")
-    zBC = convert_BC(zBC, "z")
     
-    # Check number of grid points with the boundary conditions
-    if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
-    if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
-    if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
-    check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
-    check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
-    check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+    if ndims(epsilon_xx) == 2
+        use_2D_TM = true
+        if ~(epsilon_yy == nothing && epsilon_zz == nothing)
+            @warn "Only epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
+        end    
+        if xBC != nothing
+            @warn "Only yBC and zBC are required for 2D TM fields Ex(y,z). xBC will be ignored."
+        end
+        if xPML != nothing
+            @warn "Only yPML and zPML are required for 2D TM fields Ex(y,z). xPML will be ignored."
+        end
+    end
+ 
+    
+    if use_2D_TM  # 2D TM field
+        # Number of sites in y and z for Ex
+        (ny_Ex, nz_Ex) = size(epsilon_xx)
+        
+        # Convert BC to take care of lowercase or uppercase
+        yBC = convert_BC(yBC, "y")
+        zBC = convert_BC(zBC, "z")
+        
+        # Total number of grid points for Ex
+        nt_Ex = ny_Ex*nz_Ex
+    else # 3D case
+        # Number of grid points in x, y, and z for Ex, Ey, and Ez
+        (nx_Ex, ny_Ex, nz_Ex) = size(epsilon_xx)
+        (nx_Ey, ny_Ey, nz_Ey) = size(epsilon_yy)
+        (nx_Ez, ny_Ez, nz_Ez) = size(epsilon_zz)
 
-    # Total number of grid points for Ex, Ey, and Ez    
-    nt_Ex = nx_Ex*ny_Ex*nz_Ex
-    nt_Ey = nx_Ey*ny_Ey*nz_Ey
-    nt_Ez = nx_Ez*ny_Ez*nz_Ez
+        # Convert BC to take care of lowercase or uppercase
+        xBC = convert_BC(xBC, "x")
+        yBC = convert_BC(yBC, "y")
+        zBC = convert_BC(zBC, "z")
+
+        # Check number of grid points with the boundary conditions
+        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
+        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
+        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
+        check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
+        check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
+        check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+
+        # Total number of grid points for Ex, Ey, and Ez    
+        nt_Ex = nx_Ex*ny_Ex*nz_Ex
+        nt_Ey = nx_Ey*ny_Ey*nz_Ey
+        nt_Ez = nx_Ez*ny_Ez*nz_Ez
+    end
 
     # Estimate background permittivity, used to assign default sigma_max_over_omega for PML
-    epsilon_bg_x_Ex = [1, 1]
-    epsilon_bg_y_Ey = [1, 1]
-    epsilon_bg_z_Ez = [1, 1]
-    if xPML[1].npixels != 0 || xPML[2].npixels != 0
-        epsilon_bg_x_Ex = real(vcat(mean(epsilon_xx[1,:,:]), mean(epsilon_xx[end,:,:])))
-        # Make sure that the two sides are the same when the system is periodic; this ensures that the s-factor is continuous across the periodic boundary.
-        if isa(xBC, Number) || xBC == "periodic"
-            epsilon_bg_x_Ex = mean(epsilon_bg_x_Ex)*[1, 1]
+    if use_2D_TM  # 2D TM field
+        epsilon_bg_y = [1, 1]
+        epsilon_bg_z = [1, 1]
+        if yPML[1].npixels != 0 || yPML[2].npixels != 0
+            epsilon_bg_y = real(vcat(mean(epsilon_xx[1,:]), mean(epsilon_xx[end,:])))
+            # Make sure that the two sides are the same when the system is periodic; this ensures that the s-factor is continuous across the periodic boundary.
+            if isa(yBC, Number) || yBC == "periodic"
+                epsilon_bg_y = mean(epsilon_bg_y)*[1, 1]
+            end
         end
-    end
-    if yPML[1].npixels != 0 || yPML[2].npixels != 0
-        epsilon_bg_y_Ey = real(vcat(mean(epsilon_yy[:,1,:]), mean(epsilon_yy[:,end,:])))    
-        if isa(yBC, Number) || yBC == "periodic"
-            epsilon_bg_y_Ey = mean(epsilon_bg_y_Ey)*[1, 1]
+        if zPML[1].npixels != 0 || zPML[2].npixels != 0
+            epsilon_bg_z = real(vcat(mean(epsilon_xx[:,1]), mean(epsilon_xx[:,end])))
+            # Make sure that the two sides are the same when the system is periodic; this ensures that the s-factor is continuous across the periodic boundary.
+            if isa(zBC, Number) || zBC == "periodic"
+                epsilon_bg_z = mean(epsilon_bg_z)*[1, 1]
+            end
+        end
+        
+        # Set default values for PML parameters
+        yPML = set_PML_params(yPML, k0dx, epsilon_bg_y, "y")  
+        zPML = set_PML_params(zPML, k0dx, epsilon_bg_z, "z")
+    else  # 3D case
+        epsilon_bg_x_Ex = [1, 1]
+        epsilon_bg_y_Ey = [1, 1]
+        epsilon_bg_z_Ez = [1, 1]
+        if xPML[1].npixels != 0 || xPML[2].npixels != 0
+            epsilon_bg_x_Ex = real(vcat(mean(epsilon_xx[1,:,:]), mean(epsilon_xx[end,:,:])))
+            # Make sure that the two sides are the same when the system is periodic; this ensures that the s-factor is continuous across the periodic boundary.
+            if isa(xBC, Number) || xBC == "periodic"
+                epsilon_bg_x_Ex = mean(epsilon_bg_x_Ex)*[1, 1]
+            end
+        end
+        if yPML[1].npixels != 0 || yPML[2].npixels != 0
+            epsilon_bg_y_Ey = real(vcat(mean(epsilon_yy[:,1,:]), mean(epsilon_yy[:,end,:])))    
+            if isa(yBC, Number) || yBC == "periodic"
+                epsilon_bg_y_Ey = mean(epsilon_bg_y_Ey)*[1, 1]
+            end    
+        end
+        if zPML[1].npixels != 0 || zPML[2].npixels != 0
+            epsilon_bg_z_Ez = real(vcat(mean(epsilon_zz[:,:,1]), mean(epsilon_zz[:,:,end])))
+            if isa(zBC, Number) || zBC == "periodic"
+                epsilon_bg_z_Ez = mean(epsilon_bg_z_Ez)*[1, 1]
+            end
         end    
+    
+        # Set default values for PML parameters
+        xPML = set_PML_params(xPML, k0dx, epsilon_bg_x_Ex, "x")  
+        yPML = set_PML_params(yPML, k0dx, epsilon_bg_y_Ey, "y")
+        zPML = set_PML_params(zPML, k0dx, epsilon_bg_z_Ez, "z")  
     end
-    if zPML[1].npixels != 0 || zPML[2].npixels != 0
-        epsilon_bg_z_Ez = real(vcat(mean(epsilon_zz[:,:,1]), mean(epsilon_zz[:,:,end])))
-        if isa(zBC, Number) || zBC == "periodic"
-            epsilon_bg_z_Ez = mean(epsilon_bg_z_Ez)*[1, 1]
+    
+    # Build the first derivative and use Kronecker outer product to go from 1D to 2D or 3D
+    if use_2D_TM
+        # Build the first derivative and average matrices on E, such that
+        #   ddx_E*f = df/dx
+        #   avg_x_E*f = average of f among two neighboring pixels
+        # where f = Ex is a 1d vector.
+        # Note that sx_E and sx_H are column vectors.
+        # Later we will use Kronecker outer product to go from 1D to 2D.
+        (ddy_E, avg_y_E, sy_E, sy_H, ind_yPML_E) = build_ddx_E(ny_Ex, yBC, yPML, "y") # ddy_E operates on Ex or Ez
+        (ddz_E, avg_z_E, sz_E, sz_H, ind_zPML_E) = build_ddx_E(nz_Ex, zBC, zPML, "z") # ddz_E operates on Ex or Ey
+        
+        # The derivative matrices on H
+        # We need sparse() to force datatype conversion.
+        ddy_H = sparse(-ddy_E') # ddy_H operates on Hx or Hz
+        ddz_H = sparse(-ddz_E') # ddz_H operates on Hx or Hy
+        
+        # Number of grid points in y and z for Hx
+        ny_Hx = size(ddy_E, 1) # ny_Hx = ny_Hz = ny_Ey
+        nz_Hx = size(ddz_E, 1) # nz_Hx = nz_Hy = nz_Ez
+        
+        # Include coordinate streching into the first derivatives
+        # So far we only implement for 2D TM fields Ex(y,z); will add 2D TE fields later
+        ddy_E = spdiagm(ny_Hx, ny_Hx, 1 ./sy_H)*ddy_E
+        ddz_E = spdiagm(nz_Hx, nz_Hx, 1 ./sz_H)*ddz_E
+        
+        if ~use_UPML
+            ddy_H = spdiagm(ny_Ex, ny_Ex, 1 ./sy_E)*ddy_H
+            ddz_H = spdiagm(nz_Ex, nz_Ex, 1 ./sz_E)*ddz_H
         end
-    end    
-    
-    # Set default values for PML parameters
-    xPML = set_PML_params(xPML, k0dx, epsilon_bg_x_Ex, "x")  
-    yPML = set_PML_params(yPML, k0dx, epsilon_bg_y_Ey, "y")
-    zPML = set_PML_params(zPML, k0dx, epsilon_bg_z_Ez, "z")  
-
-    # Build the first derivatives in 1D, such that ddx*f = df/dx, ddy*f = df/dy, ddz*f = df/dz (ignoring dx factor)
-    # Later we will use Kronecker outer product to go from 1D to 3D.    
-    # ddx_HzEy: x-derivative operates on Ey producing Hz
-    # sx_Ey: coordinate-stretching factor for Ey along x-direction
-    # sx_Hz: coordinate-stretching factor for Hz along x-direction
-    # ddx_HyEz = ddx_HzEy, sx_Ez = sx_Ey, sx_Hy = sx_Hz, because Ez(Hy) and Ey(Hz)
-    # share the same x-coordinate inside same Yee-cell. The same reason applies to others. 
-    # We defer three of the derivatives to later
-    (ddx_HzEy, _, sx_Ey, sx_Hz, ind_xPML_E) = build_ddx_E(nx_Ey, xBC, xPML, "x") 
-    #ddx_HyEz = ddx_HzEy
-    (ddy_HxEz, _, sy_Ez, sy_Hx, ind_yPML_E) = build_ddx_E(ny_Ez, yBC, yPML, "y")
-    #ddy_HzEx = ddy_HxEz
-    (ddz_HyEx, _, sz_Ex, sz_Hy, ind_zPML_E) = build_ddx_E(nz_Ex, zBC, zPML, "z")
-    #ddz_HxEy = ddz_HyEx
-
-    # The derivative matrices on H
-    # We need sparse() to force datatype conversion.
-    ddx_EyHz = sparse(-ddx_HzEy'); #ddx_EzHy = sparse(-ddx_HyEz')
-    ddy_EzHx = sparse(-ddy_HxEz'); #ddy_ExHz = sparse(-ddy_HzEx')
-    ddz_ExHy = sparse(-ddz_HyEx'); #ddz_EyHx = sparse(-ddz_HxEy')
         
-    # Number of grid points in x, y, and z for Hx, Hy, and Hz
-    nx_Hz = size(ddx_HzEy, 1); nx_Hy = nx_Hz; nx_Hx = nx_Ey
-    ny_Hx = size(ddy_HxEz, 1); ny_Hz = ny_Hx; ny_Hy = ny_Ez
-    nz_Hy = size(ddz_HyEx, 1); nz_Hx = nz_Hy; nz_Hz = nz_Ex
-    
-    # Total number of grid points for Hx, Hy, and Hz    
-    nt_Hx = nx_Hx*ny_Hx*nz_Hx
-    nt_Hy = nx_Hy*ny_Hy*nz_Hy
-    nt_Hz = nx_Hz*ny_Hz*nz_Hz    
-    
-    # Start from stretched-coordinate PML (SC-PML); here, 1/s and 1/s_d are both multiplied onto the gradient. 
-    # Convert coordinate-stretching factor vector to diagonal matrices    
-    inv_sx_Hz = spdiagm(nx_Hz, nx_Hz, 1 ./sx_Hz); #inv_sx_Hy = inv_sx_Hz
-    inv_sy_Hx = spdiagm(ny_Hx, ny_Hx, 1 ./sy_Hx); #inv_sy_Hz = inv_sy_Hx
-    inv_sz_Hy = spdiagm(nz_Hy, nz_Hy, 1 ./sz_Hy); #inv_sz_Hx = inv_sz_Hy
-    inv_sx_Ey = spdiagm(nx_Ey, nx_Ey, 1 ./sx_Ey); #inv_sx_Ez = inv_sx_Ey
-    inv_sy_Ez = spdiagm(ny_Ez, ny_Ez, 1 ./sy_Ez); #inv_sy_Ex = inv_sy_Ez
-    inv_sz_Ex = spdiagm(nz_Ex, nz_Ex, 1 ./sz_Ex); #inv_sz_Ey = inv_sz_Ex
-    
-    # Include coordinate stretching into the first derivatives    
-    ddx_HzEy = inv_sx_Hz*ddx_HzEy; ddx_HyEz = ddx_HzEy #ddx_HyEz = inv_sx_Hy*ddx_HyEz
-    ddy_HxEz = inv_sy_Hx*ddy_HxEz; ddy_HzEx = ddy_HxEz #ddy_HzEx = inv_sy_Hz*ddy_HzEx
-    ddz_HyEx = inv_sz_Hy*ddz_HyEx; ddz_HxEy = ddz_HyEx #ddz_HxEy = inv_sz_Hx*ddz_HxEy
-    ddx_EyHz = inv_sx_Ey*ddx_EyHz; ddx_EzHy = ddx_EyHz #ddx_EzHy = inv_sx_Ez*ddx_EzHy
-    ddy_EzHx = inv_sy_Ez*ddy_EzHx; ddy_ExHz = ddy_EzHx #ddy_ExHz = inv_sy_Ex*ddy_ExHz
-    ddz_ExHy = inv_sz_Ex*ddz_ExHy; ddz_EyHx = ddz_ExHy #ddz_EyHx = inv_sz_Ey*ddz_EyHx
-   
-    # Expand derivative matrices to 3D by Kronecker outer product
-    # Note that even though ddx_HzEy = ddx_HyEz, Dx_HzEy and Dx_HyEz are not the same 
-    # because Ez and Ey can have different number of points along y and z
-    Dx_HzEy = kron(sparse(I,nz_Ey,nz_Ey), kron(sparse(I,ny_Ey,ny_Ey), ddx_HzEy))
-    Dx_HyEz = kron(sparse(I,nz_Ez,nz_Ez), kron(sparse(I,ny_Ez,ny_Ez), ddx_HyEz))
-    Dy_HxEz = kron(sparse(I,nz_Ez,nz_Ez), kron(ddy_HxEz, sparse(I,nx_Ez,nx_Ez))) 
-    Dy_HzEx = kron(sparse(I,nz_Ex,nz_Ex), kron(ddy_HzEx, sparse(I,nx_Ex,nx_Ex)))
-    Dz_HyEx = kron(ddz_HyEx, kron(sparse(I,ny_Ex,ny_Ex), sparse(I,nx_Ex,nx_Ex)))
-    Dz_HxEy = kron(ddz_HxEy, kron(sparse(I,ny_Ey,ny_Ey), sparse(I,nx_Ey,nx_Ey)))
-        
-    Dx_EyHz = kron(sparse(I,nz_Ey,nz_Ey), kron(sparse(I,ny_Ey,ny_Ey), ddx_EyHz))
-    Dx_EzHy = kron(sparse(I,nz_Ez,nz_Ez), kron(sparse(I,ny_Ez,ny_Ez), ddx_EzHy))
-    Dy_EzHx = kron(sparse(I,nz_Ez,nz_Ez), kron(ddy_EzHx, sparse(I,nx_Ez,nx_Ez))) 
-    Dy_ExHz = kron(sparse(I,nz_Ex,nz_Ex), kron(ddy_ExHz, sparse(I,nx_Ex,nx_Ex)))
-    Dz_ExHy = kron(ddz_ExHy, kron(sparse(I,ny_Ex,ny_Ex), sparse(I,nx_Ex,nx_Ex)))
-    Dz_EyHx = kron(ddz_EyHx, kron(sparse(I,ny_Ey,ny_Ey), sparse(I,nx_Ey,nx_Ey)))
-        
-    # Construct curl_E and curl_H   
-    # curl_E: curl operator operates on E-field producing H-field.  
-    # curl_H: curl operator operates on H-field producing E-field.      
-    curl_E = vcat(hcat(spzeros(nt_Hx, nt_Ex),     -Dz_HxEy,               Dy_HxEz),
-                  hcat(     Dz_HyEx,          spzeros(nt_Hy, nt_Ey),     -Dx_HyEz),
-                  hcat(    -Dy_HzEx,               Dx_HzEy,          spzeros(nt_Hz, nt_Ez)))   
-    curl_H = vcat(hcat(spzeros(nt_Ex, nt_Hx),     -Dz_ExHy,               Dy_ExHz),
-                  hcat(     Dz_EyHx,          spzeros(nt_Ey, nt_Hy),     -Dx_EyHz),
-                  hcat(    -Dy_EzHx,               Dx_EzHy,          spzeros(nt_Ez, nt_Hz)))    
+        # Build the operators; use Kronecker outer product to go from 1D to 2D.
+        # TM: A = [- (d/dy)^2 - (d/dz)^2 - k0^2*epsilon(y,z)]*(dx^2)
+        if ~use_UPML
+            # Stretched-coordinate PML (SC-PML); here, both 1/s_E and 1/s_H have already been multiplied onto the first derivatives.
+            A = - kron(ddz_H*ddz_E, sparse(I,ny_Ex,ny_Ex)) - kron(sparse(I,nz_Ex,nz_Ex), ddy_H*ddy_E) - spdiagm(nt_Ex, nt_Ex, (k0dx^2)*epsilon_xx[:])
+        else
+            # Uniaxial PML (UPML); here, the first 1/s has already been multiplied onto the first derivatives.
+            # A_UPML = (sy_E*sz_E)*A_SCPML for TM fields
+            syz_E = sy_E.*reshape(sz_E, 1, :)
+            A = - kron(ddz_H*ddz_E, spdiagm(ny_Ex, ny_Ex, sy_E)) - kron(spdiagm(nz_Ex, nz_Ex, sz_E), ddy_H*ddy_E) - spdiagm(nt_Ex, nt_Ex, (k0dx^2)*(syz_E[:].*epsilon_xx[:]))
+        end
+    else
+        # Build the first derivatives in 1D, such that ddx*f = df/dx, ddy*f = df/dy, ddz*f = df/dz (ignoring dx factor)
+        # Later we will use Kronecker outer product to go from 1D to 3D.    
+        # ddx_HzEy: x-derivative operates on Ey producing Hz
+        # sx_Ey: coordinate-stretching factor for Ey along x-direction
+        # sx_Hz: coordinate-stretching factor for Hz along x-direction
+        # ddx_HyEz = ddx_HzEy, sx_Ez = sx_Ey, sx_Hy = sx_Hz, because Ez(Hy) and Ey(Hz)
+        # share the same x-coordinate inside same Yee-cell. The same reason applies to others. 
+        # We defer three of the derivatives to later
+        (ddx_HzEy, _, sx_Ey, sx_Hz, ind_xPML_E) = build_ddx_E(nx_Ey, xBC, xPML, "x") 
+        #ddx_HyEz = ddx_HzEy
+        (ddy_HxEz, _, sy_Ez, sy_Hx, ind_yPML_E) = build_ddx_E(ny_Ez, yBC, yPML, "y")
+        #ddy_HzEx = ddy_HxEz
+        (ddz_HyEx, _, sz_Ex, sz_Hy, ind_zPML_E) = build_ddx_E(nz_Ex, zBC, zPML, "z")
+        #ddz_HxEy = ddz_HyEx
 
-    # Construct the vectorial Maxwell matrix A
-    epsilon = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
-    A = curl_H*curl_E-(k0dx)^2*epsilon
+        # The derivative matrices on H
+        # We need sparse() to force datatype conversion.
+        ddx_EyHz = sparse(-ddx_HzEy'); #ddx_EzHy = sparse(-ddx_HyEz')
+        ddy_EzHx = sparse(-ddy_HxEz'); #ddy_ExHz = sparse(-ddy_HzEx')
+        ddz_ExHy = sparse(-ddz_HyEx'); #ddz_EyHx = sparse(-ddz_HxEy')
 
-    if use_UPML
-        # sx_Ex = sx_Hz, because Ex and Hz share the same x-coordinate (and sx) inside same Yee-cell.
-        # The same reason applies to others.        
-        sx_Ex = sx_Hz
-        sy_Ey = sy_Hx
-        sz_Ez = sz_Hy
+        # Number of grid points in x, y, and z for Hx, Hy, and Hz
+        nx_Hz = size(ddx_HzEy, 1); nx_Hy = nx_Hz; nx_Hx = nx_Ey
+        ny_Hx = size(ddy_HxEz, 1); ny_Hz = ny_Hx; ny_Hy = ny_Ez
+        nz_Hy = size(ddz_HyEx, 1); nz_Hx = nz_Hy; nz_Hz = nz_Ex
 
-        sy_Ex = sy_Ez
-        sz_Ey = sz_Ex
-        sx_Ez = sx_Ey
+        # Total number of grid points for Hx, Hy, and Hz    
+        nt_Hx = nx_Hx*ny_Hx*nz_Hx
+        nt_Hy = nx_Hy*ny_Hy*nz_Hy
+        nt_Hz = nx_Hz*ny_Hz*nz_Hz    
 
-        # Construct a 3D S_E to transform between A_SCPML to A_UPML
-        (sx_Ex_3d,sy_Ex_3d,sz_Ex_3d) = ndgrid(sx_Ex,sy_Ex,sz_Ex)
-        (sx_Ey_3d,sy_Ey_3d,sz_Ey_3d) = ndgrid(sx_Ey,sy_Ey,sz_Ey)
-        (sx_Ez_3d,sy_Ez_3d,sz_Ez_3d) = ndgrid(sx_Ez,sy_Ez,sz_Ez)
-        S_E = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat((sy_Ex_3d.*sz_Ex_3d./sx_Ex_3d)[:], (sx_Ey_3d.*sz_Ey_3d./sy_Ey_3d)[:], (sx_Ez_3d.*sy_Ez_3d./sz_Ez_3d)[:]))
-        A = S_E*A
+        # Start from stretched-coordinate PML (SC-PML); here, 1/s and 1/s_d are both multiplied onto the gradient. 
+        # Convert coordinate-stretching factor vector to diagonal matrices    
+        inv_sx_Hz = spdiagm(nx_Hz, nx_Hz, 1 ./sx_Hz); #inv_sx_Hy = inv_sx_Hz
+        inv_sy_Hx = spdiagm(ny_Hx, ny_Hx, 1 ./sy_Hx); #inv_sy_Hz = inv_sy_Hx
+        inv_sz_Hy = spdiagm(nz_Hy, nz_Hy, 1 ./sz_Hy); #inv_sz_Hx = inv_sz_Hy
+        inv_sx_Ey = spdiagm(nx_Ey, nx_Ey, 1 ./sx_Ey); #inv_sx_Ez = inv_sx_Ey
+        inv_sy_Ez = spdiagm(ny_Ez, ny_Ez, 1 ./sy_Ez); #inv_sy_Ex = inv_sy_Ez
+        inv_sz_Ex = spdiagm(nz_Ex, nz_Ex, 1 ./sz_Ex); #inv_sz_Ey = inv_sz_Ex
+
+        # Include coordinate stretching into the first derivatives    
+        ddx_HzEy = inv_sx_Hz*ddx_HzEy; ddx_HyEz = ddx_HzEy #ddx_HyEz = inv_sx_Hy*ddx_HyEz
+        ddy_HxEz = inv_sy_Hx*ddy_HxEz; ddy_HzEx = ddy_HxEz #ddy_HzEx = inv_sy_Hz*ddy_HzEx
+        ddz_HyEx = inv_sz_Hy*ddz_HyEx; ddz_HxEy = ddz_HyEx #ddz_HxEy = inv_sz_Hx*ddz_HxEy
+        ddx_EyHz = inv_sx_Ey*ddx_EyHz; ddx_EzHy = ddx_EyHz #ddx_EzHy = inv_sx_Ez*ddx_EzHy
+        ddy_EzHx = inv_sy_Ez*ddy_EzHx; ddy_ExHz = ddy_EzHx #ddy_ExHz = inv_sy_Ex*ddy_ExHz
+        ddz_ExHy = inv_sz_Ex*ddz_ExHy; ddz_EyHx = ddz_ExHy #ddz_EyHx = inv_sz_Ey*ddz_EyHx
+
+        # Expand derivative matrices to 3D by Kronecker outer product
+        # Note that even though ddx_HzEy = ddx_HyEz, Dx_HzEy and Dx_HyEz are not the same 
+        # because Ez and Ey can have different number of points along y and z
+        Dx_HzEy = kron(sparse(I,nz_Ey,nz_Ey), kron(sparse(I,ny_Ey,ny_Ey), ddx_HzEy))
+        Dx_HyEz = kron(sparse(I,nz_Ez,nz_Ez), kron(sparse(I,ny_Ez,ny_Ez), ddx_HyEz))
+        Dy_HxEz = kron(sparse(I,nz_Ez,nz_Ez), kron(ddy_HxEz, sparse(I,nx_Ez,nx_Ez))) 
+        Dy_HzEx = kron(sparse(I,nz_Ex,nz_Ex), kron(ddy_HzEx, sparse(I,nx_Ex,nx_Ex)))
+        Dz_HyEx = kron(ddz_HyEx, kron(sparse(I,ny_Ex,ny_Ex), sparse(I,nx_Ex,nx_Ex)))
+        Dz_HxEy = kron(ddz_HxEy, kron(sparse(I,ny_Ey,ny_Ey), sparse(I,nx_Ey,nx_Ey)))
+
+        Dx_EyHz = kron(sparse(I,nz_Ey,nz_Ey), kron(sparse(I,ny_Ey,ny_Ey), ddx_EyHz))
+        Dx_EzHy = kron(sparse(I,nz_Ez,nz_Ez), kron(sparse(I,ny_Ez,ny_Ez), ddx_EzHy))
+        Dy_EzHx = kron(sparse(I,nz_Ez,nz_Ez), kron(ddy_EzHx, sparse(I,nx_Ez,nx_Ez))) 
+        Dy_ExHz = kron(sparse(I,nz_Ex,nz_Ex), kron(ddy_ExHz, sparse(I,nx_Ex,nx_Ex)))
+        Dz_ExHy = kron(ddz_ExHy, kron(sparse(I,ny_Ex,ny_Ex), sparse(I,nx_Ex,nx_Ex)))
+        Dz_EyHx = kron(ddz_EyHx, kron(sparse(I,ny_Ey,ny_Ey), sparse(I,nx_Ey,nx_Ey)))
+
+        # Construct curl_E and curl_H   
+        # curl_E: curl operator operates on E-field producing H-field.  
+        # curl_H: curl operator operates on H-field producing E-field.      
+        curl_E = vcat(hcat(spzeros(nt_Hx, nt_Ex),     -Dz_HxEy,               Dy_HxEz),
+                      hcat(     Dz_HyEx,          spzeros(nt_Hy, nt_Ey),     -Dx_HyEz),
+                      hcat(    -Dy_HzEx,               Dx_HzEy,          spzeros(nt_Hz, nt_Ez)))   
+        curl_H = vcat(hcat(spzeros(nt_Ex, nt_Hx),     -Dz_ExHy,               Dy_ExHz),
+                      hcat(     Dz_EyHx,          spzeros(nt_Ey, nt_Hy),     -Dx_EyHz),
+                      hcat(    -Dy_EzHx,               Dx_EzHy,          spzeros(nt_Ez, nt_Hz)))    
+
+        # Construct the vectorial Maxwell matrix A
+        epsilon = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
+        A = curl_H*curl_E-(k0dx)^2*epsilon
+
+        if use_UPML
+            # sx_Ex = sx_Hz, because Ex and Hz share the same x-coordinate (and sx) inside same Yee-cell.
+            # The same reason applies to others.        
+            sx_Ex = sx_Hz
+            sy_Ey = sy_Hx
+            sz_Ez = sz_Hy
+
+            sy_Ex = sy_Ez
+            sz_Ey = sz_Ex
+            sx_Ez = sx_Ey
+
+            # Construct a 3D S_E to transform between A_SCPML to A_UPML
+            (sx_Ex_3d,sy_Ex_3d,sz_Ex_3d) = ndgrid(sx_Ex,sy_Ex,sz_Ex)
+            (sx_Ey_3d,sy_Ey_3d,sz_Ey_3d) = ndgrid(sx_Ey,sy_Ey,sz_Ey)
+            (sx_Ez_3d,sy_Ez_3d,sz_Ez_3d) = ndgrid(sx_Ez,sy_Ez,sz_Ez)
+            S_E = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat((sy_Ex_3d.*sz_Ex_3d./sx_Ex_3d)[:], (sx_Ey_3d.*sz_Ey_3d./sy_Ey_3d)[:], (sx_Ez_3d.*sy_Ez_3d./sz_Ez_3d)[:]))
+            A = S_E*A
+        end
     end
     
     # determine the symmetry of matrix A, assuming no spatial symmetry in epsilon or inv_epsilon
+    # 2D TE fields will be added later
     is_symmetric_A = true
     
-    if (isa(xBC, Number) && xBC != 0 && xBC != pi && (nx_Ex > 1 || ny_Ex > 1 || nz_Ex > 1)) || 
-       (isa(yBC, Number) && yBC != 0 && yBC != pi && (nx_Ey > 1 || ny_Ey > 1 || nz_Ey > 1)) ||
-       (isa(zBC, Number) && zBC != 0 && zBC != pi && (nx_Ez > 1 || ny_Ez > 1 || nz_Ez > 1))        
+    if (~use_2D_TM && isa(xBC, Number) && xBC != 0 && xBC != pi && (nx_Ex > 1 || ny_Ex > 1 || nz_Ex > 1)) || 
+       (isa(yBC, Number) && yBC != 0 && yBC != pi && ((use_2D_TM && ny_Ex > 1) || (~use_2D_TM && (nx_Ey > 1 || ny_Ey > 1 || nz_Ey > 1)))) ||
+       (isa(zBC, Number) && zBC != 0 && zBC != pi && ((use_2D_TM && nz_Ex > 1) || (~use_2D_TM && (nx_Ez > 1 || ny_Ez > 1 || nz_Ez > 1))))        
        # Bloch periodic boundary condition with k_B*periodicity != 0 or pi breaks the symmetry of A because its ddx is complex-valued, except when there is only one pixel.
         is_symmetric_A = false
-    elseif xPML[1].npixels != 0 || xPML[2].npixels != 0 || yPML[1].npixels != 0 || yPML[2].npixels != 0 || zPML[1].npixels != 0 || zPML[2].npixels != 0
+    elseif (~use_2D_TM && (xPML[1].npixels != 0 || xPML[2].npixels != 0 || yPML[1].npixels != 0 || yPML[2].npixels != 0 || zPML[1].npixels != 0 || zPML[2].npixels != 0)) || (use_2D_TM && ~use_UPML && (yPML[1].npixels != 0 || yPML[2].npixels != 0 || zPML[1].npixels != 0 || zPML[2].npixels != 0))
         is_symmetric_A = false
     end
     
-    return (A, is_symmetric_A, xPML, yPML, zPML)
+    if ~use_2D_TM
+        return (A, is_symmetric_A, xPML, yPML, zPML)
+    else
+        return (A, is_symmetric_A, yPML, zPML)
+    end
 end
+
+
+"""
+ MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator for 2D TM waves.
+   A = mesti_build_fdfd_matrix(epsilon_xx, k0dx, yBC, zBC, yPML, zPML, use_UPML)
+       returns A as a sparse matrix representing wave operator [- (d/dy)^2 - (d/dz)^2 - k0^2*epsilon(y,z)]*(dx^2)
+       for the Ex(y,z) component of transverse-magnetic (TM) fields (Ex, Hy, Hz),
+       discretized on a square grid with grid size dx through center difference.
+       Matrix A has size [ny_Ex*nz_Ex, ny_Ex*nz_Ex].
+   
+    Here are the differences between 3D and 2D TM versions
+       epsilon_xx (matrix; required):
+          epsilon_xx is a ny_Ex-by-nz_Ex matrix (real or complex)
+          discretizing the relative permittivity profile on Ex-sites. ny_Ex/nz_Ex 
+          is the total number of grids for Ex in y/z-direction.
+       A (sparse matrix):
+          nt_Ex-by-nt_Ex sparse matrix representing the 2D FDFD operator. 
+          nt_Ex = ny_Ex*nz_Ex is the total number of grids for Ex.
+"""
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, k0dx::Union{Float64,ComplexF64}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
+    return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, k0dx, nothing, yBC, zBC, nothing, yPML, zPML, use_UPML)
+end
+
 
 """
     CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, n_Ez, direction) check the consistency of boundary condition and number of grids in n_Ex, n_Ey, and n_Ez. 
@@ -461,7 +580,8 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
     # Number of PML pixels on the low and high sides
     npixels = [pml[1].npixels, pml[2].npixels]
 
-    n = n_E    
+    n = n_E  # Also works for 2D TM fields
+             # Will add 2D TE case later
     
     # Cannot have more PML pixels than the number of pixels
     # In our implementation, the conductivity goes to zero at one pixel before PML. So there needs to be at least one more pixel in addition to PML.
@@ -478,6 +598,7 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
     # For periodic and Bloch periodic BC, we let p(x) be symmetric on the two sides of f with p(0.5)=p(n+0.5)=1; note that f(0.5) and f(n+0.5) are the same site (with a possible Bloch phase difference). If the PML parameters on the two sides are the same, the s-factor will be continuous across the periodic boundary.
 
     # Construct p(x) and their corresponding indices for df/dx
+    # Also works for 2D TM fields; will add 2D TE case later
     if BC == "Bloch"
         if npixels[1]*npixels[2] == 0 && (npixels[1] != 0 || npixels[2] != 0)
             @warn "Bloch periodic boundary condition is used with a single-sided PML in $(direction) direction; transmission through PML will only undergo single-pass attenuation."
@@ -510,7 +631,8 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
     # Construct p(x) and their corresponding indices for f and d^2f/dx^2    
     p_PML_1 = [(1:npixels[1])/npixels_effective[1], (1:npixels[2])/npixels_effective[2]]
     ind_PML_1 = [reverse(1:npixels[1]), (n+1).-reverse(1:npixels[2])]   
-
+    
+    # Also works for 2D TM modes; will add 2D TE case later
     p_PML_E = p_PML_1
     ind_PML_E = ind_PML_1
     p_PML_H = p_PML_2
