@@ -1,4 +1,5 @@
 ###### Update on 20221201
+###### Update on 20230326 for 2D TM fields
 include("setup_longitudinal.jl")
 include("build_transverse_function_1d.jl")
 include("mesti.jl")
@@ -14,7 +15,7 @@ mutable struct Channels_two_sided <: Channels
     u_y_m::Function
     u_z_m::Function
     du_z_m::Function
-    kxdx_all::Vector{Float64}
+    kxdx_all::Union{Vector{Float64},Nothing}
     kydx_all::Vector{Float64}
     low::Side
     high::Side
@@ -30,12 +31,12 @@ mutable struct Channels_one_sided <: Channels
     u_y_m::Function
     u_z_m::Function
     du_z_m::Function    
-    kxdx_all::Vector{Float64}
+    kxdx_all::Union{Vector{Float64},Nothing}
     kydx_all::Vector{Float64}
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}
     ind_prop::Vector{Int64}
-    kxdx_prop::Vector{Float64}
+    kxdx_prop::Union{Vector{Float64},Nothing}
     kydx_prop::Vector{Float64}
     kzdx_prop::Vector{Float64}
     sqrt_nu_prop::Vector{Float64}
@@ -136,13 +137,6 @@ end
              channels.low and channels.high; instead, the fields that would have been
              assigned to channels.low will be assigned to channels directly. For
              example, channels.low.N_prop will be channels.N_prop instead.
-          channels.fun_u (function_handle):
-             A function that, given one element of kydx_all as the input, returns
-             its normalized transverse field profile as an ny-by-1 column vector;
-             when the input is a row vector, it returns a matrix where each column
-             is the respective transverse profile. The transverse modes form a
-             complete and orthonormal set, so the ny-by-ny matrix
-             channels.fun_u(channels.kydx_all) is unitary. 
           channels.low.N_prop (integer scalar):
              Number of propagating channels. 
           channels.low.kzdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet")*ny_Ey+delat_(yBC,"Dirichlet") complex row vector):
@@ -179,17 +173,28 @@ end
              Structure containing properties specific to the high side,
              similar to channels.high; only provided when epsilon_high is given. 
 """
-function mesti_build_channels(nx_Ex::Int64, nx_Ey::Int64, xBC::Union{String,Int64,Float64,ComplexF64}, ny_Ex::Int64, ny_Ey::Int64, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int64,Float64}=0, m0::Union{Int64,Float64}=0)
-
-    # Check input parameters    
-    if ~(nx_Ex > 0)
-        throw(ArgumentError("Input argument nx_Ex must be a positive integer scalar."))
-    elseif ~(nx_Ey > 0) 
-        throw(ArgumentError("Input argument nx_Ey must be a positive integer scalar."))
+function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,Nothing}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, ny_Ex::Int64, ny_Ey::Union{Int64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int64,Float64,Nothing}=0, m0::Union{Int64,Float64}=0)
+    
+    # Add 2D TM case
+    if nx_Ex == nothing && nx_Ey == nothing && ny_Ex != nothing && ny_Ey == nothing
+       use_2D_TM = true
+       if xBC != nothing
+            @warn "Only yBC is required for 2D TM fields Ex(y,z). xBC will be ignored."
+       end
+       if n0 != nothing
+            @warn "Only m0 is required for 2D TM fields Ex(y,z). n0 will be ignored."
+       end
+    end
+    
+    # Check input parameters
+    if nx_Ex != nothing && ~(nx_Ex > 0)
+        throw(ArgumentError("Input argument nx_Ex must be a positive integer scalar if given."))
+    elseif nx_Ey != nothing && ~(nx_Ey > 0) 
+        throw(ArgumentError("Input argument nx_Ey must be a positive integer scalar if given."))
     elseif ~(ny_Ex > 0 ) 
         throw(ArgumentError("Input argument ny_Ex must be a positive integer scalar."))       
-    elseif ~(ny_Ey > 0) 
-        throw(ArgumentError("Input argument ny_Ey must be a positive integer scalar."))
+    elseif ny_Ey != nothing && ~(ny_Ey > 0) 
+        throw(ArgumentError("Input argument ny_Ey must be a positive integer scalar if given."))
     end
 
     if isa(epsilon_high, Nothing)
@@ -199,21 +204,28 @@ function mesti_build_channels(nx_Ex::Int64, nx_Ey::Int64, xBC::Union{String,Int6
     end
 
     # Convert BC to take care of lowercase or uppercase
-    xBC = convert_BC(xBC, "x")
+    if ~use_2D_TM
+        xBC = convert_BC(xBC, "x")
+    end
     yBC = convert_BC(yBC, "y")    
-
-    # Check number of grid points with the boundary conditions    
-    check_BC_and_grid(xBC, nx_Ex, nx_Ey, "x")
-    check_BC_and_grid(yBC, ny_Ex, ny_Ey, "y")
+    
+    if ~use_2D_TM
+        # Check number of grid points with the boundary conditions   
+        check_BC_and_grid(xBC, nx_Ex, nx_Ey, "x")
+        check_BC_and_grid(yBC, ny_Ex, ny_Ey, "y")
+    end
 
     # Convert PEC/PMC to Dirichlet/Neumann based on component and direction
     # BC_z_x means boundary condition for Ez component along x-direction
-    BC_x_x = convert_BC_to_transverse(xBC, "x", "x")
-    BC_x_y = convert_BC_to_transverse(xBC, "x", "y")
-    BC_y_x = convert_BC_to_transverse(xBC, "y", "x")    
-    BC_y_y = convert_BC_to_transverse(yBC, "y", "y")
-    BC_z_x = convert_BC_to_transverse(xBC, "z", "x")
-    BC_z_y = convert_BC_to_transverse(yBC, "z", "y")
+    # Add 2D TM case: consider Ex(y,z), so PEC => Dirichlet, PMC => Neumann
+    if ~use_2D_TM
+        BC_x_x = convert_BC_to_transverse(xBC, "x", "x")
+        BC_y_x = convert_BC_to_transverse(xBC, "y", "x")    
+        BC_y_y = convert_BC_to_transverse(yBC, "y", "y")
+        BC_z_x = convert_BC_to_transverse(xBC, "z", "x")
+        BC_z_y = convert_BC_to_transverse(yBC, "z", "y")
+    end
+    BC_x_y = convert_BC_to_transverse(yBC, "x", "y")
 
     # These are used only for periodic and Bloch periodic boundary conditions; otherwise they stay nothing
     kLambda_x = nothing # kx_B*Lambda_x
@@ -222,18 +234,20 @@ function mesti_build_channels(nx_Ex::Int64, nx_Ey::Int64, xBC::Union{String,Int6
     ind_zero_ky = nothing
 
     # Handle periodic and Bloch periodic boundary conditions
-    if isa(xBC, Number)
-        kLambda_x = xBC
-        xBC = "Bloch"
-        # kLambda_x must be real for u_x_n(kxdx_x) and u_y_n(kxdx_y) to be unitary
-        if ~isa(kLambda_x, Real)
-            @warn("kx_B*Lambda_x = $(real(kLambda_x)) + 1im*$(imag(kLambda_x)) is a complex number; must be real for a complete orthonormal transverse basis.")
+    if ~use_2D_TM
+        if isa(xBC, Number)
+            kLambda_x = xBC
+            xBC = "Bloch"
+            # kLambda_x must be real for u_x_n(kxdx_x) and u_y_n(kxdx_y) to be unitary
+            if ~isa(kLambda_x, Real)
+                @warn("kx_B*Lambda_x = $(real(kLambda_x)) + 1im*$(imag(kLambda_x)) is a complex number; must be real for a complete orthonormal transverse basis.")
+            end
+        elseif lowercase(xBC) == "bloch"
+            throw(ArgumentError("To use Bloch periodic boundary condition in mesti_build_channels(), set the input argument xBC to kx_B*Lambda_x where kx_B is the Bloch wave number and Lambda_x is the periodicity along x-direction."))
+        elseif xBC == "periodic"
+            kLambda_x = 0
+            xBC = "Bloch"
         end
-    elseif lowercase(xBC) == "bloch"
-        throw(ArgumentError("To use Bloch periodic boundary condition in mesti_build_channels(), set the input argument xBC to kx_B*Lambda_x where kx_B is the Bloch wave number and Lambda_x is the periodicity along x-direction."))
-    elseif xBC == "periodic"
-        kLambda_x = 0
-        xBC = "Bloch"
     end
 
     if isa(yBC, Number)
@@ -258,33 +272,50 @@ function mesti_build_channels(nx_Ex::Int64, nx_Ey::Int64, xBC::Union{String,Int6
     else
         channels = Channels_one_sided()
     end
+    
+    if ~use_2D_TM
+        (channels.u_x_n, channels.kxdx_all) = build_transverse_function_1d(nx_Ex, BC_x_x, n0, true)
+        (channels.u_x_m, _)                 = build_transverse_function_1d(ny_Ex, BC_x_y, n0)
+        (channels.u_y_n, _)                 = build_transverse_function_1d(nx_Ey, BC_y_x, n0)    
+        (channels.u_y_m, channels.kydx_all) = build_transverse_function_1d(ny_Ey, BC_y_y, m0, true)
 
-    (channels.u_x_n, channels.kxdx_all) = build_transverse_function_1d(nx_Ex, BC_x_x, n0, true)
-    (channels.u_x_m, _)                 = build_transverse_function_1d(ny_Ex, BC_x_y, n0)
-    (channels.u_y_n, _)                 = build_transverse_function_1d(nx_Ey, BC_y_x, n0)    
-    (channels.u_y_m, channels.kydx_all) = build_transverse_function_1d(ny_Ey, BC_y_y, m0, true)
+        channels.u_z_n = channels.u_y_n # u_z_n and u_y_n are same transverse function  
+        channels.u_z_m = channels.u_x_m # u_z_m and u_x_m are same transverse function  
 
-    channels.u_z_n = channels.u_y_n # u_z_n and u_y_n are same transverse function  
-    channels.u_z_m = channels.u_x_m # u_z_m and u_x_m are same transverse function  
-
-    channels.du_z_n = build_transverse_function_1d_derivative(nx_Ey, BC_z_x, n0, 1)
-    channels.du_z_m = build_transverse_function_1d_derivative(ny_Ex, BC_z_y, m0, 1)
-
-    if xBC == "Bloch"
-        if mod(nx_Ex,2) == 1
-            ind_zero_kx = Int(round((nx_Ex+1)/2))
-        else
-            ind_zero_kx = Int(round(nx_Ex/2))
+        channels.du_z_n = build_transverse_function_1d_derivative(nx_Ey, BC_z_x, n0, 1)
+        channels.du_z_m = build_transverse_function_1d_derivative(ny_Ex, BC_z_y, m0, 1)
+    else
+        (channels.u_x_m, channels.kydx_all) = build_transverse_function_1d(ny_Ex, BC_x_y, m0)
+    end
+    
+    if ~use_2D_TM
+        if xBC == "Bloch"
+            if mod(nx_Ex,2) == 1
+                ind_zero_kx = Int(round((nx_Ex+1)/2))
+            else
+                ind_zero_kx = Int(round(nx_Ex/2))
+            end
         end
+        if yBC == "Bloch"
+            if mod(ny_Ey,2) == 1
+                ind_zero_ky = Int(round((ny_Ey+1)/2))
+            else
+                ind_zero_ky = Int(round(ny_Ey/2))
+            end
+        end 
+    else
+        if yBC == "Bloch"
+            if mod(ny_Ex,2) == 1
+                ind_zero_ky = Int(round((ny_Ex+1)/2))
+            else
+                ind_zero_ky = Int(round(ny_Ex/2))
+            end
+        end
+       channels.kxdx_all = nothing
+       kLambda_x = nothing
+       ind_zero_kx = nothing
     end
 
-    if yBC == "Bloch"
-        if mod(ny_Ey,2) == 1
-            ind_zero_ky = Int(round((ny_Ey+1)/2))
-        else
-            ind_zero_ky = Int(round(ny_Ey/2))
-        end
-    end    
 
     # Properties for the homogeneous space on the low (kzdx, sqrt_nu_prop, number of propagating channels, etc; depends on epsilon_low/high)
     side = setup_longitudinal(k0dx, epsilon_low, channels.kxdx_all, channels.kydx_all, kLambda_x, kLambda_y, ind_zero_kx, ind_zero_ky, use_continuous_dispersion)
@@ -311,9 +342,21 @@ end
     from structure syst; see '? mesti2s' for the fields required for
     structure 'syst'.
 """
-function mesti_build_channels(syst::Syst)     
-    (nx_Ex, ny_Ex, _) = size(syst.epsilon_xx)
-    (nx_Ey, ny_Ey, _) = size(syst.epsilon_yy)
+function mesti_build_channels(syst::Syst)
+    # Add 2D TM case
+    if ndims(syst.epsilon_xx) == 2
+        use_2D_TM = true
+        if ~(syst.epsilon_yy == nothing && syst.epsilon_zz == nothing)
+            @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
+        end
+    end
+    
+    if ~use_2D_TM
+        (nx_Ex, ny_Ex, _) = size(syst.epsilon_xx)
+        (nx_Ey, ny_Ey, _) = size(syst.epsilon_yy)
+    else
+        (ny_Ex, _) = size(syst.epsilon_xx)
+    end
 
     if ~isdefined(syst, :epsilon_low); throw(ArgumentError("Input argument syst must have field \"epsilon_low\".")); end
     epsilon_low = syst.epsilon_low;
@@ -322,25 +365,27 @@ function mesti_build_channels(syst::Syst)
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
     k0dx = (2*pi/syst.wavelength)*(syst.dx);
-
-    # Check boundary condition in x
-    if isdefined(syst, :kx_B) 
-        if isdefined(syst, :xBC) && lowercase(syst.xBC) != "bloch"
-            throw(ArgumentError("When syst.kx_B is given, syst.xBC must be \"Bloch\" if specified."))
+    
+    if ~use_2D_TM
+        # Check boundary condition in x
+        if isdefined(syst, :kx_B) 
+            if isdefined(syst, :xBC) && lowercase(syst.xBC) != "bloch"
+                throw(ArgumentError("When syst.kx_B is given, syst.xBC must be \"Bloch\" if specified."))
+            end
+            syst.xBC = "Bloch"
+            # mesti_build_channels() uses kx_B*periodicity as the input arguments xBC for Bloch BC
+            xBC = (syst.kx_B)*(nx_Ex*syst.dx) # dimensionless
+        else
+            # Defaults to Dirichlet boundary condition unless syst.kx_B is given
+            if ~isdefined(syst, :xBC)
+                throw(ArgumentError("Input argument syst must have non-empty field \"xBC\" when syst.kx_B is not given."))       
+            elseif ~(lowercase(syst.xBC) in ["bloch", "periodic", "pec", "pmc", "pecpmc", "pmcpec"])
+                throw(ArgumentError("syst.xBC = \"$(syst.xBC)\" is not a supported option; type ''? mesti2s'' for supported options."))
+            elseif lowercase(syst.xBC) == "bloch"
+                throw(ArgumentError("syst.xBC = \"Bloch\" but syst.kx_B is not given."))
+            end
+            xBC = syst.xBC
         end
-        syst.xBC = "Bloch"
-        # mesti_build_channels() uses kx_B*periodicity as the input arguments xBC for Bloch BC
-        xBC = (syst.kx_B)*(nx_Ex*syst.dx) # dimensionless
-    else
-        # Defaults to Dirichlet boundary condition unless syst.kx_B is given
-        if ~isdefined(syst, :xBC)
-            throw(ArgumentError("Input argument syst must have non-empty field \"xBC\" when syst.kx_B is not given."))       
-        elseif ~(lowercase(syst.xBC) in ["bloch", "periodic", "pec", "pmc", "pecpmc", "pmcpec"])
-            throw(ArgumentError("syst.xBC = \"$(syst.xBC)\" is not a supported option; type ''? mesti2s'' for supported options."))
-        elseif lowercase(syst.xBC) == "bloch"
-            throw(ArgumentError("syst.xBC = \"Bloch\" but syst.kx_B is not given."))
-        end
-        xBC = syst.xBC
     end
 
     # Check boundary condition in y
@@ -350,7 +395,11 @@ function mesti_build_channels(syst::Syst)
         end
         syst.yBC = "Bloch"
         # mesti_build_channels() uses ky_B*periodicity as the input arguments yBC for Bloch BC
-        yBC = (syst.ky_B)*(ny_Ey*syst.dx) # dimensionless
+        if ~use_2D_TM
+            yBC = (syst.ky_B)*(ny_Ey*syst.dx) # dimensionless
+        else
+            yBC = (syst.ky_B)*(ny_Ex*syst.dx) # dimensionless
+        end
     else
         # Defaults to Dirichlet boundary condition unless syst.ky_B is given
         if ~isdefined(syst, :yBC)
@@ -370,10 +419,23 @@ function mesti_build_channels(syst::Syst)
     end
     use_continuous_dispersion = false
     n0 = 0
-    m0 = 0   
+    m0 = 0
 
     channels = mesti_build_channels(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, n0, m0)
     return channels
+end
+
+
+"""
+    MESTI_BUILD_CHANNELS Set up properties of channels in the homogeneous space for 2D TM fields. 
+           MESTI_BUILD_CHANNELS(ny_Ex, yBC, k0dx, epsilon_low, epsilon_high, 
+           use_continuous_dispersion, m0) returns a structure containing properties of the propagating and    
+           evanescent channels in a homogeneous space with ny pixels in the transverse (y) direction, boundary
+           condition yBC along y, background relative permittivity epsilon_low, epsilon_high, and
+           dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
+"""
+function mesti_build_channels(ny_Ex::Int64, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Int64,Float64}=0)
+    return mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
 end
 
 
