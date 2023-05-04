@@ -1,10 +1,10 @@
 ###### Update on 20220915
-
+###### Update on 20230314 for 2D TM fields
 mutable struct Side
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}
     ind_prop::Vector{Int64}
-    kxdx_prop::Vector{Float64}
+    kxdx_prop::Union{Vector{Float64},Nothing}
     kydx_prop::Vector{Float64}
     kzdx_prop::Vector{Float64}
     sqrt_nu_prop::Vector{Float64}
@@ -15,18 +15,31 @@ end
 """
     SETUP_LONGITUDINAL sets up a structure "Side" for one component in the homogeneous space.  
 """
-function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Int64,Float64,ComplexF64}, kxdx_all::Union{StepRangeLen{Float64}, Vector{Float64}}, kydx_all::Union{StepRangeLen{Float64}, Vector{Float64}}, kLambda_x::Union{Int64,Float64,ComplexF64,Nothing}=nothing, kLambda_y::Union{Int64,Float64,ComplexF64,Nothing}=nothing, ind_zero_kx::Union{Int64,Nothing}=nothing, ind_zero_ky::Union{Int64,Nothing}=nothing, use_continuous_dispersion::Bool=false)
+function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Int64,Float64,ComplexF64}, kxdx_all::Union{StepRangeLen{Float64}, Vector{Float64}, Nothing}, kydx_all::Union{StepRangeLen{Float64}, Vector{Float64}}, kLambda_x::Union{Int64,Float64,ComplexF64,Nothing}=nothing, kLambda_y::Union{Int64,Float64,ComplexF64,Nothing}=nothing, ind_zero_kx::Union{Int64,Nothing}=nothing, ind_zero_ky::Union{Int64,Nothing}=nothing, use_continuous_dispersion::Bool=false)
 
+    
+    if kxdx_all == nothing && kLambda_x == nothing && ind_zero_kx == nothing
+       use_2D_TM = true 
+    end
+    
     k0dx2_epsilon = (k0dx^2)*epsilon_bg
-    nx = size(kxdx_all,1)
+    if ~use_2D_TM
+        nx = size(kxdx_all,1)
+    end
     ny = size(kydx_all,1)
 
     side = Side()
 
     if ~use_continuous_dispersion
-        # use the finite-difference dispersion for homogeneous space: k0dx2_epsilon = 4*sin^2(kxdx/2) + 4*sin^2(kydx/2) + 4*sin^2(kzdx/2)
+        # use the finite-difference dispersion for homogeneous space: 
+        # 2D: k0dx2_epsilon = 4*sin^2(kydx/2) + 4*sin^2(kzdx/2)
+        # 3D: k0dx2_epsilon = 4*sin^2(kxdx/2) + 4*sin^2(kydx/2) + 4*sin^2(kzdx/2)
         # sin_kzdx_over_two_sq = sin^2(kzdx/2)
-        sin_kzdx_over_two_sq = reshape(0.25*k0dx2_epsilon .- sin.(kxdx_all/2).^2 .- sin.(reshape(vcat(kydx_all),1,:)/2).^2,nx*ny)
+        if use_2D_TM
+            sin_kzdx_over_two_sq = 0.25*k0dx2_epsilon .- sin.(kydx_all/2).^2
+        else
+            sin_kzdx_over_two_sq = reshape(0.25*k0dx2_epsilon .- sin.(kxdx_all/2).^2 .- sin.(reshape(vcat(kydx_all),1,:)/2).^2,nx*ny)
+        end
         #sin_kzdx_over_two_sq = reshape(0.25*k0dx2_epsilon .- sin.(repeat(kxdx_all,1,ny)/2).^2 .- sin.(repeat(transpose(kydx_all),nx,1)/2).^2, nx*ny)
         # Dimensionless longitudinal wave number
         # asin(sqrt(z)) has two branch points (at z=0 and z=1) and with the branch cuts going outward on the real-z axis; we will address the branch choice below
@@ -46,18 +59,24 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
         # What we do with complex k0dx2_epsilon is that we choose the sign for the (complex-valued) kxdx such that when k0dx2_epsilon is tuned to a real number continuously by fixing Re(k0dx2_epsilon) and varying Im(k0dx2_epsilon), the kzdx we choose continuously becomes the "correct" one at real k0dx2_epsilon without crossing any branch cut. To do so, we rotate the two branch cuts of asin(sqrt(z)) by 90 degrees to the lower part of the complex-z plane (ie, the lower part of the complex-k0dx2_epsilon plane), and we pick the branch with the correct sign when k0dx2_epsilon is real. This is implemented by flipping the sign of kzdx for the ones that require flipping.
         # Note that we will get a discontinuity whenever k0dx2_epsilon crosses one of those vertical-pointing branch cuts. That is unavoidable.
         # The following few lines implement the "flipping".
-        if ~(isa(k0dx2_epsilon, Real)) || (isa(k0dx2_epsilon, Real) && k0dx2_epsilon > 6)
+        if ~(isa(k0dx2_epsilon, Real)) || (~use_2D_TM && isa(k0dx2_epsilon, Real) && k0dx2_epsilon > 6) || (use_2D_TM && isa(k0dx2_epsilon, Real) && k0dx2_epsilon > 4)
             # Note that when imag(sin_kzdx_over_two_sq)=0, flipping is needed for sin_kzdx_over_two_sq>1 but not needed for sin_kzdx_over_two_sq<0.
             ind_flip = findall(x->(real(x)<0 && imag(x)<0) || (real(x)>1 && imag(x)<=0), sin_kzdx_over_two_sq);  
             side.kzdx_all[ind_flip] = -side.kzdx_all[ind_flip]
         end
     else
-        # use the continuous dispersion for homogeneous space: k0dx2_epsilon = kxdx^2 + kydx^2 + kzdx^2
-        kzdx2 = reshape(k0dx2_epsilon .- kxdx_all.^2 .- reshape(vcat(kydx_all),1,:).^2,nx*ny)
+        # use the continuous dispersion for homogeneous space:
+        # 2D: k0dx2_epsilon = kydx^2 + kzdx^2
+        # 3D: k0dx2_epsilon = kxdx^2 + kydx^2 + kzdx^2
+        if use_2D_TM
+            kzdx2 = k0dx2_epsilon .- kydx_all.^2
+        else
+            kzdx2 = reshape(k0dx2_epsilon .- kxdx_all.^2 .- reshape(vcat(kydx_all),1,:).^2,nx*ny)
+        end
         # kzdx2 = k0dx2_epsilon .- repeat(kxdx_all,1,ny).^2 .- repeat(transpose(kydx_all),nx,1).^2
         
-        side.kxdx_all = sqrt.(kzdx2)
-        side.ind_prop = findall(real(kzdx2) > 0)
+        side.kzdx_all = sqrt.(Complex.(kzdx2))
+        side.ind_prop = findall(x-> real(x) > 0, kzdx2)
         if ~isa(k0dx2_epsilon, Real)
             ind_flip = findall(x-> (real(x) < 0 && imag(x) < 0), kzdx2)
             side.kzdx_all[ind_flip] = -side.kzdx_all[ind_flip]
@@ -68,10 +87,16 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
 
     # Wave numbers of the propagating channels
     side.kzdx_prop = side.kzdx_all[side.ind_prop]
-    side.kxdx_prop = kxdx_all[((side.ind_prop).%nx) .+ nx*((side.ind_prop).%nx .== 0)]
-    side.kydx_prop = kydx_all[Int.(ceil.((side.ind_prop)./nx))]
+    if use_2D_TM
+        side.kxdx_prop = nothing
+        side.kydx_prop = kydx_all[side.ind_prop]
+    else
+        side.kxdx_prop = kxdx_all[((side.ind_prop).%nx) .+ nx*((side.ind_prop).%nx .== 0)]
+        side.kydx_prop = kydx_all[Int.(ceil.((side.ind_prop)./nx))]
+    end
+    
     # Square root of the normalized longitudinal group velocity, sqrt(sin(kzdx)), for the propagating channels
-    # nu = sin(kxdx)
+    # nu = sin(kzdx)
     # When k0dx2_epsilon is real, sqrt_nu_prop is also real. When k0dx2_epsilon is complex, sqrt_nu_prop is also complex.
     side.sqrt_nu_prop = sqrt.(sin.(side.kzdx_prop))
     
