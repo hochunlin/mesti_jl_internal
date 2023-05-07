@@ -184,6 +184,8 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
        if n0 != nothing
             @warn "Only m0 is required for 2D TM fields Ex(y,z). n0 will be ignored."
        end
+    else
+        use_2D_TM = false
     end
     
     # Check input parameters
@@ -349,6 +351,8 @@ function mesti_build_channels(syst::Syst)
         if ~(syst.epsilon_yy == nothing && syst.epsilon_zz == nothing)
             @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
         end
+    else
+        use_2D_TM = false
     end
     
     if ~use_2D_TM
