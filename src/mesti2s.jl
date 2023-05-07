@@ -623,6 +623,8 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         if isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing) || isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)
             @warn "Only field \"syst.epsilon_xx\" is required for 2D TM fields Ex(y,z). Other components will be ignored."
         end
+    else
+        use_2D_TM = false
     end
     
     if ~use_2D_TM && ~(isdefined(syst, :epsilon_xx) && isdefined(syst, :epsilon_yy) && isdefined(syst, :epsilon_zz))
@@ -2568,6 +2570,8 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
         use_2D_TM = true
+    else
+        use_2D_TM = false
     end
     
     if ~use_2D_TM
@@ -2583,6 +2587,8 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
         use_2D_TM = true
+    else
+        use_2D_TM = false
     end
     
     if ~use_2D_TM
