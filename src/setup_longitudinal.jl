@@ -20,6 +20,8 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
     
     if kxdx_all == nothing && kLambda_x == nothing && ind_zero_kx == nothing
        use_2D_TM = true 
+    else
+        use_2D_TM = false
     end
     
     k0dx2_epsilon = (k0dx^2)*epsilon_bg
