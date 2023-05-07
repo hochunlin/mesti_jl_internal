@@ -161,6 +161,8 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         if xPML != nothing
             @warn "Only yPML and zPML are required for 2D TM fields Ex(y,z). xPML will be ignored."
         end
+    else
+        use_2D_TM = false
     end
  
     
