@@ -1,5 +1,4 @@
-###### Update on 20230402 for 2D TM computations
-###### Update on 20230504 for single-precision MUMPS option
+###### Update on 20230517
 
 using SparseArrays
 using LinearAlgebra
@@ -465,7 +464,7 @@ end
           opts.verbal_solver (boolean scalar; optional, defaults to false):
              Whether to have the solver print detailed information to the standard
              output. Note the behavior of output from MUMPS depends on compiler.
-          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to false):
+          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
              Whether to use single precision version of MUMPS; used only when 
              opts.solver = "MUMPS". Using single precision version of MUMPS can 
              reduce memory usage and computing time.

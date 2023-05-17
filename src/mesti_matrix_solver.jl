@@ -161,7 +161,7 @@ end
              the caller's workspace if they exist: A, B, C. Some other variables
              inside mesti_matrix_solver() will be cleared too. However, currently,
              we are trying to figure out how to do it in JULIA language.
-          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to false):
+          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
             Whether to use single precision version of MUMPS; used only when 
             opts.solver = "MUMPS". Using single precision version of MUMPS can 
             reduce memory usage and computing time.
@@ -421,7 +421,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         
         # Use double-precision MUMPS by default
         if ~isdefined(opts, :use_single_precision_MUMPS)
-            opts.use_single_precision_MUMPS = false
+            opts.use_single_precision_MUMPS = true
         elseif ~isa(opts.use_single_precision_MUMPS, Bool)
             throw(ArgumentError("opts.use_single_precision_MUMPS must be a boolean, if given."))   
         end                            

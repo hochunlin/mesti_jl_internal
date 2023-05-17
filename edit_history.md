@@ -1,3 +1,8 @@
+### 20230517 Summary:
+
+* Set the default value of opts.use_single_precision_MUMP to be true.
+
+
 ### 20230504 Summary:
 
 1. Rename opts.use_keep_401_1 as opts.parallel_dependency_graph.
