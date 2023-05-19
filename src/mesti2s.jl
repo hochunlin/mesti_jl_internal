@@ -1001,7 +1001,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             @printf("nx_Ey = %d, ny_Ey = %d; nz_Ey = %d => %d \n", nx_Ey, ny_Ey, nz_Ey, nz_tot_Ey)
             @printf("nx_Ez = %d, ny_Ez = %d; nz_Ez = %d => %d \n", nx_Ez, ny_Ez, nz_Ez, nz_tot_Ez)
         else
-            @printf("ny_Ex = %d; nz_Ex = %d for Ex(y,z) \n", ny_Ex, nz_Ex)
+            @printf("ny_Ex = %d; nz_Ex = %d => %d for Ex(y,z) \n", ny_Ex, nz_Ex, nz_tot_Ex)
         end
         if two_sided
             @printf("[N_prop_low, N_prop_high] = [%d, %d] per polarization\n", N_prop_low, N_prop_high)    
