@@ -426,9 +426,9 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             throw(ArgumentError("opts.use_single_precision_MUMPS must be a boolean, if given."))   
         end                            
         if opts.use_single_precision_MUMPS
-            str_MUMPS_precision = " in single-precision"
+            str_MUMPS_precision = " in single precision"
         else
-            str_MUMPS_precision = " in double-precision"
+            str_MUMPS_precision = " in double precision"
         end        
         
         # We don't use KEEP(401) = 1 by default        
