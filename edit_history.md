@@ -1,3 +1,22 @@
+### 20230525 Summary:
+
+1. Let the opts.symmetrize_K feature available for mesti2s() and mesti() for 2D TM cases.
+2. Fix the bug in mesti2s().
+
+#### 	mesti.jl
+
+* Make the opts.symmetrize_K feature available for 2D TM cases.
+
+#### 	mesti2s.jl
+
+* Make the opts.symmetrize_K feature available for 2D TM cases.
+* Make the multiplication of nu occur during the wrap-up stage instead of during the construction of B and C for 2D TM cases.
+* Fix the bug for the implicit expansion in 2D TM cases: S = S .* prefactor ->  S = S .* reshape(prefactor,1,:) 
+
+#### 	setup_longitudinal.jl
+
+* Make the permutation that switches one propagating channel with one having a complex-conjugated transverse profile available in 2D TM cases
+
 ### 20230517 Summary:
 
 * Set the default value of opts.use_single_precision_MUMP to be true.

@@ -1,5 +1,4 @@
-###### Update on 20220915
-###### Update on 20230314 for 2D TM fields
+###### Update on 20230525
 mutable struct Side
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}
@@ -104,5 +103,27 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
     
     side.ind_prop_conj = 1:side.N_prop # Just for now.
 
+
+    if ~use_2D_TM
+        # TODO: think how to implement side.ind_prop_conj in 3D
+        side.ind_prop_conj = 1:side.N_prop
+    else
+        # Permutation that switches one propagating channel with one having a complex-conjugated transverse profile.
+        if isa(kLambda_y, Nothing)
+            # For Dirichlet and Neumann boundaries, u_x_m is real, so no permutation needed
+            side.ind_prop_conj = 1:side.N_prop
+        elseif kLambda_y == 0
+            # For periodic boundary condition, complex conjugation switches ky and -ky
+            if (ind_zero_ky in side.ind_prop) || (mod(side.N_prop,2) == 0)
+                # Simply flip the ordering
+                side.ind_prop_conj = side.N_prop:-1:1
+            else
+                # The last channel has -ky equal to ky due to aliasing so should not be flipped
+                side.ind_prop_conj = vcat((side.N_prop-1):-1:1,side.N_prop)
+            end
+            # TODO: implement side.ind_prop_conj when kLambda_y == pi
+        end
+    end
+    
     return side
 end

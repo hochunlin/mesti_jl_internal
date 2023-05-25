@@ -78,41 +78,39 @@ BLAS libraries. We provide `Makefile.inc` on Linux and they activate the OpenMP 
 
 ### METIS
 
-In 3D system, because METIS ordering is more efficient than AMD ordering, we should install the METIS program for graph partitioning (not to be confused with MESTI), including [GKlib](https://github.com/KarypisLab/GKlib) and [METIS](https://github.com/KarypisLab/METIS) . Install them in the following steps:
+In 3D system, because METIS ordering is more efficient than AMD ordering, we should install the METIS program for graph partitioning (not to be confused with MESTI).  We can use [METIS](https://github.com/scivision/METIS/tree/743ae96033f31907d89c80e3470c0325e9a97f7b) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). We can install them in the following steps:
 
-Install them in the following steps:
-
-(a) Downloading GKlib
+(a) Downloading METIS (version 5.1.0)
 
 ```shell
-git clone https://github.com/KarypisLab/GKlib.git
+wget https://github.com/scivision/METIS/blob/743ae96033f31907d89c80e3470c0325e9a97f7b/archive/metis-5.1.0.tar.gz
 ```
 
-(b) Installing GKlib
+(b) Decompress metis-5.1.0.tar.gz
 
 ```shell
-cd GKlib; make config openmp=set; make install; cd ..;
+tar zxvf metis-5.1.0.tar.gz
 ```
 
-(c) Downloading METIS
+(c) Setting METIS to double precision
 
 ```shell
-git clone https://github.com/KarypisLab/METIS.git
+sed -i "43s/32/64/" metis-5.1.0/include/metis.h
 ```
 
-(d) Setting METIS to double precision
+(d) Installing METIS (remember to type the password for your account after sudo make install)
 
 ```shell
-sed -i "43s/32/64/" METIS/include/metis.h
+cd metis-5.1.0; make config; sudo make install;
 ```
 
 (e) Installing METIS
 
 ```shell
-cd METIS; make config shared=1; make install; cd ..;
+cd metis-5.1.0; make config; sudo make install;
 ```
 
-Then, by default, the library file, header file, and binaries will be installed in `~/local/lib`, `~/local/include`, and `~/local/bin`.
+Then, by default, the library file, header file, and binaries will be installed in `/usr/local/lib`, `/usr/local/include`, and `/usr/local/bin`.
 
 ### Running MUMPS in Julia
 

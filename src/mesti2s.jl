@@ -1,4 +1,4 @@
-###### Update on 20230517
+###### Update on 20230525
 
 using SparseArrays
 using LinearAlgebra
@@ -886,7 +886,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
 
     # Use MUMPS for opts.solver when it is available
     MUMPS_available = @isdefined(Mumps)
-    if ~isdefined(opts, :solver)
+    solver_specified = true   
+    if ~isdefined(opts, :solver) || isa(opts.solver, Nothing)
+        solver_specified = false
         if MUMPS_available
             opts.solver = "MUMPS"
         else
@@ -901,11 +903,13 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         end
     end
 
-    if ~isdefined(opts, :method)
-    # By default, if the argument ''output'' is not given or if
-    # opts.iterative_refinement = true, then "factorize_and_solve" is used.
-    # Otherwise, then "APF" is used when opts.solver = "MUMPS", and
-    # "C*inv(U)*inv(L)*B" is used when opts.solver = "JULIA".
+    method_specified = true;
+    if ~isdefined(opts, :method) || isa(opts.method, Nothing)
+        method_specified = false;        
+        # By default, if the argument ''output'' is not given or if
+        # opts.iterative_refinement = true, then "factorize_and_solve" is used.
+        # Otherwise, then "APF" is used when opts.solver = "MUMPS", and
+        # "C*inv(U)*inv(L)*B" is used when opts.solver = "JULIA".
         if opts.return_field_profile || (isdefined(opts, :iterative_refinement) && opts.iterative_refinement == true)
             opts.method = "factorize_and_solve"
         elseif isdefined(opts, :store_ordering) && opts.store_ordering == true
@@ -948,6 +952,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     if ~isdefined(opts, :m0); opts.m0 = 0; end
     
     # opts.symmetrize_K will be checked/initialized later
+
 
     # The following fields of opts will be checked/initialized in mesti_matrix_solver():
     #    opts.solver
@@ -1516,53 +1521,53 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     end
 
     ## Part 2.3: Build the source B_Ej_low/B_Ej_high and the projection C_Ej_B/C_Ej_T on the two surfaces
-    # Skip the symmetry part for now
-    #=       
-    # First, we symmetrize the set of input channels and output channels, if possible
+        
+    # Incorporate line 1383 to line 1463 in mesti2s.m
+
+    # For 2D TM, we symmetrize the set of input channels and output channels, if possible
     # Bloch periodic boundary condition with ky_B*periodicity != 0 or pi breaks the symmetry of A
     # mesti_build_channels() currently does not return channels.low.ind_prop_conj when yBC == pi (even though such permutation does exist), so we cannot symmetrize K when yBC == pi.
     # When ny == 1, even though matrix A is symmetric, there is still no permutation that flips the sign of ky, so we still set is_symmetric_A to false.
-    if isnumeric(yBC) && yBC ~= 0 % && yBC ~= pi && ny > 1
-        is_symmetric_A = false;
+    if !use_2D_TM || (isa(yBC, Number) && yBC != 0) # && yBC ~= pi && ny > 1
+        is_symmetric_A = false
     else
-        is_symmetric_A = true;
+        is_symmetric_A = true
     end
-
     # opts.symmetrize_K can only be used when all of the following are met: (1) input argument ''output'' is given, (2) ''input'' and ''output'' are not specified as wavefronts, (3) opts.method = "APF", and (4) the boundary condition in y is not Bloch periodic.
-        if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'APF') && is_symmetric_A
-        # By default, opts.symmetrize_K = true if it's possible
-        if ~isfield(opts, 'symmetrize_K') || isempty(opts.symmetrize_K)
-            opts.symmetrize_K = true;
-        elseif ~(islogical(opts.symmetrize_K) && isscalar(opts.symmetrize_K))
-            throw(ArgumentError('opts.symmetrize_K must be a logical scalar, if given.'))
+    if !isa(output, Nothing) && use_ind_in && use_ind_out && opts.method == "APF" && is_symmetric_A                
+        # By default, opts.symmetrize_K = true if it's possible            
+        if !isdefined(opts, :symmetrize_K) || isa(opts.symmetrize_K, Nothing)
+            opts.symmetrize_K = true
+        elseif !(isa(opts.clear_syst, Bool))
+            throw(ArgumentError("opts.symmetrize_K must be a logical scalar, if given."))
         end
-        use_transpose_B = opts.symmetrize_K;
-        opts = rmfield(opts, 'symmetrize_K'); % opts.symmetrize_K is not used in mesti()
+        use_transpose_B = opts.symmetrize_K
+        opts.symmetrize_K = nothing
     else
         # symmetrize K is not possible
-        if isfield(opts, 'symmetrize_K')
+        if isdefined(opts, :symmetrize_K)
             if isequal(opts.symmetrize_K, true)
-                warning('opts.symmetrize_K = true is only available when isempty(out) = false, use_ind_in = true, use_ind_out = true, opts.solver = \"MUMPS\", opts.method = \"APF\", and syst.yBC is not \"Bloch\". Here isempty(out) = %d, use_ind_in = %d, use_ind_out = %d, opts.solver = \"%s\", opts.method = \"%s\", syst.yBC = \"%s\"; opts.symmetrize_K will be ignored', isempty(out), use_ind_in, use_ind_out, opts.solver, opts.method, syst.yBC);
+                @warn("opts.symmetrize_K = true is only available when use_2D_TM = true, isa(output, Nothing) = false, use_ind_in = true, use_ind_out = true, opts.solver = \"MUMPS\", opts.method = \"APF\", and syst.yBC is not \"Bloch\". Here use_2D_TM = $(use_2D_TM), isa(output, Nothing) = $(isa(output, Nothing)), use_ind_in = $(use_ind_in), use_ind_out = $(use_ind_out), opts.solver = \"$(opts.solver)\", opts.method = \"$(opts.method)\", syst.yBC = \"$(syst.yBC)\"; opts.symmetrize_K will be ignored")
             end
-            opts = rmfield(opts, 'symmetrize_K');
+            opts.symmetrize_K = nothing
         end
-        use_transpose_B = false;
+        use_transpose_B = false
     end
 
+    # Remove opts.solver and opts.method so that mesti_matrix_solver() will know they were not specified by the user.
+    if !solver_specified
+        opts.solver = nothing
+    end
+    if !method_specified
+        opts.method = nothing
+    end
+    
     # No need to build C if we symmetrize K
     if opts.return_field_profile || use_transpose_B
         build_C = false;
     else
         build_C = true;
-    end
-    =#
-    
-    use_transpose_B = false    
-    if opts.return_field_profile || use_transpose_B
-        build_C = false
-    else
-        build_C = true
-    end
+    end    
     
     # We only need the transverse functions for Ex, Ey, and derivative of the transverse functions for Ez; see Ref XXX ......
     if ~use_2D_TM
@@ -1605,99 +1610,96 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     # Note that the complex conjugation only applies to u; the sqrt(nu) prefactor is not conjugated. (At real-valued frequency, nu is real-valued, so this doesn't matter. But at complex-valued frequency, nu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
     # When the input/output channels are specified by channel indices, we will multiply the exp(-i*kzdx(a,b)*dn) and exp(-i*kzdx(c,d)*dn) prefactors at the end, after C*inv(A)*B is computed.
     # When the input/output wavefronts are specified, we take superpositions of the channels using the v coefficients, with the sqrt(nu)*exp(-i*kzdx*dn) prefactors included.
-    if use_transpose_B # when opts.symmetrize_K = true
-        # Skip this part for now.
-        #=        
+    if ~use_2D_TM
+        # Construct coefficient of two polarization
+        # alpha_x_low_s stands for x-component coefficients for s-polarization waves.
+        # z-component coefficients for s-polarization waves are always zeros, so we don't initialize it.
+        # ...............
+        alpha_x_low_s = zeros(N_prop_low,0);  alpha_y_low_s = zeros(N_prop_low,0)
+        alpha_x_low_p = zeros(N_prop_low,0);  alpha_y_low_p = zeros(N_prop_low,0);  alpha_z_low_p = zeros(N_prop_low,0)
+        alpha_x_high_s = zeros(N_prop_high,0); alpha_y_high_s = zeros(N_prop_high,0)
+        alpha_x_high_p = zeros(N_prop_high,0); alpha_y_high_p = zeros(N_prop_high,0); alpha_z_high_p = zeros(N_prop_high,0)
+
+        kappa_x_low = sin.((channels.low.kxdx_prop)/2)
+        kappa_y_low = sin.((channels.low.kydx_prop)/2)
+        kappa_z_low = sin.((channels.low.kzdx_prop)/2)
+
+        if use_low_s
+            denominator = sqrt.(kappa_x_low.^2+kappa_y_low.^2)
+            alpha_x_low_s = -kappa_y_low./denominator
+            alpha_y_low_s = kappa_x_low./denominator
+            # For the case, kappa_x_low = 0 and kappa_y_low = 0. We choose s-polarization along y-direction.
+            alpha_x_low_s[isnan.(alpha_x_low_s)] .= 0 
+            alpha_y_low_s[isnan.(alpha_y_low_s)] .= 1
+        end
+
+        # Here we use the convention that the alpha_low is alpha_+ (+ means wave propagation along positive z-direction) on low side and alpha_high is also alpha_+ (+ means wave propagation along positive z-direction) on high side.
+        # We should make the sign of alpha_z following by the convention.
+        if use_low_p
+            denominator = sqrt.((abs.(kappa_x_low.*kappa_z_low)).^2+(abs.(kappa_y_low.*kappa_z_low)).^2+(abs.(kappa_x_low.^2+kappa_y_low.^2)).^2)
+            alpha_x_low_p = kappa_x_low.*kappa_z_low./denominator
+            alpha_y_low_p = kappa_y_low.*kappa_z_low./denominator
+            alpha_z_low_p = (-1)*(kappa_x_low.^2+kappa_y_low.^2)./denominator
+            # For the case, kappa_x_low = 0 and kappa_y_low = 0. We choose s-polarization along x-direction.
+            alpha_x_low_p[isnan.(alpha_x_low_p)] .= 1
+            alpha_y_low_p[isnan.(alpha_y_low_p)] .= 0
+            alpha_z_low_p[isnan.(alpha_z_low_p)] .= 0
+        end                
+
+        if two_sided
+            if syst.epsilon_high == syst.epsilon_low
+                kappa_x_high = kappa_x_low
+                kappa_y_high = kappa_y_low
+                kappa_z_high = kappa_z_low                
+            else
+                kappa_x_high = sin.((channels.high.kxdx_prop)/2)
+                kappa_y_high = sin.((channels.high.kydx_prop)/2)
+                kappa_z_high = sin.((channels.high.kzdx_prop)/2)
+            end
+            if use_high_s
+                denominator = sqrt.(kappa_x_high.^2+kappa_y_high.^2)
+                alpha_x_high_s = -kappa_y_high./denominator
+                alpha_y_high_s = kappa_x_high./denominator
+                alpha_x_high_s[isnan.(alpha_x_high_s)] .= 0
+                alpha_y_high_s[isnan.(alpha_y_high_s)] .= 1
+            end
+            if use_high_p
+                denominator = sqrt.((abs.(kappa_x_high.*kappa_z_high)).^2+(abs.(kappa_y_high.*kappa_z_high)).^2+(abs.(kappa_x_high.^2+kappa_y_high.^2)).^2)                
+                alpha_x_high_p = kappa_x_high.*kappa_z_high./denominator
+                alpha_y_high_p = kappa_y_high.*kappa_z_high./denominator
+                alpha_z_high_p = (-1)*(kappa_x_high.^2+kappa_y_high.^2)./denominator
+                alpha_x_high_p[isnan.(alpha_x_high_p)] .= 1
+                alpha_y_high_p[isnan.(alpha_y_high_p)] .= 0
+                alpha_z_high_p[isnan.(alpha_z_high_p)] .= 0
+            end
+        end
+    end
+
+    if use_transpose_B # when use_2D_TM && opts.symmetrize_K = true 
         # Here, we pad channels and/or permutate them such that C = transpose(B); this makes matrix K = [A,B;C,0] symmetric.
         # To have C=transpose(B), the complex conjugate of the transverse field profiles of the list of output channels must equal the transverse field profiles of the list of input channels, and the list of input channels and the list of output channels must have the same prefactor nu.
         # So, we expand the list of input channels (ind_in_low) to include the conjugate pairs of the output channels (channels.low.ind_prop_conj(ind_out_low)). The conjugate pairs correspond to flipping the sign of ky, and they share the same nu (which only depends on ky^2).
-        # We only build B_low and B_R here, from which matrix B will be built in mesti(). C_low and C_R are not needed since matrix C will not be used until in mesti_matrix_solver().
-
+        # We only build B_low and B_high here, from which matrix B will be built in mesti(). C_low and C_high are not needed since matrix C will not be used until in mesti_matrix_solver().
         # We only need to keep the unique channel indices, since ind_in_low and channels.low.ind_prop_conj(ind_out_low) are likely to contain the same indices.
-        # ind_in_out_low satisfies ind_low(ind_in_out_low) = [ind_in_low, channels.low.ind_prop_conj(ind_out_low)]. The computations will be done in ind_low, so later we can use ind_in_out_low to retrieve the original lists of input channels (with the first half of ind_in_out_low) and the original list of output channels (with the second half of ind_in_out_low).
-        [ind_low, ~, ind_in_out_low] = unique([ind_in_low, channels.low.ind_prop_conj(ind_out_low)]);
-        if has_u_prop_low
-            B_low = u_prop_low(:,ind_low)
-        else
-            B_low = channels.fun_u(channels.low.kydx_prop(ind_low));
-        end
+        # ind_in_out_low satisfies ind_L(ind_in_out_low) = [ind_in_low, channels.L.ind_prop_conj(ind_out_low)]. The computations will be done in ind_low, so later we can use ind_in_out_low to retrieve the original lists of input channels (with the first half of ind_in_out_low) and the original list of output channels (with the second half of ind_in_out_low).
+
+        # The following four lines are equivalent to [ind_low, ~, ind_in_out_low] = unique([ind_in_low, channels.low.ind_prop_conj(ind_out_low)]) in MATLAB
+        ind_low = sort(unique(vcat(ind_in_low, channels.low.ind_prop_conj[ind_out_low])))
+        ind_in_out_low_dict = Dict(ind_low[ii] => ii for ii in 1:length(ind_low))
+        ind_in_out_low = [ind_in_out_low_dict[ii] for ii in vcat(ind_in_low, channels.low.ind_prop_conj[ind_out_low])]
+        ind_in_out_low_dict = nothing
+        
+        B_Ex_low = u_prop_low_Ex[:,ind_in_low]
+        
         if two_sided
-            [ind_R, ~, ind_in_out_R] = unique([ind_in_R, channels.R.ind_prop_conj(ind_out_R)]);
-            if has_u_prop_R
-                B_R = u_prop_R(:,ind_R);
-            else
-                B_R = channels.fun_u(channels.R.kydx_prop(ind_R));
-            end
+            ind_high = sort(unique(vcat(ind_in_high, channels.high.ind_prop_conj[ind_out_high])))
+            ind_in_out_high_dict = Dict(ind_high[ii] => ii for ii in 1:length(ind_high))
+            ind_in_out_high = [ind_in_out_high_dict[ii] for ii in vcat(ind_in_high, channels.high.ind_prop_conj[ind_out_high])]
+            ind_in_out_high_dict = nothing
+            
+            B_Ex_high = u_prop_high_Ex[:,ind_in_high]
         end
-        =#
-    else # without opts.symmetrize_K
-        # start here
-        
-        if ~use_2D_TM
-            # Construct coefficient of two polarization
-            # alpha_x_low_s stands for x-component coefficients for s-polarization waves.
-            # z-component coefficients for s-polarization waves are always zeros, so we don't initialize it.
-            # ...............
-            alpha_x_low_s = zeros(N_prop_low,0);  alpha_y_low_s = zeros(N_prop_low,0)
-            alpha_x_low_p = zeros(N_prop_low,0);  alpha_y_low_p = zeros(N_prop_low,0);  alpha_z_low_p = zeros(N_prop_low,0)
-            alpha_x_high_s = zeros(N_prop_high,0); alpha_y_high_s = zeros(N_prop_high,0)
-            alpha_x_high_p = zeros(N_prop_high,0); alpha_y_high_p = zeros(N_prop_high,0); alpha_z_high_p = zeros(N_prop_high,0)
-
-            kappa_x_low = sin.((channels.low.kxdx_prop)/2)
-            kappa_y_low = sin.((channels.low.kydx_prop)/2)
-            kappa_z_low = sin.((channels.low.kzdx_prop)/2)
-
-            if use_low_s
-                denominator = sqrt.(kappa_x_low.^2+kappa_y_low.^2)
-                alpha_x_low_s = -kappa_y_low./denominator
-                alpha_y_low_s = kappa_x_low./denominator
-                # For the case, kappa_x_low = 0 and kappa_y_low = 0. We choose s-polarization along y-direction.
-                alpha_x_low_s[isnan.(alpha_x_low_s)] .= 0 
-                alpha_y_low_s[isnan.(alpha_y_low_s)] .= 1
-            end
-
-            # Here we use the convention that the alpha_low is alpha_+ (+ means wave propagation along positive z-direction) on low side and alpha_high is also alpha_+ (+ means wave propagation along positive z-direction) on high side.
-            # We should make the sign of alpha_z following by the convention.
-            if use_low_p
-                denominator = sqrt.((abs.(kappa_x_low.*kappa_z_low)).^2+(abs.(kappa_y_low.*kappa_z_low)).^2+(abs.(kappa_x_low.^2+kappa_y_low.^2)).^2)
-                alpha_x_low_p = kappa_x_low.*kappa_z_low./denominator
-                alpha_y_low_p = kappa_y_low.*kappa_z_low./denominator
-                alpha_z_low_p = (-1)*(kappa_x_low.^2+kappa_y_low.^2)./denominator
-                # For the case, kappa_x_low = 0 and kappa_y_low = 0. We choose s-polarization along x-direction.
-                alpha_x_low_p[isnan.(alpha_x_low_p)] .= 1
-                alpha_y_low_p[isnan.(alpha_y_low_p)] .= 0
-                alpha_z_low_p[isnan.(alpha_z_low_p)] .= 0
-            end                
-
-            if two_sided
-                if syst.epsilon_high == syst.epsilon_low
-                    kappa_x_high = kappa_x_low
-                    kappa_y_high = kappa_y_low
-                    kappa_z_high = kappa_z_low                
-                else
-                    kappa_x_high = sin.((channels.high.kxdx_prop)/2)
-                    kappa_y_high = sin.((channels.high.kydx_prop)/2)
-                    kappa_z_high = sin.((channels.high.kzdx_prop)/2)
-                end
-                if use_high_s
-                    denominator = sqrt.(kappa_x_high.^2+kappa_y_high.^2)
-                    alpha_x_high_s = -kappa_y_high./denominator
-                    alpha_y_high_s = kappa_x_high./denominator
-                    alpha_x_high_s[isnan.(alpha_x_high_s)] .= 0
-                    alpha_y_high_s[isnan.(alpha_y_high_s)] .= 1
-                end
-                if use_high_p
-                    denominator = sqrt.((abs.(kappa_x_high.*kappa_z_high)).^2+(abs.(kappa_y_high.*kappa_z_high)).^2+(abs.(kappa_x_high.^2+kappa_y_high.^2)).^2)                
-                    alpha_x_high_p = kappa_x_high.*kappa_z_high./denominator
-                    alpha_y_high_p = kappa_y_high.*kappa_z_high./denominator
-                    alpha_z_high_p = (-1)*(kappa_x_high.^2+kappa_y_high.^2)./denominator
-                    alpha_x_high_p[isnan.(alpha_x_high_p)] .= 1
-                    alpha_y_high_p[isnan.(alpha_y_high_p)] .= 0
-                    alpha_z_high_p[isnan.(alpha_z_high_p)] .= 0
-                end
-            end
-        end
-        
+    else # without opts.symmetrize_K                
         # Build up matrices B_low_sigma_Ej and B_high_sigma_Ej
         # Then combine them into B_Ej_low and B_Ej_high
         if use_ind_in # input channels specified by ind_in_low_s, ind_in_low_p, ind_in_high_s and ind_in_high_p
@@ -1722,9 +1724,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                     B_Ey_high = reshape([B_high_s_Ey.*reshape(alpha_y_high_s[ind_in_high_s],1,:) B_high_p_Ey.*reshape(alpha_y_high_p[ind_in_high_p],1,:)+1im*B_high_p_dEz_over_dy.*reshape(alpha_z_high_p[ind_in_high_p],1,:)], nx_Ey, ny_Ey, 1, :)      
                 end
             else
-                B_Ex_low = u_prop_low_Ex[:,ind_in_low].*reshape(channels.low.sqrt_nu_prop[ind_in_low],1,:)
+                B_Ex_low = u_prop_low_Ex[:,ind_in_low]
                 if two_sided
-                   B_Ex_high = u_prop_high_Ex[:,ind_in_high].*reshape(channels.high.sqrt_nu_prop[ind_in_high],1,:)
+                   B_Ex_high = u_prop_high_Ex[:,ind_in_high]
                 end
             end
         else # input wavefronts specified by v_in_low_s, v_in_low_p, v_in_high_s, and v_in_high_p.
@@ -1780,9 +1782,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         C_Ey_high = reshape([C_high_s_Ey.*conj(reshape(alpha_y_high_s[ind_out_high_s],1,:)) C_high_p_Ey.*conj(reshape(alpha_y_high_p[ind_out_high_p],1,:))-1im*C_high_p_dEz_over_dy.*conj(reshape(alpha_z_high_p[ind_out_high_p],1,:))], nx_Ey, ny_Ey, 1, :)
                     end
               else
-                    C_Ex_low = conj(u_prop_low_Ex[:,ind_out_low]).*reshape(channels.low.sqrt_nu_prop[ind_out_low],1,:)
+                    C_Ex_low = conj(u_prop_low_Ex[:,ind_out_low])
                     if two_sided
-                       C_Ex_high = conj(u_prop_high_Ex[:,ind_out_high]).*reshape(channels.high.sqrt_nu_prop[ind_out_high],1,:)
+                       C_Ex_high = conj(u_prop_high_Ex[:,ind_out_high])
                     end
               end
             else # output wavefronts specified by v_out_low_s, v_out_low_p, v_out_high_s, and v_out_high_p
@@ -2065,23 +2067,20 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         
     # Recover the original list of input and output channels if we symmetrized K = [A,B;C,0]
     if use_transpose_B # when opts.symmetrize_K = true
-        # Skip this part for now.
-        #= 
         # Indices for the original list of input channels on the low
-        ind_in = ind_in_out_B[1:M_in_low]
+        ind_in = ind_in_out_low[1:M_in_low]
 
         # Indices for the original list of output channels on the low
         # There is no need to use ind_prop_conj again since the use of C = transpose(B) already compensates the previous use of ind_prop_conj.
-        ind_out = ind_in_out_B[M_in_low .+ (1:M_out_low)]
+        ind_out = ind_in_out_low[M_in_low .+ (1:M_out_low)]
 
         if two_sided
             # Include channels on the right; note ind_in_out_B and ind_in_out_T are column vectors
-            ind_in  = [ind_in ; length(ind_low) .+ ind_in_out_T[1:M_in_high]]
-            ind_out = [ind_out; length(ind_low) .+ ind_in_out_T[M_in_high .+ (1:M_out_high)]]
+            ind_in  = [ind_in; length(ind_low) .+ ind_in_out_high[1:M_in_high]]
+            ind_out = [ind_out; length(ind_low) .+ ind_in_out_high[M_in_high .+ (1:M_out_high)]]
         end
         
         S = S[ind_out, ind_in]
-        =#
     end        
 
 # Include the exp(-i*kzdx*dn) prefactors that should have been in the input matrix B
@@ -2100,14 +2099,14 @@ if use_ind_in # input channels specified by ind_in_low_s, ind_in_low_p, ind_in_h
             S = S.*reshape(prefactor,1,:) # use implicit expansion
         end
     else
-        prefactor = exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low])
+        prefactor = channels.low.sqrt_nu_prop[ind_in_low].*exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low])
         if two_sided
-            prefactor = [prefactor; exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high])]
+            prefactor = [prefactor; channels.high.sqrt_nu_prop[ind_in_high].*exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high])]
         end
         if opts.return_field_profile
             Ex = Ex.*reshape(prefactor, 1, 1, :) # use implicit expansion
         else
-            S = S.*prefactor
+            S = S.*reshape(prefactor,1,:) # use implicit expansion
         end
     end
 end            
@@ -2122,9 +2121,9 @@ end
                     prefactor = [prefactor; exp.((-1im*dn)*channels.high.kzdx_prop[ind_out_high_s]); exp.((-1im*dn)*channels.high.kzdx_prop[ind_out_high_p])]
                 end
             else
-                prefactor = exp.((-1im*dn)*channels.low.kzdx_prop[ind_out_low])
+                prefactor = channels.low.sqrt_nu_prop[ind_out_low].*exp.((-1im*dn)*channels.low.kzdx_prop[ind_out_low])
                 if two_sided
-                    prefactor = [prefactor; exp.((-1im*dn)*channels.high.kzdx_prop[ind_out_high])]
+                    prefactor = [prefactor; channels.high.sqrt_nu_prop[ind_out_high].*exp.((-1im*dn)*channels.high.kzdx_prop[ind_out_high])]
                 end
             end
             S = prefactor.*S; # use implicit expansion

@@ -1,4 +1,4 @@
-###### Update on 20230517
+###### Update on 20230525
 
 using SparseArrays
 using LinearAlgebra
@@ -1472,6 +1472,8 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             C_ii = nothing
             GC.gc()
         end
+    elseif use_transpose_B
+        matrices.C = "transpose(B)"
     end
     
     # Check matrix sizes

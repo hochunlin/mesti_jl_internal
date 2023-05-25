@@ -1,5 +1,4 @@
-###### Update on 20230216
-###### Update on 20230504 for single-precision MUMPS option
+###### Update on 20230525
 
 using SparseArrays
 using LinearAlgebra
@@ -16,8 +15,8 @@ end
 mutable struct Opts
     verbal::Integer    
     prefactor::Union{Number, Nothing}
-    solver::String     
-    method::String     
+    solver::Union{String, Nothing}     
+    method::Union{String, Nothing}
     clear_BC::Integer
     clear_syst::Integer    
     clear_memory::Integer     
@@ -269,7 +268,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     end
 
     # Check that the user did not accidentally use options only in mesti2s()
-    if isdefined(opts, :symmetrize_K)
+    if isdefined(opts, :symmetrize_K) && !isa(opts.symmetrize_K, Nothing)
         throw(ArgumentError("opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set matrices.C = \"transpose(B)\", make sure matrix A is symmetric, set opts.solver = \"MUMPS\", and set opts.method = \"APF\"."))
     end
 
@@ -282,7 +281,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     
     # Use MUMPS for opts.solver when it is available
     MUMPS_available = @isdefined(Mumps)
-    if ~isdefined(opts, :solver)
+    if ~isdefined(opts, :solver) || isa(opts.solver, Nothing)
         if MUMPS_available
             opts.solver = "MUMPS"
         else
@@ -309,7 +308,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     end
 
     # By default, if C is given and opts.iterative_refinement = false, then "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is used.
-    if ~isdefined(opts, :method)
+    if ~isdefined(opts, :method) || isa(opts.method, Nothing)
         if return_X || opts.iterative_refinement
             opts.method = "factorize_and_solve"
         else
