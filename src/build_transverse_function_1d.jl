@@ -1,11 +1,11 @@
-###### Update on 20220915
+###### Update on 20230718
 """
     BUILD_TRANSVERSE_FUNCTION_1D sets up transverse function and wave number in the homogeneous space.
 
        === Input Arguments ===
        nx (positive integer scalar; required):
           Number of grid points in the transverse direction. 
-       BC (string or scalar number; required):
+       xBC (string or scalar number; required):
           Boundary condition in the transverse direction. 
           When xBC is a character vector, available choices are (case-insensitive): 
              "periodic"              - f(n+nx) = f(n) 
@@ -23,18 +23,23 @@
           kx(a) = kx_B + a*(2*pi/nx*dx). The default of n0 = 0 corresponds to x0 =
           (n-0.5)*dx = -dx/2. 
        offset (logical scalar; optional, defaults to false):
-          Whether to use the offset transverse function, it should be true such as
-          x direction for transverse function for Ex.  
+          Whether to use the offset transverse function. Due to the staggered properties 
+          of the Yee grid, it should be true for the x-direction for transverse function Ex.
+          It only applies to xBC == "Bloch", since we have already included the offset in 
+          other BCs.
 
        === Output Arguments ===
-          fun_u_1d (function_handle):
-             A function that, given one element of (kxdx_all) as the input, 
-             returns its normalized transverse field profile as an nx vector;
-             when the input is a vector, it returns a matrix where each column
-             is the respective transverse profile. The transverse modes form a
-             complete and orthonormal set, so the nx-by-nx matrix
-             fun_u_1d(kxdx_all) is unitary for periodic (Bloch), Neumann, 
-             DirichletNeumann, and NeumannDirichlet. 
+       fun_u_1d (function_handle):
+          A function that, given one element of (kxdx_all) as the input, 
+          returns its normalized transverse field profile as an nx vector;
+          when the input is a vector, it returns a matrix where each column
+          is the respective transverse profile. The transverse modes form a
+          complete and orthonormal set, so the nx-by-nx matrix
+          fun_u_1d(kxdx_all) is unitary for periodic (Bloch), Neumann, 
+          DirichletNeumann, and NeumannDirichlet, but it is not the case for Dirichlet.
+          For Dirichlet, we intend to maintain the trivial solution in this transverse function,
+          since it would give us non-trivial solution in another component when we build up 
+          2D transverse function.
 """
 function build_transverse_function_1d(nx::Int64, xBC::Union{String,Int64,Float64}, n0::Union{Int64,Float64}=0, offset::Bool=false)    
     # Check input parameters        
@@ -101,7 +106,7 @@ function build_transverse_function_1d(nx::Int64, xBC::Union{String,Int64,Float64
                             # Dimensionless transverse mode profile:
                             # When kxdx == 0: u_{n,a} = sqrt(1/nx)
                             # When kxdx != 0: u_{n,a} = cos((n-0.5)*kxdx(a))*sqrt(2/nx)
-                            # We subtract reshape(vcat(kxdx.== 0),1,:)*(1-sqrt(1/2)) from the cos() which is nonzero only when kxdx=0
+                            # So we subtract reshape(vcat(kxdx.== 0),1,:)*(1-sqrt(1/2)) from the cos() which is nonzero only when kxdx=0
                             (cos.(((0.5:nx))*reshape(vcat(kxdx),1,:)).-reshape(vcat(kxdx.== 0),1,:)*(1-sqrt(1/2)))*sqrt(2/(nx))
                       elseif xBC == "DirichletNeumann"
                             # Dimensionless transverse mode profile: u_{n,a} = i*sin(n*kxdx(a))*sqrt(2/(nx+0.5))
@@ -118,7 +123,7 @@ end
        === Input Arguments ===
        nx (positive integer scalar; required):
           Number of grid points in the transverse direction. 
-       BC (string or scalar number; required):
+       xBC (string or scalar number; required):
           Boundary condition in the transverse direction. 
           When xBC is a character vector, available choices are (case-insensitive): 
              "periodic"              - f(n+nx) = f(n) 
@@ -137,7 +142,7 @@ end
           (n-0.5)*dx = -dx/2. 
        changegrid (real numeric scalar, optional, defaults to 0):
           When the derivative tranverse function want to add or subtract,
-          another tranverse function, it may have dimension mismatch. 
+          another tranverse function, it may have dimension mismatch.
           This input primarily handle this scenario. 
     
        === Output Arguments ===

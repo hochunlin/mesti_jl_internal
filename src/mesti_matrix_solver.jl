@@ -1,4 +1,4 @@
-###### Update on 20230525
+###### Update on 20230718
 
 using SparseArrays
 using LinearAlgebra
@@ -13,6 +13,7 @@ mutable struct Matrices
 end
 
 mutable struct Opts
+    is_symmetric_A::Union{Integer, Nothing}
     verbal::Integer    
     prefactor::Union{Number, Nothing}
     solver::Union{String, Nothing}     
@@ -29,17 +30,8 @@ mutable struct Opts
     analysis_only::Integer    
     nthreads_OMP::Integer    
     iterative_refinement::Integer
- 
-    # these four are for block low-rank
-    use_BLR::Integer
-    threshold_BLR::Real
-    icntl_36::Integer
-    icntl_38::Integer
-    
-    parallel_dependency_graph::Integer
     
     exclude_PML_in_field_profiles::Integer
-    
     return_field_profile::Integer
     use_given_ordering::Integer
 
@@ -47,9 +39,18 @@ mutable struct Opts
     m0::Union{Real,Nothing}
     use_continuous_dispersion::Union{Integer,Nothing}    
     symmetrize_K::Union{Integer, Nothing}
-    is_symmetric_A::Union{Integer, Nothing}
     nz_low::Union{Integer, Nothing}
     nz_high::Union{Integer, Nothing}
+
+    # the following four are for block low-rank
+    use_BLR::Integer
+    threshold_BLR::Real
+    icntl_36::Integer
+    icntl_38::Integer
+    
+    # this is for one flag in MUMPS solver
+    parallel_dependency_graph::Integer
+
     Opts() = new()
 end
 
@@ -80,35 +81,41 @@ mutable struct Info
 end
 
 """
-    MESTI_MATRIX_SOLVER! Computes C*inv(A)*B or inv(A)*B.
-       (X, info) = MESTI_MATRIX_SOLVER(A, B) returns X = inv(A)*B for sparse matrix
-       A and (sparse or dense) matrix B, with the information of the computation
+    MESTI_MATRIX_SOLVER! Computes matrices.C*inv(matrices.A)*matrices.B or inv(matrices.A)*matrices.B.
+       (X, info) = MESTI_MATRIX_SOLVER(matrices), when matrices.A != nothing, matrices.B != nothing, 
+       and matrices.C = nothing, returns X = inv(matrices.A)*matrices.B for sparse matrix matrices.A 
+       and (sparse or dense) matrix matrices.B, with the information of the computation 
        returned in structure "info".
     
-       (S, info) = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
-       C is either sparse or dense. When the MUMPS3 is available, this is done by 
-       computing the Schur complement of an augmented matrix K = [A,B;C,0] through 
-       a partial factorization.
+       (S, info) = MESTI_MATRIX_SOLVER(matrices), when matrices.A != nothing, matrices.B != nothing, 
+       and matrices.C != nothing, returns S = matrices.C*inv(matrices.A)*matrices.B 
+       where matrix matrices.C is either sparse or dense. When the MUMPS3 is available, this is done by 
+       computing the Schur complement of an augmented matrix K = [matrices.A,matrices.B;matrices.C,0] 
+       through a partial factorization.
     
-       (X, info) = MESTI_MATRIX_SOLVER(A, B, opts) and
-       (S, info) = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
-       specified with structure "opts" of the input arguments.
+       (X, info) = MESTI_MATRIX_SOLVER(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
+       and matrices.C = nothing, and
+       (S, info) = MESTI_MATRIX_SOLVER(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
+       and matrices.C != nothing, 
+       allow detailed options to be specified with structure "opts" of the input arguments.
     
        === Input Arguments ===
-       A (sparse matrix; required):
-          Matrix A in the C*inv(A)*B or inv(A)*B returned.
-       B (numeric matrix; required):
-          Matrix B in the C*inv(A)*B or inv(A)*B returned.
-       C (numeric matrix or "transpose(B)" or nothing; optional):
-          Matrix C in the C*inv(A)*B returned.
-             If C = transpose(B), the user can set C = "transpose(B)" as a
-          character vector, which will be replaced by transpose(B) in the code. If
-          matrix A is symmetric, C = "transpose(B)", and opts.method = "APF", the
-          matrix K = [A,B;C,0] will be treated as symmetric when computing its
-          Schur complement to lower computing time and memory usage.
-             To compute X = inv(A)*B, the user can simply omit C from the input
-          argument if there is no need to change the default opts. If opts is
-          needed, the user can set C = nothing here.
+       matrices (scalar structure; required):
+          A structure specifies matrices. It contain the following fields:
+          A (sparse matrix; required):
+             Matrix A in the C*inv(A)*B or inv(A)*B returned.
+          B (numeric matrix; required):
+             Matrix B in the C*inv(A)*B or inv(A)*B returned.
+          C (numeric matrix or "transpose(B)" or nothing; optional):
+             Matrix C in the C*inv(A)*B returned.
+                If C = transpose(B), the user can set C = "transpose(B)" as a
+             character vector, which will be replaced by transpose(B) in the code. If
+             matrix A is symmetric, C = "transpose(B)", and opts.method = "APF", the
+             matrix K = [A,B;C,0] will be treated as symmetric when computing its
+             Schur complement to lower computing time and memory usage.
+                To compute X = inv(A)*B, the user can simply omit C from the input
+             argument if there is no need to change the default opts. If opts is
+             needed, the user can set C = nothing here.
        opts (scalar structure; optional):
           A structure that specifies the options of computation; defaults to an
           undefined Opts() structure. It can contain the following fields (all optional):
@@ -117,16 +124,16 @@ end
           opts.is_symmetric_A (logical scalar; optional):
              Whether matrix A is symmetric or not. This is only used when
              opts.solver = "MUMPS", in which case opts.is_symmetric_A will be
-             determined by the issymmetric(A) command if not specified by user.
-       opts.solver (character vector; optional):
-          The solver used for sparse matrix factorization. Available choices are
-          (case-insensitive):
-             "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
-                        interface MUMPS3.jl must be installed.
-             "JULIA" -  (default when MUMPS is not available) Uses the built-in 
-                        lu() function in JULIA, which uses UMFPACK. 
-          MUMPS is faster and uses less memory than lu(), and is required for
-          the APF method.
+             determined by the issymmetric(A) command if not specified by users.
+          opts.solver (character vector; optional):
+             The solver used for sparse matrix factorization. Available choices are
+             (case-insensitive):
+                "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
+                           interface MUMPS3.jl must be installed.
+                "JULIA" -  (default when MUMPS is not available) Uses the built-in 
+                           lu() function in JULIA, which uses UMFPACK. 
+             MUMPS is faster and uses less memory than lu(), and is required for
+             the APF method.
           opts.method (character vector; optional):
              The solution method. Available choices are (case-insensitive):
                 "APF" - Augmented partial factorization. C*inv(A)*B is obtained
@@ -185,6 +192,11 @@ end
              when opts.solver = "MUMPS". Using the ordering from a previous
              computation can speed up the analysis stage, but the matrix size must
              be the same.
+          opts.analysis_only (logical scalar; optional, defaults to false):
+             When opts.analysis_only = true, the factorization and solution steps
+             will be skipped, and S = nothing will be returned. The user can use
+             opts.analysis_only = true with opts.store_ordering = true to return
+             the ordering for A or K; only possible when opts.solver = 'MUMPS'.
           opts.nthreads_OMP (positive integer scalar; optional):
              Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
              environment variable.
@@ -199,7 +211,22 @@ end
              case opts.nrhs must equal 1. When iterative refinement is used, the
              relevant information will be returned in info.itr_ref_nsteps,
              info.itr_ref_omega_1, and info.itr_ref_omega_2.
-    
+          use_BLR (logical scalar; optional, defaults to false):
+             Whether to use block low-rank approximation in MUMPS to possibly lower computational
+             cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
+          threshold_BLR (positive real scalar; optional):
+             The dropping parameter controls the accuracy of the block low-rank approximations. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          icntl_36 (positive integer scalar; optional):
+             It controls the choice of the BLR factorization variant. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          icntl_38 (positive integer scalar; optional):
+             It estimated compression rate of LU factors.
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+
        === Output Arguments ===
        S (full numeric matrix):
           C*inv(A)*B or inv(A)*B.
@@ -239,15 +266,13 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     ## Part 1: Initialization
     ## Check validity & consistency of input arguments and assign default values
     t0 = time() 
-    
-    ## Clear memory thing to be clarify........
-    #A_name = inputname(1); % name of the variable we call A in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
-    
+        
     if ~isdefined(matrices, :C)
          matrices.C = nothing
     end
     
-    if isa(matrices.C, Nothing)  # return_X = isa(matrices.C, nothing), but is easier to understand the meaning when we use return_X
+    if isa(matrices.C, Nothing)  
+        # return_X = isa(matrices.C, Nothing), but is easier to understand the meaning when we use return_X
         return_X = true
     elseif isa(matrices.C, AbstractArray{<:Number})
         return_X = false
@@ -330,7 +355,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         opts.method = "C*inv(U)*inv(L)*B"        
     end
 
-    # When opts.method = "APF" and opts.solver = "JULIA", the solution method is not actually APF, so we give it a more descriptive name
+    # When opts.method = "APF" and opts.solver = "JULIA", the solution method is not actually APF, so we throw an error to the users
     str_method = opts.method
     if opts.method == "APF" && opts.solver == "JULIA"
         throw(ArgumentError("opts.method = \"APF\" requires opts.solver = \"MUMPS\"."))
@@ -357,7 +382,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             # In this case, we keep matrices.C = "transpose(B)" here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
             use_C = false
         else
-            # In other cases, we may as well allocate the memory for C now
+            # In other cases, we may as well allocate the memory for matrices.C now
             matrices.C = permutedims(matrices.B, (2,1))
             use_C = true
         end
@@ -381,7 +406,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     if sz_A_2 != sz_B_1; throw(ArgumentError("size(matrices.A,2) must equal size(matrices.B,1); size(matrices.A,2) = $(sz_A_2), size(matrices.B,1) = $(sz_B_1).")); end
     if (sz_C_2 != sz_A_1 && use_C); throw(ArgumentError("size(matrices.C,2) must equal size(matrices.A,1); size(matrices.C,2) = $(sz_C_2), size(matrices.A,1) = $(sz_A_1).")); end
 
-    # By default, we don't clear variables unless specified by user
+    # By default, we don't clear variables unless specified by users
     if ~isdefined(opts, :clear_memory)
         opts.clear_memory = false
     elseif ~isa(opts.clear_memory, Bool)
@@ -393,7 +418,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     str_ordering = nothing
     str_sym_K = nothing
     if opts.solver == "MUMPS"
-        # Determine the symmetry of matrix A if not specified
+        # Determine the symmetry of matrix matrices.A if not specified
         # To skip this step (which can be slow), the user should specify opts.is_symmetric_A
         if ~isdefined(opts, :is_symmetric_A)
             opts.is_symmetric_A = issymmetric(matrices.A)
@@ -406,7 +431,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             str_sym_K = " (symmetric K)"
         end
 
-        # Use AMD by default because its ordering/analysis stage is typically faster
+        # Use AMD by default because it does not require additional efforts to compile METIS
         if ~isdefined(opts, :use_METIS)
             opts.use_METIS = false
         elseif ~isa(opts.use_METIS, Bool)
@@ -418,7 +443,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             str_ordering = " with AMD ordering"
         end
         
-        # Use double-precision MUMPS by default
+        # Use single-precision MUMPS by default
         if ~isdefined(opts, :use_single_precision_MUMPS)
             opts.use_single_precision_MUMPS = true
         elseif ~isa(opts.use_single_precision_MUMPS, Bool)
@@ -444,7 +469,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             throw(ArgumentError("opts.use_BLR must be a boolean, if given."))
         end
         
-        # If BLR is activated, check or pick the threshold of BLR.
+        # If BLR is activated, we check or pick the threshold of BLR.
         if ~opts.use_BLR && isdefined(opts, :threshold_BLR)
             throw(ArgumentError("opts.threshold_BLR should not be given when opts.use_BLR = false."))    
         elseif opts.use_BLR && isdefined(opts, :threshold_BLR) && opts.threshold_BLR < 0
@@ -452,13 +477,6 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         elseif opts.use_BLR && ~isdefined(opts, :threshold_BLR)
             opts.threshold_BLR = 1e-7
         end
-
-        # We don't use BLR by default        
-        if ~isdefined(opts, :use_BLR)
-            opts.use_BLR = false
-        elseif ~isa(opts.use_BLR, Bool)
-            throw(ArgumentError("opts.use_BLR must be a boolean, if given."))    
-        end           
         
         # We don't store matrix ordering by default
         if ~isdefined(opts, :store_ordering)
@@ -497,8 +515,8 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             end
         end
     else
-        if isdefined(opts, :is_symmetric_A)
-            #@warn("opts.is_symmetric_A is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        if isdefined(opts, :is_symmetric_A) && ~isa(opts.is_symmetric_A, Nothing)
+            @warn("opts.is_symmetric_A is only used when opts.solver = \"MUMPS\"; will be ignored.")
         end
 
         if isdefined(opts, :use_METIS)
@@ -525,6 +543,22 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         if isdefined(opts, :nthreads_OMP)
             @warn("opts.nthreads_OMP is only used when opts.solver = \"MUMPS\"; will be ignored.")
         end
+        
+        if isdefined(opts, :use_BLR)
+            @warn("opts.use_BLR is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        end
+
+        if isdefined(opts, :threshold_BLR)
+            @warn("opts.threshold_BLR is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        end
+        
+        if isdefined(opts, :icntl_36)
+            @warn("opts.icntl_36 is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        end
+
+        if isdefined(opts, :icntl_38)
+            @warn("opts.icntl_38 is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        end        
     end
 
     # Number of columns to solve for simultaneously; only used in factorize_and_solve when computing S=C*inv(A)*B
@@ -554,7 +588,6 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     timing_init = t2-t0
 
     ## Computation Part
-
     # No need to compute if length(S) = 0 and we don't need to keep the ordering
     if (sz_B_2 == 0 || (sz_C_1 == 0 && use_C)) && ~opts.store_ordering
         opts.method = "None"
@@ -728,8 +761,10 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             if return_X # Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
                 if opts.solver == "MUMPS"
                     set_job!(id,3) # what to do: solve
+                    # Note that we need to specify that the RHS is sparse first, and then provide RHS
                     set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
                     if opts.use_single_precision_MUMPS
+                        # Convert the double-precision to single-precision
                         if eltype(matrices.B) == ComplexF64
                             provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B))
                         elseif eltype(matrices.B) == Float64
@@ -773,8 +808,10 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                     for k = 1:opts.nrhs:M_in
                         in_list = k:min(k+opts.nrhs-1, M_in)
                         set_job!(id,3)  # what to do: solve
+                        # Note that we need to specify that the RHS is sparse first, and then provide RHS
                         set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
                         if opts.use_single_precision_MUMPS
+                            # Convert the double-precision to single-precision
                             if eltype(matrices.B) == ComplexF64
                                 provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B[:,in_list]))
                             elseif eltype(matrices.B) == Float64
@@ -854,8 +891,9 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     return (S, info)
 end
 
-
-## Call JULIA's lu() to factorize matrix A
+"""
+    JULIA_FACTORIZE calls JULIA's lu() to factorize matrix A
+"""
 function JULIA_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts)
 
     if opts.verbal; @printf("Factorizing ... "); end
@@ -879,8 +917,9 @@ function JULIA_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{
     return (ComplexF64.(L), ComplexF64.(U), ComplexF64.(P), ComplexF64.(Q), ComplexF64.(R), info)
 end
 
-
-## Call MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
+"""
+    MUMPS_ANALYZE_AND_FACTORIZE calls MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
+"""
 function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int64},Nothing} = nothing, par = 1::Int64)
 
     ## Initialize MUMPS
@@ -1010,8 +1049,9 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
 end
 
 
-##Interpret some of the error messages from MUMPS
-#function MUMPS_error_message(infog::NTuple{80,MUMPS_INT})
+"""
+    MUMPS_ERROR_MESSAGE interprets some of the error messages from MUMPS
+"""
 function MUMPS_error_message(infog)
 
     @printf("\n")

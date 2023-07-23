@@ -1,4 +1,4 @@
-###### Update on 20230525
+###### Update on 20230719
 mutable struct Side
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}
@@ -12,13 +12,77 @@ mutable struct Side
 end
 
 """
-    SETUP_LONGITUDINAL sets up a structure "Side" for one component in the homogeneous space.  
+    SETUP_LONGITUDINAL sets up a structure "Side" for one component in the homogeneous space.
+       === Input Arguments === 
+       k0dx (numeric scalar, real or complex; required):
+          Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx. 
+       epsilon_bg (numeric scalar, real or complex; required):
+          Relative permittivity of the homogeneous space.
+       kxdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet") real row vector):
+         Dimensionless transverse wave number kx*dx for all nx channels,
+         including both propagating and evanescent ones. They are real-valued
+         and are ordered from small to large. 
+       kydx_all (1-by-ny_Ey+delat_(yBC,"Dirichlet") real row vector):
+         Dimensionless transverse wave number ky*dx for all ny channels,
+         including both propagating and evanescent ones. They are real-valued
+         and are ordered from small to large. 
+       kLambda_x (numeric scalar, real or complex; optional):
+         kx_B*Lambda_x, where Lambda_x is the periodicity along x-direction.
+         This is used only for periodic and Bloch periodic boundary.
+       kLambda_y (numeric scalar, real or complex; optional):
+         ky_B*Lambda_y, where Lambda_y is the periodicity along x-direction.
+         This is used only for periodic and Bloch periodic boundary.
+       ind_zero_kx (numeric scalar; optional):
+         The transverse mode index where kxdx = kx_B*Lambda_x/nx.
+         This is used only for periodic and Bloch periodic boundary.
+       ind_zero_ky (numeric scalar; optional):
+         The transverse mode index where kydx = ky_B*Lambda_y/ny.
+         This is used only for periodic and Bloch periodic boundary.
+       use_continuous_dispersion (logical scalar; optional, defaults to false):
+          Whether to use the dispersion equation of the continuous wave equation
+          when building the input/output channels. Defaults to false, in which case
+          the finite-difference dispersion is used.
+    
+       === Output Arguments === 
+       side (scalar structure):
+          side.N_prop (integer scalar):
+             Number of propagating channels. 
+          side.kzdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet")*ny_Ey+delat_(yBC,"Dirichlet") complex row vector):
+             Dimensionless longitudinal wave number kz*dx for all channels,
+             including both propagating and evanescent ones. Due to the
+             discretization, kzdx is equivalent to kzdx + 2*pi. Whenever kzdx is a
+             solution, -kzdx is also a solution. Here, we choose the sign of kzdx
+             such that:
+             When k0dx is real, we have 
+                - Propagating channels: 0 < Re(kzdx) < pi, Im(kzdx) = 0. 
+                - Evanescent channels: Im(kzdx) >= 0, mod(Re(kzdx),pi) = 0. 
+             When k0dx is complex, we analytically continue the above choice onto
+             the complex-frequency plane. Specifically, we pick the kzdx that is
+             continuously connected to one with real k0dx through a vertical line
+             in the complex-(k0dx^2) plane. 
+          side.ind_prop (1-by-N_prop integer row vector):
+             Indices of the N_prop propagating channels among all channels.low.kzdx_all. 
+          side.kxdx_prop (1-by-N_prop real row vector):
+             Dimensionless longitudinal wave number kx*dx for the N_prop propagating
+             channels, equal to channels.kxdx_all(channels.low.ind_prop). 
+          side.kydx_prop (1-by-N_prop real row vector):
+             Dimensionless transverse wave number ky*dx for the N_prop propagating
+             channels, equal to channels.kydx_all(channels.low.ind_prop). 
+          side.kzdx_prop (1-by-N_prop real row vector):
+             Dimensionless transverse wave number kz*dx for the N_prop propagating
+             channels, equal to channels.low.kzdx_all(channels.low.ind_prop).  
+          side.sqrt_nu_prop (1-by-N_prop row vector):
+             Square root of the normalized longitudinal group velocity of the
+             propagating channels, sqrt_nu_prop = sqrt(sin(kzdx)). The longitudinal
+             group velocity is v_g = (sin(kzdx)/k0dx)*(c/epsilon_low). 
+          side.ind_prop_conj (1-by-N_prop integer row vector; optional):
+             A permutation vector that switches one propagating channel with one
+             having a complex-conjugated transverse profile. It only works for 2D now.
 """
 function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Int64,Float64,ComplexF64}, kxdx_all::Union{StepRangeLen{Float64}, Vector{Float64}, Nothing}, kydx_all::Union{StepRangeLen{Float64}, Vector{Float64}}, kLambda_x::Union{Int64,Float64,ComplexF64,Nothing}=nothing, kLambda_y::Union{Int64,Float64,ComplexF64,Nothing}=nothing, ind_zero_kx::Union{Int64,Nothing}=nothing, ind_zero_ky::Union{Int64,Nothing}=nothing, use_continuous_dispersion::Bool=false)
-
     
     if kxdx_all == nothing && kLambda_x == nothing && ind_zero_kx == nothing
-       use_2D_TM = true 
+        use_2D_TM = true 
     else
         use_2D_TM = false
     end
@@ -74,7 +138,6 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
         else
             kzdx2 = reshape(k0dx2_epsilon .- kxdx_all.^2 .- reshape(vcat(kydx_all),1,:).^2,nx*ny)
         end
-        # kzdx2 = k0dx2_epsilon .- repeat(kxdx_all,1,ny).^2 .- repeat(transpose(kydx_all),nx,1).^2
         
         side.kzdx_all = sqrt.(Complex.(kzdx2))
         side.ind_prop = findall(x-> real(x) > 0, kzdx2)
@@ -101,9 +164,6 @@ function setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{I
     # When k0dx2_epsilon is real, sqrt_nu_prop is also real. When k0dx2_epsilon is complex, sqrt_nu_prop is also complex.
     side.sqrt_nu_prop = sqrt.(sin.(side.kzdx_prop))
     
-    side.ind_prop_conj = 1:side.N_prop # Just for now.
-
-
     if ~use_2D_TM
         # TODO: think how to implement side.ind_prop_conj in 3D
         side.ind_prop_conj = 1:side.N_prop

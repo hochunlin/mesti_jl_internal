@@ -1,4 +1,4 @@
-###### Update on 20230620
+###### Update on 20230721
 
 using SparseArrays
 using LinearAlgebra
@@ -19,10 +19,19 @@ mutable struct Source_struct
 end
 
 mutable struct Syst
-    # Below are used in both mesti() and mesti2s()    
-    epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}
+    # Below are used in both mesti() and mesti2s()
+    epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64},Nothing}
+    epsilon_xy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_xz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+
+    epsilon_yx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
     epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_yz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+ 
+    epsilon_zx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_zy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}    
     epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+
     length_unit::String
     wavelength::Number
     dx::Real
@@ -46,14 +55,19 @@ mutable struct Syst
 end    
 """
     MESTI Multi-source frequency-domain electromagnetic simulations.
+       ---3D field profile---
        (Ex, Ey, Ez, info) = MESTI(syst, B) returns the spatial field profiles
        of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
-          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)],
+          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
+          i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
        The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
        are specified by structure "syst".
-          Note that relative permittivity profile epsilon(x,y,z) should be tensor in general, but
-       it is not implemented for current version. Currently, we implment the diagonal term only, that is,
-       epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z).
+          Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
+                             [epsilon_xx, epsilon_xy, epsilon_xz; 
+                              epsilon_yx, epsilon_yy, epsilon_yz; 
+                              epsilon_zx, epsilon_zy, epsilon_zz] in general. 
+       Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
+       or all of them.
           Each column of matrix "B" specifies a distinct input source profile.
           The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
        being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
@@ -66,10 +80,11 @@ end
        Ex = reshape((inv(A)*B)[nt_Ex,:], nx_Ex, ny_Ex, nz_Ex, :).
        Ey = reshape((inv(A)*B)[nt_Ey,:], nx_Ey, ny_Ey, nz_Ey, :).
        Ez = reshape((inv(A)*B)[nt_Ez,:], nx_Ez, ny_Ez, nz_Ez, :).
-
+        
+       ---2D TM field profile---
        (Ex, info) = MESTI(syst, B) returns the spatial field profiles
        of Ex(y,z) for 2D transverse-magnetic (TM) fields satisfying
-       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = source(y,z).
+       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = i*omega*mu_0*Jx(y,z).
          The returned 'Ex' is a 3D array, with Ex(:,:,i) being the field profile
        of Ex given the i-th input source profile. The information of the computation is returned in structure 'info'.
          MESTI uses finite-difference discretization on the Yee lattice, after which
@@ -77,6 +92,7 @@ end
        where (ny_Ex, nz_Ex) is the number of sites Ex is discretized onto, and
        Ex = reshape(inv(A)*B, ny_Ex, nz_Ex, []).
 
+       ---Generalized scattering matrix S---
        (S, info) = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
        inv(A)*B is projected onto the output channels or locations of interest
        through matrix C; each row of matrix "C" is a distinct output projection
@@ -92,13 +108,12 @@ end
        S0 is known.
     
        (Ex, Ey, Ez, info) = MESTI(syst, B, opts),
+       (Ex, info) = MESTI(syst, B, opts),
        (S, info) = MESTI(syst, B, C, opts), and
        (S, info) = MESTI(syst, B, C, D, opts) allow detailed options to be
        specified with structure "opts".
     
-       MESTI considers nonmagnetic materials with permittivity with only block diagonal term, 
-       that is, epsilon_xx, epsilon_yy, epsilon_zz. Even though subpixel smoothing creates 
-       anisotropy where epsilon(x,y,z), but it is not implemented for current version.
+       MESTI only considers nonmagnetic materials.
     
        This file checks and parses the parameters, and it can build matrices B and
        C from its nonzero elements specified by the user (see details below). It
@@ -110,17 +125,37 @@ end
        syst (Syst struct; required):
           A structure that specifies the system, used to build the FDFD matrix A.
           It contains the following fields:
-          syst.epsilon_xx (numeric array or matrix, real or complex):
-             For 3D, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
+          syst.epsilon_xx (numeric array or matrix, real or complex, required for 3D and 2D TM):
+             For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
              profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
              epsilon_xx(n,m,l) averaged over a square with area (syst.dx)^2 centered at
              the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
              For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
              profile epsilon_xx(y,z).
-          syst.epsilon_yy (numeric array or nothing, real or complex):    
+          syst.epsilon_xy (numeric array or matrix, real or complex, optional):
+             For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
+             profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
+             epsilon_xy(n,m,l) averaged over a square with area (syst.dx)^2 centered at
+             the low corner on the Yee lattice (n,m,l).
+          syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_yy (numeric array or nothing, real or complex, required required for 3D):    
              Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
              analogous to syst.epsilon_xx.
-          syst.epsilon_zz (numeric array or nothing, real or complex):    
+          syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zz (numeric array or nothing, real or complex, required required for 3D):    
              Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
              analogous to syst.epsilon_xx.
           syst.length_unit (string; optional):
@@ -138,20 +173,19 @@ end
              layer placed within the simulation domain (just before the boundary)
              that attenuates outgoing waves with minimal reflection.
                 In mesti(), the PML starts from the interior of the system
-             specified by syst.epsilon_xx, syst.epsilon_yy and syst.epsilon_zz, 
-             and ends at the first or last pixel inside syst.epsilon_xx, 
-             syst.epsilon_yy and syst.epsilon_zz. (Note: this is
-             different from the function mesti2s() that handles two-sided
-             geometries, where the homogeneous spaces on the low and high are
-             specified separately through syst.epsilon_low and syst.epsilon_high, and
-             where PML is placed in such homogeneous space, outside of the
-             syst.epsilon_xx, syst.epsilon_yy and syst.epsilon_zz.
+             specified by syst.epsilon_ij (i = x,y,z and j = x,y,z), 
+             and ends at the first or last pixel inside syst.epsilon_ij 
+             (i = x,y,z and j = x,y,z). (Note: this is different from the function 
+             mesti2s() that handles two-sided geometries, where the homogeneous spaces
+             on the low and high are specified separately through syst.epsilon_low 
+             and syst.epsilon_high, and where PML is placed in such homogeneous space, 
+             outside of the syst.epsilon_ij (i = x,y,z and j = x,y,z).
                 When only one set of PML parameters is used in the system (as is
              the most common), such parameters can be specified with a scalar PML
              structure syst.PML that contains the following fields:
                 npixels (positive integer scalar; required): Number of PML pixels.
-                   Note this is within syst.epsilon_xx/Ey/Ez, not in
-                   addition to.
+                   Note this is within syst.epsilon_ij (i = x,y,z and j = x,y,z),
+                   not in addition to.
                 direction (string; optional): Direction(s) where PML is
                    placed. Available choices are (case-insensitive):
                       "all" - (default) PML in x, y, and z directions for 3D and PML in y and z directions for 2D TM
@@ -160,7 +194,7 @@ end
                       "z"   - PML in y direction    
                 side (string; optional): Side(s) where PML is placed.
                    Available choices are (case-insensitive):
-                      "both"  - (default) PML on both sides
+                      "both" - (default) PML on both sides
                       "-"    - one-sided PML; end at the first pixel
                       "+"    - one-sided PML; end at the last pixel
                 power_sigma (non-negative scalar; optional): Power of the
@@ -245,7 +279,7 @@ end
                 syst.xBC = "Bloch" if syst.kx_B is given; otherwise syst.xBC = "PEC"
              The choice of syst.xBC has little effect on the numerical accuracy
              when PML is used.
-                For 2D TM fields, xBC = nothing.
+             For 2D TM fields, xBC = nothing.
           syst.yBC (string; optional):
              Boundary condition in y direction, analogous to syst.xBC.
           syst.zBC (string; optional):
@@ -290,7 +324,7 @@ end
                 B[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Bx_struct.data[:,:,:,a] gives the
                 sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
                 size(Bx_struct.data) must equal (d, w, h, number of inputs).
-                    When it is a 3D array (2D system), Bx_struct.data(m',l',a) is the a-th input
+                    When it is a 3D array (2D TM system), Bx_struct.data(m',l',a) is the a-th input
                 source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
                 Bx(m+(l-1)*ny, a). In other words, Bx_struct.data(:,:,a) gives the
                 sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
@@ -427,6 +461,8 @@ end
           Matrix D in the C*inv(A)*B - D returned, which specifies the baseline
           contribution; size(D,1) must equal size(C,1), and size(D,2) must equal
           size(B,2). When D is not an input argument, it will not be subtracted from C*inv(A)*B. 
+          For field-profile computations where C is not an input argument, D should not be an input
+          argument, either.
        opts (Opts structure; optional):
           A structure that specifies the options of computation. 
           It can contain the following fields (all optional):
@@ -540,10 +576,25 @@ end
              case opts.nrhs must equal 1. When iterative refinement is used, the
              relevant information will be returned in info.itr_ref_nsteps,
              info.itr_ref_omega_1, and info.itr_ref_omega_2.
-   
+          opts.use_BLR (logical scalar; optional, defaults to false):
+             Whether to use block low-rank approximation in MUMPS to possibly lower computational
+             cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
+          opts.threshold_BLR (positive real scalar; optional):
+             The dropping parameter controls the accuracy of the block low-rank approximations. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          opts.icntl_36 (positive integer scalar; optional):
+             It controls the choice of the BLR factorization variant. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          opts.icntl_38 (positive integer scalar; optional):
+             It estimated compression rate of LU factors.
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+
        === Output Arguments ===
-       ---When users specifies C---
-       S (full numeric matrix or 3D array):
+       ---When users specify C---
+       S (full numeric matrix):
           The generalized scattering matrix S = C*inv(A)*B or S = C*inv(A)*B - D.
        ---or when users do not specify C---
           When opts.exclude_PML_in_field_profiles = false,
@@ -557,10 +608,10 @@ end
        Ez (4D array):
           Electrical field profile for Ez component
           (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
-          For 2D TM case,
-       Ex (3D array):
-          Electrical field profile for Ex component
-          (ny_Ex, nz_Ex, number of inputs) = size(Ex)
+           ---For 2D TM case---
+           Ex (3D array):
+              Electrical field profile for Ex component
+              (ny_Ex, nz_Ex, number of inputs) = size(Ex)
        When opts.exclude_PML_in_field_profiles = true, the PML pixels
           (specified by syst.PML.npixels) are excluded from Ex, Ey, and Ez on each
           side where PML is used.    
@@ -603,28 +654,40 @@ end
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String,Nothing}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Nothing}, opts::Union{Opts,Nothing})
     
     if ~(stacktrace()[2].func == :mesti2s)
+        # Make deepcopy of them to avoid mutating input argument 
         syst = deepcopy(syst); opts = deepcopy(opts)
     end
     
     ## Part 1.1: Check validity of syst, assign default values to its fields, and parse BC and PML specifications
-    
     t0 = time() 
     
     if ~isdefined(syst, :wavelength); throw(ArgumentError("Input argument syst must have field \"wavelength\".")); end
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
     
-    # Check if 2D TM fields are required
+    # Take care of the 2D TM cases
     if ndims(syst.epsilon_xx) == 2
         use_2D_TM = true
-        if isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing) || isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)
-            @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
+        if (isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing)) || (isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)) || (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) || (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing)) || (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) || (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) || (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) || (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing))
+            throw(ArgumentError("Only syst.epsilon_xx is required for 2D TM fields Ex(y,z), but other components should not be given or should be nothing"))
         end
     else
         use_2D_TM = false
     end
     
     if ~use_2D_TM
+        if (isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing)) || (isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)) || (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) || (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing)) || (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) || (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) || (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) || (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing))
+            include_off_diagonal_epsilon = true
+            if ~isdefined(syst, :epsilon_xy); syst.epsilon_xy = nothing; end
+            if ~isdefined(syst, :epsilon_xz); syst.epsilon_xz = nothing; end
+            if ~isdefined(syst, :epsilon_yx); syst.epsilon_yx = nothing; end
+            if ~isdefined(syst, :epsilon_yz); syst.epsilon_yz = nothing; end
+            if ~isdefined(syst, :epsilon_zx); syst.epsilon_zx = nothing; end
+            if ~isdefined(syst, :epsilon_zy); syst.epsilon_zy = nothing; end
+        else
+            include_off_diagonal_epsilon = false
+        end   
+        
         # Number of grid points in x, y, and z for Ex, Ey, and Ez
         (nx_Ex, ny_Ex, nz_Ex) = size(syst.epsilon_xx)
         (nx_Ey, ny_Ey, nz_Ey) = size(syst.epsilon_yy)
@@ -633,7 +696,8 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         # Total number of grid points for Ex, Ey, and Ez    
         nt_Ex = nx_Ex*ny_Ex*nz_Ex
         nt_Ey = nx_Ey*ny_Ey*nz_Ey
-        nt_Ez = nx_Ez*ny_Ez*nz_Ez   
+        nt_Ez = nx_Ez*ny_Ez*nz_Ez
+        
     else
         # Consider 2D TM field: Ex(y,z)
         # Number of grid points in y and z for Ex
@@ -735,12 +799,30 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         xBC = convert_BC(xBC, "x")
         
         # Check number of grid points with the boundary conditions
-        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
-        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
-        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
+        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by syst.epsilon_yy and syst.epsilon_zz should be same.")); end
+        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by syst.epsilon_xx and syst.epsilon_zz should be same.")); end
+        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by syst.epsilon_xx and syst.epsilon_yy should be same.")); end
         check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
         check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
         check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+        if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing) && ~(size(syst.epsilon_xy) == (nx_Ez, ny_Ez, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_xy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing) && ~(size(syst.epsilon_xz) == (nx_Ey, ny_Ex, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_xz should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing) && ~(size(syst.epsilon_yx) == (nx_Ez, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_yx should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing) && ~(size(syst.epsilon_yz) == (nx_Ey, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_yz should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing) && ~(size(syst.epsilon_zx) == (nx_Ey, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_zx should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing) && ~(size(syst.epsilon_zy) == (nx_Ez, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_zy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end 
     end
 
     # Defaults to no PML anywhere
@@ -902,16 +984,6 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         @warn "opts.is_symmetric_A is not used in mesti(); will be ignored."
         opts.is_symmetric_A = nothing
     end                
-
-    # We do not check opts.nz_low and opts.nz_high anymore, because they would be used before and after mesti2s() call mesti()
-    #if isdefined(opts, :nz_low) && ~isa(opts.nz_low, Nothing)
-    #    @warn "opts.nz_low is not used in mesti(); will be ignored."
-    #    opts.nz_low = nothing
-    #end                
-    #if isdefined(opts, :nz_high) && ~isa(opts.nz_high, Nothing)
-    #    @warn "opts.nz_high is not used in mesti(); will be ignored."
-    #    opts.nz_high = nothing
-    #end                
     
     if isdefined(opts, :use_continuous_dispersion) && ~isa(opts.use_continuous_dispersion, Nothing)
         @warn "opts.use_continuous_dispersion is not used in mesti(); will be ignored."
@@ -925,6 +997,16 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         @warn "opts.m0 is not used in mesti(); will be ignored."
         opts.m0 = nothing        
     end
+    
+    # We do not check opts.nz_low and opts.nz_high anymore, because they would be used before and after mesti2s() call mesti()
+    #if isdefined(opts, :nz_low) && ~isa(opts.nz_low, Nothing)
+    #    @warn "opts.nz_low is not used in mesti(); will be ignored."
+    #    opts.nz_low = nothing
+    #end                
+    #if isdefined(opts, :nz_high) && ~isa(opts.nz_high, Nothing)
+    #    @warn "opts.nz_high is not used in mesti(); will be ignored."
+    #    opts.nz_high = nothing
+    #end                    
     
     # Turn on verbal output by default
     if ~isdefined(opts, :verbal)
@@ -987,7 +1069,6 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     #    opts.nthreads_OMP
     #    opts.parallel_dependency_graph
     #    opts.iterative_refinement                
-    #
     #    opts.use_BLR
     #    opts.threshold_BLR
     #    opts.icntl_36
@@ -1064,7 +1145,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         end
         
         # Loop over Bx, By, and Bz for 3D
-        # Only have Bx for 2D
+        # Only have Bx for 2D TM
         for ii = 1:length(B)
             B_struct = B[ii]   
             global M
@@ -1277,7 +1358,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         end
        
         # Loop over Cx, Cy, and Cz
-        # Only have Cx for 2D
+        # Only have Cx for 2D TM
         for ii = 1:length(C)
             C_struct = C[ii]   
             global M
@@ -1517,8 +1598,13 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         # Build the finite-difference differential operator
         k0dx = (2*pi/syst.wavelength)*(syst.dx)
         if ~use_2D_TM
-            (matrices.A, is_symmetric_A, xPML, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, syst.epsilon_yy, syst.epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
-        else
+            if include_off_diagonal_epsilon
+                (matrices.A, is_symmetric_A, xPML, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, syst.epsilon_xy, syst.epsilon_xz, syst.epsilon_yx, syst.epsilon_yy, syst.epsilon_yz, syst.epsilon_zx, syst.epsilon_zy, syst.epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
+            else
+                (matrices.A, is_symmetric_A, xPML, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, syst.epsilon_yy, syst.epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
+            end
+        else 
+            # 2D TM
             (matrices.A, is_symmetric_A, yPML, zPML) = mesti_build_fdfd_matrix(syst.epsilon_xx, k0dx, yBC, zBC, yPML, zPML, use_UPML)
         end
     end
@@ -1596,7 +1682,9 @@ end
 # The following are mesti functions to take different number of input arguments, but all of them will
 # call the mesti main function.
 
-# When syst and B are specified; return the three components of the field profiles.
+"""
+When syst and B are specified; return the components of the field profiles.
+"""
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}})
     opts = Opts() 
     
@@ -1616,7 +1704,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
 end
 
-# When syst, B, and opts are specified; return the three components of the field profiles.
+"""
+When syst, B, and opts are specified; return the components of the field profiles.
+"""
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, opts::Opts)
     
     (S, info) = mesti(syst, B, nothing, nothing, opts)
@@ -1686,17 +1776,23 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
 end
 
-# When syst, B, and C are specified; return the scattering matrix.
+"""
+When syst, B, and C are specified; return the generalized scattering matrix.
+"""
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String})
     return mesti(syst, B, C, nothing, nothing)
 end
 
-# When syst, B, and C, and opts are specified; return the scattering matrix.
+"""
+When syst, B, and C, and opts are specified; return the generalized scattering matrix.
+"""
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, opts::Opts)
     return mesti(syst, B, C, nothing, opts)
 end
 
-# When syst, B, and C, and D are specified; return the scattering matrix.
+"""
+When syst, B, and C, and D are specified; return the generalized scattering matrix.
+"""
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}})
     return mesti(syst, B, C, D, nothing)
 end

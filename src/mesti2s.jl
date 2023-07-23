@@ -1,4 +1,4 @@
-###### Update on 20230525
+###### Update on 20230721
 
 using SparseArrays
 using LinearAlgebra
@@ -45,66 +45,72 @@ end
 
 """
     MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
-       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, B) returns the spatial field profiles
+       ---3D field profile---
+       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input) returns the spatial field profiles
        of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
-          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)],
+          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
+          i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
        The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
        are specified by structure "syst". epsilon(x,y,z) must have homogeneous spaces on the low (-z) 
        and high (+z) sides, with an outgoing boundary in z for the scattered waves and a closed
        boundary in x and y.  
-          Note that relative permittivity profile epsilon(x,y,z) should be tensor in general, but
-       it is not implemented for current version. Currently, we implment the diagonal term only, that is,
-       epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z).
+          Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
+                             [epsilon_xx, epsilon_xy, epsilon_xz; 
+                              epsilon_yx, epsilon_yy, epsilon_yz; 
+                              epsilon_zx, epsilon_zy, epsilon_zz] in general. 
+       Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
+       or all of them.
        The incident wavefronts from low and/or high are specified by variable "input".
-          Each column of matrix "B" specifies a distinct input source profile.
           The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
        being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
        The information of the computation is returned in structure "info".
 
-       (Ex, channels, info) = MESTI2S(syst, in) returns the spatial
+       ---2D TM field profile---
+       (Ex, channels, info) = MESTI2S(syst, input) returns the spatial
        field profiles of Ex(y,z) for scattering problems of 2D transverse-magnetic (TM) fields satisfying
-       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = 0,
+       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon_xx(y,z)] Ex(y,z) = 0,
        where Ex is each a superposition of incident and scattered waves.
-       The returned "Ex" is a 3D array, with Ex(:,:,i) being the total (incident + scattered) field profile of Ex given the
-       i-th incident wavefront.
+       The returned "Ex" is a 3D array, with Ex(:,:,i) being the total (incident + scattered) field profile
+       of Ex given the i-th incident wavefront.
     
+       ---Scattering matrix S---
        (S, channels, info) = MESTI2S(syst, input, output) returns the scattering matrix
        S, where "input" and "output" specify either the list of input/output channels or
-       the input/output wavefronts. When the MUMPS function is available,
+       the input/output wavefronts. When the MUMPS solver is available,
        this is typically done by computing the Schur complement of an augmented
        matrix K through a partial factorization.
     
-       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input, opts) and
+       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input, opts), 
+       (Ex, channels, info) = MESTI2S(syst, input, opts), and
        (S, channels, info) = MESTI2S(syst, input, output, opts) allow detailed options to
        be specified with structure "opts".
    
-       In mesti2s(), the boundary condition in x and y must be closed (e.g., periodic or
-       PEC). Given the closed boundary, the set of transverse modes forms a
+       In mesti2s(), for 3D cases, the boundary condition in x and y must be closed 
+       e.g., periodic or PEC. For 2D cases, the boundary condition in y must be closed. 
+       Given the closed boundary, the set of transverse modes forms a
        complete and orthonormal basis of propagating and evanescent channels.
        The inputs and outputs are specified in the basis of these propagating 
        channels, with coefficients normalized with respect to the flux in the
        longitudinal (z) direction. Properties of those channels are given by
        mesti_build_channels().
+
+       When in 3D cases an open boundary in x or y is of interest (in 2D cases an open boundary 
+       in y is of interest), the appropriate input/output basis depends on the problem, 
+       so the user should use the more general function mesti() and will need to specify 
+       the input and output matrices B and C.
     
-       When an open boundary in x or y is of interest, the appropriate input/output
-       basis depends on the problem, so the user should use the more general
-       function mesti() and will need to specify the input and output matrices B
-       and C.
-    
-       MESTI2S considers nonmagnetic materials with permittivity with only block diagonal term, 
-       that is, epsilon_xx, epsilon_yy, epsilon_zz. Even though subpixel smoothing creates 
-       anisotropy where epsilon(x,y,z), but it is not implemented for current version.
+       MESTI only considers nonmagnetic materials.
     
        This file builds the input and output channels using mesti_build_channels(),
        builds the matrices B and C, and then calls mesti() to solve the scattering
-       problems.   
+       problems.
     
        === Input Arguments ===
        syst (Syst struct; required):
           A structure that specifies the system, used to build the FDFD matrix A.
           It contains the following fields:
           syst.epsilon_xx (numeric array or matrix, real or complex):
-             For 3D system, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
+             For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
              profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
              epsilon_xx(n,m,l) averaged over a square with area (syst.dx)^2 centered at
              the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
@@ -114,18 +120,41 @@ end
              to H = 0 (ie, no scattering region) and is allowed.
              For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
              profile epsilon_xx(y,z).
-          syst.epsilon_yy (numeric array or nothing, real or complex):    
+          syst.epsilon_xy (numeric array or matrix, real or complex, optional):
+             For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
+             profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
+             epsilon_xy(n,m,l) averaged over a square with area (syst.dx)^2 centered at
+             the low corner on the Yee lattice (n,m,l).
+          syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_yy (numeric array or nothing, real or complex, required required for 3D):    
              Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
              analogous to syst.epsilon_xx.
-          syst.epsilon_zz (numeric array or nothing, real or complex):    
+          syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
+             Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
+             analogous to syst.epsilon_xy.
+          syst.epsilon_zz (numeric array or nothing, real or complex, required required for 3D):    
              Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
              analogous to syst.epsilon_xx.
           syst.epsilon_low (real scalar; required):
              Relative permittivity of the homogeneous space on the low.
           syst.epsilon_high (real scalar or nothing; optional):
              Relative permittivity of the homogeneous space on the high. If
-             syst.epsilon_high is not given or is nothing, the system will be one-sided,
-             terminated on the high with a PEC boundary with Ez(n,m,l) = 0 at l = nz_Ez + 1.
+             syst.epsilon_high is not given or is nothing, for 3D cases the system
+             will be one-sided, terminated on the high with a PEC boundary with 
+             Ez(n,m,l) = 0 at l = nz_Ez + 1, and for 2D TM caes the system
+             will be one-sided, terminated on the high with a PEC boundary with 
+             Ex(m,l) = 0 at l = nx_Ex + 1.
           syst.length_unit (string; optional):
              Length unit, such as micron, nm, or some reference wavelength. This
              code only uses dimensionless quantities, so syst.length_unit is never
@@ -243,8 +272,7 @@ end
        input (channel_type, channel_index, or wavefront structure; required):
           The set of input channels or input wavefronts
                To specify all propagating channels on one side or on both sides for 
-             polarizations, use ''input = channel_type()'',
-                then it contains the following fields:
+             polarizations, use ''input = channel_type()'', then it contains the following fields:
                    input.side (string, required): specify all propagating channels on 
                       sides. Available choices are:
                         "low"    - specify all (input.polarization)-polarization 
@@ -259,11 +287,9 @@ end
                         "p"      - specify p-polarization channels on the input.side
                         "both"   - specify both polarizations (s and p) channels on
                                    on the input.side
-                      By default, 
-                        input.polarization = "both";                  
-                To specify a subset of the propagating channels use 
-            ''input = channel_index()'',
-                then it contains the following fields:
+                       By default, input.polarization = "both";                  
+                To specify a subset of the propagating channels use ''input = channel_index()'',
+             then it contains the following fields:
                   For 3D systems:
                    input.ind_low_s (integer vector): Vector containing the indices of
                       propagating channels incident on the low side with s-polarization
@@ -286,8 +312,7 @@ end
                    input.ind_high (integer vector): Vector containing the indices of
                       propagating channels incident on the right side.
                 To specify a custom input wavefronts, a superposition of multiple 
-             propagating channels, use ''input = wavefront()'',
-                   then it contains the following fields:
+             propagating channels, use ''input = wavefront()'', then it contains the following fields:
                    For 3D systems:
                    input.v_low_s (numeric matrix): Matrix where each column specifies the
                       coefficients of s-polarization propagating channels on the low 
@@ -311,23 +336,22 @@ end
                 For 2D TM case:
                 input.v_low (numeric matrix): Matrix where each column specifies the
                    coefficients of propagating channels on the left for one input
-                   wavefront from the left, with the superposition coefficients given by that column of input.v_low.
-                   size(input.v_low, 1) must equal N_prop_low, the total number of
-                   propagating channels on the left; size(input.v_L, 2) is the number
+                   wavefront from the left, with the superposition coefficients given by that 
+                   column of input.v_low. size(input.v_low, 1) must equal N_prop_low, the total 
+                   number of propagating channels on the left; size(input.v_L, 2) is the number
                    of input wavefronts.
                 input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
                    input wavefronts from the right instead.
        output (channel_type, channel_index, wavefront structure, or nothing; optional):
           The set of output channels or output wavefronts.
-             When out=nothing or when out is omitted, no output projection is used, and 
+             When out = nothing or when out is omitted, no output projection is used, and 
           the spatial field profiles Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) corresponding to 
           the set of inputs are returned.
              When out is given, the scattering matrix is returned, with the output
           basis of the scattering matrix specified by "output". In this case, out
           follows the same syntax as the argument "input".    
                To specify all propagating channels on one side or on both sides for 
-             polarizations, use ''output = channel_type()'',
-                then it contains the following fields:
+             polarizations, use ''output = channel_type()'', then it contains the following fields:
                    output.side (string, required): specify all propagating channels on 
                       sides. Available choices are:
                         "low"    - specify all propagating channels on the low side for 
@@ -343,10 +367,8 @@ end
                         "p"      - specify p-polarization channels on the output.side
                         "both"   - specify both polarizations (s and p) channels on
                                    on the output.side
-                      By default, 
-                        output.polarization = "both";                  
-                To specify a subset of the propagating channels use 
-            ''output = channel_index()'',
+                      By default, output.polarization = "both";                  
+                To specify a subset of the propagating channels use ''output = channel_index()'',
                 then it contains the following fields:
                 For 3D systems:
                    output.ind_low_s (integer vector): Vector containing the indices of
@@ -370,8 +392,7 @@ end
                    output.ind_high (integer vector): Vector containing the indices of
                       propagating channels incident on the right side.
                 To specify a custom output wavefronts, a superposition of multiple 
-             propagating channels, use ''output = wavefront()'',
-                   then it contains the following fields:
+             propagating channels, use ''output = wavefront()'', then it contains the following fields:
                    For 3D systems:
                    output.v_low_s (numeric matrix): Matrix where each column specifies the
                       coefficients of s-polarization propagating channels on the low 
@@ -520,7 +541,24 @@ end
           opts.m0 (real numeric scalar; optional, defaults to 0):
              Center of the 1D transverse mode profile with periodic or Bloch periodic
              boundary conditions, analogous to opts.n0.
+          opts.use_BLR (logical scalar; optional, defaults to false):
+             Whether to use block low-rank approximation in MUMPS to possibly lower computational
+             cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
+          opts.threshold_BLR (positive real scalar; optional):
+             The dropping parameter controls the accuracy of the block low-rank approximations. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          opts.icntl_36 (positive integer scalar; optional):
+             It controls the choice of the BLR factorization variant. 
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+          opts.icntl_38 (positive integer scalar; optional):
+             It estimated compression rate of LU factors.
+             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+             Please refer to the section of BLR API in MUMPS userguide.
+
        === Output Arguments ===
+       ---When users specify out---
        field_profiles (4D array):
           For field-profile computations (i.e., when "out" is not given), the
           returned field_profiles is a 4D array containing the field profiles, such
@@ -547,6 +585,7 @@ end
                 Ex (3D array):
                    electrical field profile for Ex component
                    (ny_Ex, nz_Ex, number of inputs) = size(Ex)
+       ---or when users  do not specify out---
        S (numeric matrix):
          For scattering-matrix computations (i.e., when ''output'' is given), S is the
          scattering matrix, such that S(b,a) is the flux-normalized field
@@ -616,11 +655,11 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
     
-    # Check if 2D TM fields are required
+    # Take care of the 2D TM cases
     if ndims(syst.epsilon_xx) == 2
         use_2D_TM = true
-        if isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing) || isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)
-            @warn "Only field \"syst.epsilon_xx\" is required for 2D TM fields Ex(y,z). Other components will be ignored."
+        if (isdefined(syst, :epsilon_yy) && ~isa(syst.epsilon_yy, Nothing)) || (isdefined(syst, :epsilon_zz) && ~isa(syst.epsilon_zz, Nothing)) || (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) || (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing)) || (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) || (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) || (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) || (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing))
+            throw(ArgumentError("Only syst.epsilon_xx is required for 2D TM fields Ex(y,z), but other components should not be given or should be nothing"))
         end
     else
         use_2D_TM = false
@@ -659,7 +698,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
 
         if maximum([nx_Ex*ny_Ex, nx_Ey*ny_Ey, nx_Ez*ny_Ez]) == 0 
             throw(ArgumentError("Total number of pixel cannot be 0 for all Ex, Ey, and Ez components in the tranverse xy plane."))
-        end
+        end        
     else
         # Number of grid points in y and z for Ex
         (ny_Ex, nz_Ex) = size(syst.epsilon_xx)
@@ -743,15 +782,33 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     
     if ~use_2D_TM
         # Check number of grid points with the boundary conditions
-        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by epsilon_yy and epsilon_zz should be same.")); end
-        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by epsilon_xx and epsilon_zz should be same.")); end
-        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by epsilon_xx and epsilon_yy should be same.")); end
+        if nx_Ey != nx_Ez; throw(ArgumentError("Number of grids along x provided by syst.epsilon_yy and syst.epsilon_zz should be same.")); end
+        if ny_Ex != ny_Ez; throw(ArgumentError("Number of grids along y provided by syst.epsilon_xx and syst.epsilon_zz should be same.")); end
+        if nz_Ex != nz_Ey; throw(ArgumentError("Number of grids along z provided by syst.epsilon_xx and syst.epsilon_yy should be same.")); end
         check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
         check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
         check_BC_and_grid("PEC", nz_Ex, nz_Ey, nz_Ez, "z")
+        if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing) && ~(size(syst.epsilon_xy) == (nx_Ez, ny_Ez, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_xy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing) && ~(size(syst.epsilon_xz) == (nx_Ey, ny_Ex, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_xz should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing) && ~(size(syst.epsilon_yx) == (nx_Ez, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_yx should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing) && ~(size(syst.epsilon_yz) == (nx_Ey, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_yz should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing) && ~(size(syst.epsilon_zx) == (nx_Ey, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of syst.epsilon_zx should be should be (size(syst.epsilon_yy, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_yy, 3)) = ($(size(syst.epsilon_yy, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_yy, 3)))."))
+        end
+        if (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing) && ~(size(syst.epsilon_zy) == (nx_Ez, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of syst.epsilon_zy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_xx, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_xx, 2)), $(size(syst.epsilon_xx, 3)))."))
+        end
     end
 
-    # nz_extra is the number of homogeneous-space pixels to be added to syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz in z direction.
+    # nz_extra is the number of homogeneous-space pixels to be added to syst.epsilon_xx, epsilon_yx, epsilon_zx, epsilon_xy, syst.epsilon_yy, epsilon_zy, epsilon_xz, epsilon_yz  and syst.epsilon_zz in z direction.
     # The two elements of nz_extra corresponds to the low and high sides.
     if two_sided
         n_sides = 2
@@ -1614,7 +1671,6 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         # Construct coefficient of two polarization
         # alpha_x_low_s stands for x-component coefficients for s-polarization waves.
         # z-component coefficients for s-polarization waves are always zeros, so we don't initialize it.
-        # ...............
         alpha_x_low_s = zeros(N_prop_low,0);  alpha_y_low_s = zeros(N_prop_low,0)
         alpha_x_low_p = zeros(N_prop_low,0);  alpha_y_low_p = zeros(N_prop_low,0);  alpha_z_low_p = zeros(N_prop_low,0)
         alpha_x_high_s = zeros(N_prop_high,0); alpha_y_high_s = zeros(N_prop_high,0)
@@ -1788,7 +1844,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                     end
               end
             else # output wavefronts specified by v_out_low_s, v_out_low_p, v_out_high_s, and v_out_high_p
-                # u_prop_low_Ex is a large nx_Ex*ny_Ex-by-N_prop_L matrix; instead of conjugating it, we conjugate the smaller nx_Ex*ny_Ey-by-M_out_L matrix.
+                 # u_prop_low_Ex is a large nx_Ex*ny_Ex-by-N_prop_L matrix; instead of conjugating it, we conjugate the smaller nx_Ex*ny_Ey-by-M_out_L matrix.
                 if ~use_2D_TM
                     C_low_s_Ex = conj(u_prop_low_Ex*(conj(channels.low.sqrt_nu_prop.*exp.((-1im*dn)*channels.low.kzdx_prop)).*(v_out_low_s.*alpha_x_low_s))) # use implicit expansion
                     C_low_s_Ey = conj(u_prop_low_Ey*(conj(channels.low.sqrt_nu_prop.*exp.((-1im*dn)*channels.low.kzdx_prop)).*(v_out_low_s.*alpha_y_low_s)))
@@ -1852,6 +1908,24 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             syst.epsilon_xx = cat(syst.epsilon_low*ones(nx_Ex,ny_Ex,nz_extra[1]), syst.epsilon_xx, syst.epsilon_high*ones(nx_Ex,ny_Ex,nz_extra[2]), dims=3)
             syst.epsilon_yy = cat(syst.epsilon_low*ones(nx_Ey,ny_Ey,nz_extra[1]), syst.epsilon_yy, syst.epsilon_high*ones(nx_Ey,ny_Ey,nz_extra[2]), dims=3)
             syst.epsilon_zz = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_zz, syst.epsilon_high*ones(nx_Ez,ny_Ez,nz_extra[2]), dims=3)
+            if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) 
+                syst.epsilon_xy = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_xy, syst.epsilon_high*ones(nx_Ez,ny_Ez,nz_extra[2]), dims=3)                
+            end
+            if (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing))             
+                syst.epsilon_xz = cat(syst.epsilon_low*ones(nx_Ey,ny_Ex,nz_extra[1]), syst.epsilon_xz, syst.epsilon_high*ones(nx_Ey,ny_Ex,nz_extra[2]), dims=3)                
+            end
+            if (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) 
+                syst.epsilon_yx = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_yx, syst.epsilon_high*ones(nx_Ez,ny_Ez,nz_extra[2]), dims=3)                
+            end
+            if (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) 
+                syst.epsilon_yz = cat(syst.epsilon_low*ones(nx_Ey,ny_Ex,nz_extra[1]), syst.epsilon_yz, syst.epsilon_high*ones(nx_Ey,ny_Ex,nz_extra[2]), dims=3)                
+            end
+            if (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) 
+                syst.epsilon_zx = cat(syst.epsilon_low*ones(nx_Ey,ny_Ez,nz_extra[1]), syst.epsilon_zx, syst.epsilon_high*ones(nx_Ey,ny_Ez,nz_extra[2]), dims=3)                
+            end
+            if (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing)) 
+                syst.epsilon_zy = cat(syst.epsilon_low*ones(nx_Ez,ny_Ex,nz_extra[1]), syst.epsilon_zy, syst.epsilon_high*ones(nx_Ez,ny_Ex,nz_extra[2]), dims=3)                
+            end
         else
             syst.epsilon_xx = cat(syst.epsilon_low*ones(ny_Ex,nz_extra[1]), syst.epsilon_xx, syst.epsilon_high*ones(ny_Ex,nz_extra[2]), dims=2)
         end
@@ -1860,6 +1934,24 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             syst.epsilon_xx = cat(syst.epsilon_low*ones(nx_Ex,ny_Ex,nz_extra[1]), syst.epsilon_xx, dims=3)
             syst.epsilon_yy = cat(syst.epsilon_low*ones(nx_Ey,ny_Ey,nz_extra[1]), syst.epsilon_yy, dims=3)
             syst.epsilon_zz = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_zz, dims=3)
+            if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) 
+                syst.epsilon_xy = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_xy, dims=3)
+            end
+            if (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing))             
+                syst.epsilon_xz = cat(syst.epsilon_low*ones(nx_Ey,ny_Ex,nz_extra[1]), syst.epsilon_xz, dims=3)
+            end
+            if (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) 
+                syst.epsilon_yx = cat(syst.epsilon_low*ones(nx_Ez,ny_Ez,nz_extra[1]), syst.epsilon_yx, dims=3)
+            end
+            if (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) 
+                syst.epsilon_yz = cat(syst.epsilon_low*ones(nx_Ey,ny_Ex,nz_extra[1]), syst.epsilon_yz, dims=3)
+            end
+            if (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) 
+                syst.epsilon_zx = cat(syst.epsilon_low*ones(nx_Ey,ny_Ez,nz_extra[1]), syst.epsilon_zx, dims=3)
+            end
+            if (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing)) 
+                syst.epsilon_zy = cat(syst.epsilon_low*ones(nx_Ez,ny_Ex,nz_extra[1]), syst.epsilon_zy, dims=3)
+            end
         else
             syst.epsilon_xx = cat(syst.epsilon_low*ones(ny_Ex,nz_extra[1]), syst.epsilon_xx, dims=2)
         end
@@ -1867,7 +1959,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     syst.epsilon_low = nothing # mesti() will throw warning if syst.epsilon_low is given
     syst.epsilon_high = nothing # mesti() will throw warning if syst.epsilon_high is given
 
-    # The original syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz are no longer needed but still exists in the caller's workspace; we may clear it to reduce memory usage
+    # The original syst.epsilon_xx, syst.epsilon_yx, syst.epsilon_zx, syst.epsilon_xy, syst.epsilon_yy, syst.epsilon_zy, syst.epsilon_xz, syst.epsilon_yz, and syst.epsilon_zz are no longer needed but still exists in the caller's workspace; we may clear it to reduce memory usage
     if opts.clear_syst
         #syst_name = inputname(1); # name of the variable we call syst in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
         #if ~isempty(syst_name)
@@ -2564,6 +2656,9 @@ end
 # The following are mesti functions to take different number of input arguments, but all of them will
 # call the mesti main function.
 
+"""
+When syst, and input are specified; return the components of the field profiles.
+"""
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront})
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
@@ -2581,6 +2676,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     end
 end
 
+"""
+When syst, input, and opts are specified; return the components of the field profiles.
+"""
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront}, opts::Union{Opts,Nothing})
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
@@ -2598,6 +2696,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     end
 end
 
+"""
+When syst, input, and output are specified; return the scattering matrix.
+"""
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront}, output::Union{channel_type, channel_index, wavefront,Nothing})
     (S, channels, info) = mesti2s(syst, input, output, nothing)
     return S, channels, info

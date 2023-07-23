@@ -1,5 +1,4 @@
-###### Update on 20221201
-###### Update on 20230326 for 2D TM fields
+###### Update on 20230719
 include("setup_longitudinal.jl")
 include("build_transverse_function_1d.jl")
 include("mesti.jl")
@@ -58,31 +57,27 @@ end
 
        === Input Arguments === 
        nx_Ex (positive integer scalar; required):
-          Number of grid points in the x direction for Ex. 
+          Number of grid points in the x-direction for Ex. 
        nx_Ey (positive integer scalar; required):
-          Number of grid points in the x direction for Ey. 
+          Number of grid points in the x-direction for Ey. 
        xBC (string or scalar number; required):
-          Boundary condition in the x direction. 
+          Boundary condition in the x-direction. 
           When xBC is a character vector, available choices are (case-insensitive): 
-             "periodic"  - f(m+ny) = f(m) 
-             "PEC"       - f(0) = f(ny+1) = 0 
-             "PMC"       - f(0) = f(1); f(ny+1) = f(ny) 
-             "PECPMC"    - f(0) = 0; f(ny+1) = f(ny) 
-             "PMCPEC"    - f(0) = f(1); f(ny+1) = 0 
-             "Dirichlet" - same as "PEC" 
-             "Neumann"   - same as "PMC" 
-             "DirichletNeumann" - same as "PECPMC" 
-             "NeumannDirichlet" - same as "PMCPEC" 
+             "periodic" - periodic BC on both sides
+             "PEC"      - PEC on both sides
+             "PMC"      - PMC on both sides
+             "PECPMC"   - PEC on low side and PMC on high side
+             "PMCPEC"   - PMC on low side and PEC on high side
           When xBC is a scalar number, the Bloch periodic boundary condition is
           used with f(m+ny) = f(m)*exp(1i*xBC); in other words, xBC = kx_B*nx_Ex*dx =
           kx_B*nx_Ey*dx = kx_B*p where ky_B is the Bloch wave number and p = nx*dx is the
           periodicity in x. 
        ny_Ex (positive integer scalar; required):
-          Number of grid points in the y direction for Ex. 
+          Number of grid points in the y-direction for Ex. 
        ny_Ey (positive integer scalar; required):
-          Number of grid points in the y direction for Ey. 
+          Number of grid points in the y-direction for Ey. 
        yBC (string or scalar number; required):
-          Boundary condition in y direction, analogous to xBC. 
+          Boundary condition in y-direction, analogous to xBC. 
        k0dx (numeric scalar, real or complex; required):
           Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx. 
        epsilon_low (numeric scalar, real or complex; required):
@@ -95,11 +90,11 @@ end
           when building the input/output channels. Defaults to false, in which case
           the finite-difference dispersion is used. 
        n0 (real numeric scalar, optional, defaults to 0):
-          Center of the 1D transverse mode profile along x direction with periodic or Bloch periodic
+          Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
           boundary condition (nx = nx_Ex = nx_Ey), u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx_Ex), 
           where kx(a) = kx_B + a*(2*pi/nx*dx). The default of n0 = 0 corresponds to x0 = (n-0.5)*dx = -dx/2. 
        m0 (real numeric scalar, optional, defaults to 0):
-          Center of the 1D transverse mode profile along x direction with periodic or Bloch periodic
+          Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
           boundary condition, analogous to n0. 
 
        === Output Arguments === 
@@ -113,21 +108,21 @@ end
              including both propagating and evanescent ones. They are real-valued
              and are ordered from small to large. 
           channels.u_x_n (function_handle):
-             A 1D transverse function along x direction for Ex 
+             A 1D transverse function along x-direction for Ex 
           channels.u_y_n (function_handle):
-             A 1D transverse function along x direction for Ey 
+             A 1D transverse function along x-direction for Ey 
           channels.u_z_n (function_handle):
-             A 1D transverse function along x direction for Ez 
+             A 1D transverse function along x-direction for Ez 
           channels.du_z_n (function_handle):
-             A derivative of 1D transverse function along x direction for Ez 
+             A derivative of 1D transverse function along x-direction for Ez 
           channels.u_x_m (function_handle):
-             A 1D transverse function along y direction for Ex 
+             A 1D transverse function along y-direction for Ex 
           channels.u_y_m (function_handle):
-             A 1D transverse function along y direction for Ey 
+             A 1D transverse function along y-direction for Ey 
           channels.u_z_m (function_handle):
-             A 1D transverse function along y direction for Ez 
+             A 1D transverse function along y-direction for Ez 
           channels.du_z_m (function_handle):
-             A derivative of 1D transverse function along y direction for Ez 
+             A derivative of 1D transverse function along y-direction for Ez 
           channels.low (scalar structure):
              When epsilon_low and epsilon_high are both given (i.e., epsilon_high is given
              and is not nothing), the properties specific to the low and high sides
@@ -168,15 +163,17 @@ end
              propagating channels, sqrt_nu_prop = sqrt(sin(kzdx)). The longitudinal
              group velocity is v_g = (sin(kzdx)/k0dx)*(c/epsilon_low). 
           channels.low.ind_prop_conj (1-by-N_prop integer row vector; optional):
-             This field has not been used. Keep it for the future. 
+             A permutation vector that switches one propagating channel with one
+             having a complex-conjugated transverse profile. It only works for 2D now.
           channels.high (scalar structure; optional):
              Structure containing properties specific to the high side,
              similar to channels.high; only provided when epsilon_high is given. 
 """
 function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,Nothing}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, ny_Ex::Int64, ny_Ey::Union{Int64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int64,Float64,Nothing}=0, m0::Union{Int64,Float64}=0)
     
-    # Add 2D TM case
+    # Check whehter 2D TM case or not
     if nx_Ex == nothing && nx_Ey == nothing && ny_Ex != nothing && ny_Ey == nothing
+       # 2D TM case
        use_2D_TM = true
        if xBC != nothing
             @warn "Only yBC is required for 2D TM fields Ex(y,z). xBC will be ignored."
@@ -185,6 +182,7 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
             @warn "Only m0 is required for 2D TM fields Ex(y,z). n0 will be ignored."
        end
     else
+        # 3D case
         use_2D_TM = false
     end
     
@@ -218,7 +216,7 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
     end
 
     # Convert PEC/PMC to Dirichlet/Neumann based on component and direction
-    # BC_z_x means boundary condition for Ez component along x-direction
+    # BC_j_k means boundary condition for Ej (j = x, y, z) component along k-direction (k = x, y)
     # Add 2D TM case: consider Ex(y,z), so PEC => Dirichlet, PMC => Neumann
     if ~use_2D_TM
         BC_x_x = convert_BC_to_transverse(xBC, "x", "x")
@@ -288,36 +286,24 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
         channels.du_z_m = build_transverse_function_1d_derivative(ny_Ex, BC_z_y, m0, 1)
     else
         (channels.u_x_m, channels.kydx_all) = build_transverse_function_1d(ny_Ex, BC_x_y, m0)
+        channels.kxdx_all = nothing
     end
     
-    if ~use_2D_TM
-        if xBC == "Bloch"
-            if mod(nx_Ex,2) == 1
-                ind_zero_kx = Int(round((nx_Ex+1)/2))
-            else
-                ind_zero_kx = Int(round(nx_Ex/2))
-            end
+    if ~use_2D_TM && xBC == "Bloch"
+        if mod(nx_Ex,2) == 1
+            ind_zero_kx = Int(round((nx_Ex+1)/2))
+        else
+            ind_zero_kx = Int(round(nx_Ex/2))
         end
-        if yBC == "Bloch"
-            if mod(ny_Ey,2) == 1
-                ind_zero_ky = Int(round((ny_Ey+1)/2))
-            else
-                ind_zero_ky = Int(round(ny_Ey/2))
-            end
-        end 
-    else
-        if yBC == "Bloch"
-            if mod(ny_Ex,2) == 1
-                ind_zero_ky = Int(round((ny_Ex+1)/2))
-            else
-                ind_zero_ky = Int(round(ny_Ex/2))
-            end
-        end
-       channels.kxdx_all = nothing
-       kLambda_x = nothing
-       ind_zero_kx = nothing
     end
 
+    if yBC == "Bloch"
+        if mod(ny_Ex,2) == 1
+            ind_zero_ky = Int(round((ny_Ex+1)/2))
+        else
+            ind_zero_ky = Int(round(ny_Ex/2))
+        end
+    end
 
     # Properties for the homogeneous space on the low (kzdx, sqrt_nu_prop, number of propagating channels, etc; depends on epsilon_low/high)
     side = setup_longitudinal(k0dx, epsilon_low, channels.kxdx_all, channels.kydx_all, kLambda_x, kLambda_y, ind_zero_kx, ind_zero_ky, use_continuous_dispersion)
@@ -331,7 +317,7 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
             channels.high = setup_longitudinal(k0dx, epsilon_high, channels.kxdx_all, channels.kydx_all, kLambda_x, kLambda_y, ind_zero_kx, ind_zero_ky, use_continuous_dispersion)
         end
     else
-        # add the fields of "side" to "channels"
+        # Add the fields of "side" to "channels"
         for fnames in fieldnames(typeof(side))
             setfield!(channels, fnames, getfield(side, fnames))
         end
@@ -345,13 +331,15 @@ end
     structure 'syst'.
 """
 function mesti_build_channels(syst::Syst)
-    # Add 2D TM case
+    # Check whehter 2D TM case or not    
     if ndims(syst.epsilon_xx) == 2
+        # 2D TM case
         use_2D_TM = true
         if ~(syst.epsilon_yy == nothing && syst.epsilon_zz == nothing)
             @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
         end
     else
+        # 3D case
         use_2D_TM = false
     end
     
@@ -369,9 +357,9 @@ function mesti_build_channels(syst::Syst)
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
     k0dx = (2*pi/syst.wavelength)*(syst.dx);
-    
+
+   # Check boundary condition in x    
     if ~use_2D_TM
-        # Check boundary condition in x
         if isdefined(syst, :kx_B) 
             if isdefined(syst, :xBC) && lowercase(syst.xBC) != "bloch"
                 throw(ArgumentError("When syst.kx_B is given, syst.xBC must be \"Bloch\" if specified."))
@@ -431,20 +419,19 @@ end
 
 
 """
-    MESTI_BUILD_CHANNELS Set up properties of channels in the homogeneous space for 2D TM fields. 
-           MESTI_BUILD_CHANNELS(ny_Ex, yBC, k0dx, epsilon_low, epsilon_high, 
-           use_continuous_dispersion, m0) returns a structure containing properties of the propagating and    
-           evanescent channels in a homogeneous space with ny pixels in the transverse (y) direction, boundary
-           condition yBC along y, background relative permittivity epsilon_low, epsilon_high, and
-           dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
+    MESTI_BUILD_CHANNELS(ny_Ex, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, m0) set up  
+           properties of channels in the homogeneous space for 2D TM fields and returns a structure containing  
+           properties of the propagating and evanescent channels in a homogeneous space with ny pixels in the
+           transverse (y) direction, boundary condition yBC along y, background relative permittivity epsilon_low, 
+           epsilon_high, and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the                      discretization grid size.
 """
 function mesti_build_channels(ny_Ex::Int64, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Int64,Float64}=0)
     return mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
 end
 
 
-"""
-    convert_BC_to_transverse is a helper function to convert PEC, PMC, and etc. to Dirichlet, Neumann, and etc. according to the component and direction
+""" 
+    CONVERT_BC_TO_TRANSVERSE is a helper function to convert PEC, PMC, and etc. to Dirichlet, Neumann, and etc. according to the component and direction
 """
 function convert_BC_to_transverse(BC::Union{String,Int64,Float64,ComplexF64},component::String,direction::String)
     if isa(BC, Number)

@@ -1,5 +1,5 @@
-###### Update on 20220915
-###### Update on 20230314 for 2D TM computations
+###### Update on 20230613 for off-diagonal terms
+###### Update on 20230717
 using LinearAlgebra
 using SparseArrays
 using Statistics
@@ -31,29 +31,40 @@ mutable struct PML
 end
 """
     MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator in 3D.
-       A = mesti_build_fdfd_matrix(epsilon_xx, epsilon_yy, epsilon_zz, k0dx, xBC, 
-       yBC, zBC, xPML, yPML, zPML, use_UPML) returns A as a sparse matrix representing 
+       A = mesti_build_fdfd_matrix(epsilon_xx, epsilon_xy, epsilon_xz, epsilon_yx, epsilon_yy, epsilon_yz, epsilon_zx, epsilon_zy, epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML) returns A as a sparse matrix representing 
        wave operator [curl(curl) - k0^2*epsilon_r(x,y,z)]*(dx^2)
        discretized on a square grid with grid size dx through center difference.
        for the electric field: (Ex, Ey, Ez).
     
-       In general, epsilon_r is a tensor, including epsilon_xx, epsilon_yx, epsilon_zx, epsilon_xy, epsilon_yy,  
-       epsilon_zy, epsilon_xz, epsilon_yz, epsilon_zz. 
-       Currently, we just implement the diagonal ones: epsilon_xx, epsilon_yy, and epsilon_zz. 
-    
        === Input Arguments ===
        epsilon_xx (array; required):
           epsilon_xx is a nx_Ex-by-ny_Ex-by-nz_Ex numeric array (real or complex)
-          discretizing the relative permittivity profile on Ex-sites. nx_Ex/ny_Ex/nz_Ex 
-          is the total number of grids for Ex in x/y/z-direction.
+          discretizing the relative permittivity profile epsilon_xx on Ex-sites. 
+          The notation ni_Ej is the total number of grids for Ej in i-direction.
+       epsilon_xy (array; optional):
+          epsilon_xy is a nx_Ez-by-ny_Ez-by-nz_Ex numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_xy on lower corner of the Yee lattice.
+       epsilon_xz (array; optional):
+          epsilon_xz is a nx_Ey-by-ny_Ex-by-nz_Ey numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_xz on lower corner of the Yee lattice. 
+       epsilon_yx (array; optional):
+          epsilon_yx is a nx_Ez-by-ny_Ez-by-nz_Ey numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_yx on lower corner of the Yee lattice.
        epsilon_yy (array; required):
           epsilon_yy is a nx_Ey-by-ny_Ey-by-nz_Ey numeric array (real or complex)
-          discretizing the relative permittivity profile on Ey-sites. nx_Ey/ny_Ey/nz_Ey 
-          is the total number of grids for Ey in x/y/z-direction.    
+          discretizing the relative permittivity profile epsilon_yy on Ey-sites. 
+       epsilon_yz (array; optional):
+          epsilon_yz is a nx_Ey-by-ny_Ex-by-nz_Ex numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_yz on lower corner of the Yee lattice. 
+       epsilon_zx (array; optional):
+          epsilon_zx is a nx_Ey-by-ny_Ez-by-nz_Ey numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_zx on lower corner of the Yee lattice.
+       epsilon_zy (array; optional):
+          epsilon_zy is a nx_Ez-by-ny_Ex-by-nz_Ex numeric array (real or complex)
+          discretizing the relative permittivity profile epsilon_zy on lower corner of the Yee lattice.
        epsilon_zz (array; required):
           epsilon_zz is a nx_Ez-by-ny_Ez-by-nz_Ez numeric array (real or complex)
-          discretizing the relative permittivity profile on Ez-sites. nx_Ez/ny_Ez/nz_Ez 
-          is the total number of grids for Ez in x/y/z-direction.   
+          discretizing the relative permittivity profile epsilon_zz on Ez-sites.
        k0dx (numeric scalar, real or complex; required):
           Normalized frequency k0*dx = (2*pi/vacuum_wavelength)*dx.
        xBC (character vector or numeric scalar; required):
@@ -65,7 +76,7 @@ end
                "periodic" - Ex(n+nx_Ex,m,l) = Ex(n,m,l),
                             Ey(n+nx_Ey,m,l) = Ey(n,m,l),
                             Ez(n+nx_Ez,m,l) = Ez(n,m,l).   
-               "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
+               "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
                             Ey(0,m,l) = Ey(nx_Ey+1,m,l) = 0,
                             Ez(0,m,l) = Ez(nx_Ez+1,m,l) = 0.   
                "PMC"      - Ex(0,m,l) = Ex(nx_Ex+1,m,l) = 0,
@@ -73,8 +84,8 @@ end
                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
                "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
                             Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ey(nx_Ez,m,l),    
-               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
+                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
+               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
              where PEC stands for perfect electric conductor and PMC stands for perfect
@@ -146,15 +157,16 @@ end
        zPML (two-element vector):
           PML parameters used on the low and high sides of z direction, if any.
 """
-function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_xy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_xz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing},     epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
     # Make deepcopy of them to avoid mutating input argument 
     xPML = deepcopy(xPML); yPML = deepcopy(yPML); zPML = deepcopy(zPML);
     
+    # Take care of the 2D TM case
     if ndims(epsilon_xx) == 2
         use_2D_TM = true
-        if ~(epsilon_yy == nothing && epsilon_zz == nothing)
-            @warn "Only epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
-        end    
+        if ~isa(epsilon_yy, Nothing) || ~isa(epsilon_zz, Nothing) ||  ~isa(epsilon_xy, Nothing) || ~isa(epsilon_xz, Nothing) || ~isa(epsilon_yx, Nothing) || ~isa(epsilon_yz, Nothing) || ~isa(epsilon_zx, Nothing) || ~isa(epsilon_zy, Nothing)
+            throw(ArgumentError("Only epsilon_xx is required for 2D TM fields Ex(y,z), but other components should not be given or should be nothing"))
+        end
         if xBC != nothing
             @warn "Only yBC and zBC are required for 2D TM fields Ex(y,z). xBC will be ignored."
         end
@@ -165,8 +177,14 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         use_2D_TM = false
     end
  
+    # Check the presence off-diagonal part in epsilon
+    if ~isa(epsilon_xy, Nothing) || ~isa(epsilon_xz, Nothing) || ~isa(epsilon_yx, Nothing) || ~isa(epsilon_yz, Nothing) || ~isa(epsilon_zx, Nothing) || ~isa(epsilon_zy, Nothing)
+        include_off_diagonal_epsilon = true
+    else
+        include_off_diagonal_epsilon = false        
+    end
     
-    if use_2D_TM  # 2D TM field
+    if use_2D_TM # 2D TM field
         # Number of sites in y and z for Ex
         (ny_Ex, nz_Ex) = size(epsilon_xx)
         
@@ -194,7 +212,24 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
         check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
         check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
-
+        if (~isa(epsilon_xy, Nothing) && ~(size(epsilon_xy) == (nx_Ez, ny_Ez, nz_Ex)))
+            throw(ArgumentError("The size of epsilon_xy should be should be (size(epsilon_zz, 1), size(epsilon_zz, 2), size(epsilon_xx, 3)) = ($(size(epsilon_zz, 1)), $(size(epsilon_zz, 2)), $(size(epsilon_xx, 3)))."))
+        end
+        if (~isa(epsilon_xz, Nothing) && ~(size(epsilon_xz) == (nx_Ey, ny_Ex, nz_Ey)))
+            throw(ArgumentError("The size of epsilon_xz should be should be (size(epsilon_yy, 1), size(epsilon_xx, 2), size(epsilon_yy, 3)) = ($(size(epsilon_yy, 1)), $(size(epsilon_xx, 2)), $(size(epsilon_yy, 3)))."))
+        end
+        if (~isa(epsilon_yx, Nothing) && ~(size(epsilon_yx) == (nx_Ez, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of epsilon_yx should be should be (size(epsilon_zz, 1), size(epsilon_zz, 2), size(epsilon_yy, 3)) = ($(size(epsilon_zz, 1)), $(size(epsilon_zz, 2)), $(size(epsilon_yy, 3)))."))
+        end
+        if (~isa(epsilon_yz, Nothing) && ~(size(epsilon_yz) == (nx_Ey, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of epsilon_yz should be should be (size(epsilon_yy, 1), size(epsilon_xx, 2), size(epsilon_xx, 3)) = ($(size(epsilon_yy, 1)), $(size(epsilon_xx, 2)), $(size(epsilon_xx, 3)))."))
+        end
+        if (~isa(epsilon_zx, Nothing) && ~(size(epsilon_zx) == (nx_Ey, ny_Ez, nz_Ey)))
+            throw(ArgumentError("The size of epsilon_zx should be should be (size(epsilon_yy, 1), size(epsilon_zz, 2), size(epsilon_yy, 3)) = ($(size(epsilon_yy, 1)), $(size(epsilon_zz, 2)), $(size(epsilon_yy, 3)))."))
+        end
+        if (~isa(epsilon_zy, Nothing) && ~(size(epsilon_zy) == (nx_Ez, ny_Ex, nz_Ex)))
+            throw(ArgumentError("The size of epsilon_zy should be should be (size(epsilon_zz, 1), size(epsilon_xx, 2), size(epsilon_xx, 3)) = ($(size(epsilon_zz, 1)), $(size(epsilon_xx, 2)), $(size(epsilon_xx, 3)))."))
+        end
         # Total number of grid points for Ex, Ey, and Ez    
         nt_Ex = nx_Ex*ny_Ex*nz_Ex
         nt_Ey = nx_Ey*ny_Ey*nz_Ey
@@ -202,7 +237,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
     end
 
     # Estimate background permittivity, used to assign default sigma_max_over_omega for PML
-    if use_2D_TM  # 2D TM field
+    if use_2D_TM # 2D TM field
         epsilon_bg_y = [1, 1]
         epsilon_bg_z = [1, 1]
         if yPML[1].npixels != 0 || yPML[2].npixels != 0
@@ -214,7 +249,6 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         end
         if zPML[1].npixels != 0 || zPML[2].npixels != 0
             epsilon_bg_z = real(vcat(mean(epsilon_xx[:,1]), mean(epsilon_xx[:,end])))
-            # Make sure that the two sides are the same when the system is periodic; this ensures that the s-factor is continuous across the periodic boundary.
             if isa(zBC, Number) || zBC == "periodic"
                 epsilon_bg_z = mean(epsilon_bg_z)*[1, 1]
             end
@@ -223,7 +257,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         # Set default values for PML parameters
         yPML = set_PML_params(yPML, k0dx, epsilon_bg_y, "y")  
         zPML = set_PML_params(zPML, k0dx, epsilon_bg_z, "z")
-    else  # 3D case
+    else # 3D case
         epsilon_bg_x_Ex = [1, 1]
         epsilon_bg_y_Ey = [1, 1]
         epsilon_bg_z_Ez = [1, 1]
@@ -253,7 +287,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         zPML = set_PML_params(zPML, k0dx, epsilon_bg_z_Ez, "z")  
     end
     
-    # Build the first derivative and use Kronecker outer product to go from 1D to 2D or 3D
+    # Build the first derivative and use Kronecker outer product to go from 1D to 2D or from 1D to 3D
     if use_2D_TM
         # Build the first derivative and average matrices on E, such that
         #   ddx_E*f = df/dx
@@ -294,22 +328,32 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
             syz_E = sy_E.*reshape(sz_E, 1, :)
             A = - kron(ddz_H*ddz_E, spdiagm(ny_Ex, ny_Ex, sy_E)) - kron(spdiagm(nz_Ex, nz_Ex, sz_E), ddy_H*ddy_E) - spdiagm(nt_Ex, nt_Ex, (k0dx^2)*(syz_E[:].*epsilon_xx[:]))
         end
-    else
-        # Build the first derivatives in 1D, such that ddx*f = df/dx, ddy*f = df/dy, ddz*f = df/dz (ignoring dx factor)
-        # Later we will use Kronecker outer product to go from 1D to 3D.    
-        # ddx_HzEy: x-derivative operates on Ey producing Hz
-        # sx_Ey: coordinate-stretching factor for Ey along x-direction
-        # sx_Hz: coordinate-stretching factor for Hz along x-direction
+    else               
+        # Build the first derivatives in 1D, such that ddx*f = df/dx, ddy*f = df/dy, ddz*f = df/dz
+        # Later we will use Kronecker outer product to go from 1D to 3D. 
+        # The operator notations follow
+        #   ddx_HzEy: x-derivative operates on Ey producing Hz
+        #   avg_x_Ey: average of Ey among two neighboring pixels along x-direction
+        #   sx_Ey: coordinate-stretching factor for Ey along x-direction
+        #   sx_Hz: coordinate-stretching factor for Hz along x-direction
         # ddx_HyEz = ddx_HzEy, sx_Ez = sx_Ey, sx_Hy = sx_Hz, because Ez(Hy) and Ey(Hz)
         # share the same x-coordinate inside same Yee-cell. The same reason applies to others. 
         # We defer three of the derivatives to later
-        (ddx_HzEy, _, sx_Ey, sx_Hz, ind_xPML_E) = build_ddx_E(nx_Ey, xBC, xPML, "x") 
+        (ddx_HzEy, avg_x_Ey, sx_Ey, sx_Hz, ind_xPML_E) = build_ddx_E(nx_Ey, xBC, xPML, "x") 
         #ddx_HyEz = ddx_HzEy
-        (ddy_HxEz, _, sy_Ez, sy_Hx, ind_yPML_E) = build_ddx_E(ny_Ez, yBC, yPML, "y")
+        (ddy_HxEz, avg_y_Ez, sy_Ez, sy_Hx, ind_yPML_E) = build_ddx_E(ny_Ez, yBC, yPML, "y")
         #ddy_HzEx = ddy_HxEz
-        (ddz_HyEx, _, sz_Ex, sz_Hy, ind_zPML_E) = build_ddx_E(nz_Ex, zBC, zPML, "z")
+        (ddz_HyEx, avg_z_Ex, sz_Ex, sz_Hy, ind_zPML_E) = build_ddx_E(nz_Ex, zBC, zPML, "z")
         #ddz_HxEy = ddz_HyEx
 
+        avg_x_Ex = build_ave_x_Ex(nx_Ex, xBC, "x") 
+        avg_y_Ey = build_ave_x_Ex(ny_Ey, yBC, "y")
+        avg_z_Ez = build_ave_x_Ex(nz_Ez, zBC, "z")
+        
+        avg_x_Ez = avg_x_Ey
+        avg_y_Ex = avg_y_Ez
+        avg_z_Ey = avg_z_Ex
+        
         # The derivative matrices on H
         # We need sparse() to force datatype conversion.
         ddx_EyHz = sparse(-ddx_HzEy'); #ddx_EzHy = sparse(-ddx_HyEz')
@@ -361,8 +405,8 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         Dz_EyHx = kron(ddz_EyHx, kron(sparse(I,ny_Ey,ny_Ey), sparse(I,nx_Ey,nx_Ey)))
 
         # Construct curl_E and curl_H   
-        # curl_E: curl operator operates on E-field producing H-field.  
-        # curl_H: curl operator operates on H-field producing E-field.      
+        # curl_E: curl operator matrix operates on E-field producing H-field.  
+        # curl_H: curl operator matrix operates on H-field producing E-field.      
         curl_E = vcat(hcat(spzeros(nt_Hx, nt_Ex),     -Dz_HxEy,               Dy_HxEz),
                       hcat(     Dz_HyEx,          spzeros(nt_Hy, nt_Ey),     -Dx_HyEz),
                       hcat(    -Dy_HzEx,               Dx_HzEy,          spzeros(nt_Hz, nt_Ez)))   
@@ -371,9 +415,41 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
                       hcat(    -Dy_EzHx,               Dx_EzHy,          spzeros(nt_Ez, nt_Hz)))    
 
         # Construct the vectorial Maxwell matrix A
-        epsilon = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
-        A = curl_H*curl_E-(k0dx)^2*epsilon
+        epsilon_diagonal = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
+        A = curl_H*curl_E-(k0dx)^2*epsilon_diagonal
 
+        # Construct the off-diagonal part from the the relative permittivity tensor epsilon_ij, when i does not equal j
+        if include_off_diagonal_epsilon
+            A_off_diagonal_epsilon = spzeros(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
+            
+            # Following Oskooi et al, Optics Letters 34, 2778 (2009), we average two points of Ey along y, multiply by epsilon_xy to get Ex, and then average two such points along direction x. To summarize: avg_x*epsilon_xy*avg_y*Ey. Similarly for the other terms.
+            if ~isa(epsilon_xy, Nothing)
+                matrix_epsilon_xy = spdiagm(nx_Ez*ny_Ez*nz_Ex, nx_Ez*ny_Ez*nz_Ex, epsilon_xy[:])
+                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] + kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_x*epsilon_xy*avg_y*Ey
+            end
+            if ~isa(epsilon_xz, Nothing)
+                matrix_epsilon_xz = spdiagm(nx_Ey*ny_Ex*nz_Ey, nx_Ey*ny_Ex*nz_Ey, epsilon_xz[:])
+                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] +  kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_x*epsilon_xz*avg_z*Ez
+            end
+            if ~isa(epsilon_yx, Nothing)
+                matrix_epsilon_yx = spdiagm(nx_Ez*ny_Ez*nz_Ey, nx_Ez*ny_Ez*nz_Ey, epsilon_yx[:])
+                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] +  kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_y*epsilon_yx*avg_x*Ex
+            end
+            if ~isa(epsilon_yz, Nothing)
+                matrix_epsilon_yz = spdiagm(nx_Ey*ny_Ex*nz_Ex, nx_Ey*ny_Ex*nz_Ex, epsilon_yz[:])
+                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] + kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_y*epsilon_yz*avg_z*Ez
+            end
+            if ~isa(epsilon_zx, Nothing)
+                matrix_epsilon_zx = spdiagm(nx_Ey*ny_Ez*nz_Ey, nx_Ey*ny_Ez*nz_Ey, epsilon_zx[:])
+                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] +  kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_z*epsilon_zx*avg_x*Ex
+            end
+            if ~isa(epsilon_zy, Nothing)
+                matrix_epsilon_zy = spdiagm(nx_Ez*ny_Ex*nz_Ex, nx_Ez*ny_Ex*nz_Ex, epsilon_zy[:])
+                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] +  kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_z*epsilon_zy*avg_y*Ey
+            end
+            A = A + A_off_diagonal_epsilon
+        end
+        
         if use_UPML
             # sx_Ex = sx_Hz, because Ex and Hz share the same x-coordinate (and sx) inside same Yee-cell.
             # The same reason applies to others.        
@@ -390,7 +466,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
             (sx_Ey_3d,sy_Ey_3d,sz_Ey_3d) = ndgrid(sx_Ey,sy_Ey,sz_Ey)
             (sx_Ez_3d,sy_Ez_3d,sz_Ez_3d) = ndgrid(sx_Ez,sy_Ez,sz_Ez)
             S_E = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat((sy_Ex_3d.*sz_Ex_3d./sx_Ex_3d)[:], (sx_Ey_3d.*sz_Ey_3d./sy_Ey_3d)[:], (sx_Ez_3d.*sy_Ez_3d./sz_Ez_3d)[:]))
-            A = S_E*A
+            A = S_E*A            
         end
     end
     
@@ -400,7 +476,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
     
     if (~use_2D_TM && isa(xBC, Number) && xBC != 0 && xBC != pi && (nx_Ex > 1 || ny_Ex > 1 || nz_Ex > 1)) || 
        (isa(yBC, Number) && yBC != 0 && yBC != pi && ((use_2D_TM && ny_Ex > 1) || (~use_2D_TM && (nx_Ey > 1 || ny_Ey > 1 || nz_Ey > 1)))) ||
-       (isa(zBC, Number) && zBC != 0 && zBC != pi && ((use_2D_TM && nz_Ex > 1) || (~use_2D_TM && (nx_Ez > 1 || ny_Ez > 1 || nz_Ez > 1))))        
+       (isa(zBC, Number) && zBC != 0 && zBC != pi && ((use_2D_TM && nz_Ex > 1) || (~use_2D_TM && (nx_Ez > 1 || ny_Ez > 1 || nz_Ez > 1))))   
        # Bloch periodic boundary condition with k_B*periodicity != 0 or pi breaks the symmetry of A because its ddx is complex-valued, except when there is only one pixel.
         is_symmetric_A = false
     elseif (~use_2D_TM && (xPML[1].npixels != 0 || xPML[2].npixels != 0 || yPML[1].npixels != 0 || yPML[2].npixels != 0 || zPML[1].npixels != 0 || zPML[2].npixels != 0)) || (use_2D_TM && ~use_UPML && (yPML[1].npixels != 0 || yPML[2].npixels != 0 || zPML[1].npixels != 0 || zPML[2].npixels != 0))
@@ -414,31 +490,113 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
     end
 end
 
-
 """
- MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator for 2D TM waves.
-   A = mesti_build_fdfd_matrix(epsilon_xx, k0dx, yBC, zBC, yPML, zPML, use_UPML)
-       returns A as a sparse matrix representing wave operator [- (d/dy)^2 - (d/dz)^2 - k0^2*epsilon(y,z)]*(dx^2)
-       for the Ex(y,z) component of transverse-magnetic (TM) fields (Ex, Hy, Hz),
-       discretized on a square grid with grid size dx through center difference.
-       Matrix A has size [ny_Ex*nz_Ex, ny_Ex*nz_Ex].
-   
-    Here are the differences between 3D and 2D TM versions
+    MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator for 2D TM waves.
+       A = mesti_build_fdfd_matrix(epsilon_xx, k0dx, yBC, zBC, yPML, zPML, use_UPML)
+           returns A as a sparse matrix representing wave operator [- (d/dy)^2 - (d/dz)^2 - k0^2*epsilon(y,z)]*(dx^2)
+           for the Ex(y,z) component of transverse-magnetic (TM) fields (Ex, Hy, Hz),
+           discretized on a square grid with grid size dx through center difference.
+           Matrix A has size [ny_Ex*nz_Ex, ny_Ex*nz_Ex].   
+        Here are the differences between 3D and 2D TM versions
+           epsilon_xx (matrix; required):
+              epsilon_xx is a ny_Ex-by-nz_Ex matrix (real or complex)
+              discretizing the relative permittivity profile on Ex-sites. ny_Ex/nz_Ex 
+              is the total number of grids for Ex in y/z-direction.
+           A (sparse matrix):
+              nt_Ex-by-nt_Ex sparse matrix representing the 2D FDFD operator. 
+              nt_Ex = ny_Ex*nz_Ex is the total number of grids for Ex.
+
+       === Input Arguments ===
        epsilon_xx (matrix; required):
           epsilon_xx is a ny_Ex-by-nz_Ex matrix (real or complex)
-          discretizing the relative permittivity profile on Ex-sites. ny_Ex/nz_Ex 
-          is the total number of grids for Ex in y/z-direction.
+          discretizing the relative permittivity profile epsilon_xx on Ex-sites.
+          The notation ni_Ej is the total number of grids for Ej in i-direction.
+       k0dx (numeric scalar, real or complex; required):
+          Normalized frequency k0*dx = (2*pi/vacuum_wavelength)*dx.
+       yBC (character vector or numeric scalar; required):
+             Boundary condition (BC) at the two ends in y direction, effectively
+                        Ex(n,m,l) at m=0 and m=ny_Ex+1.    
+             one pixel beyond the computation domain. Available choices are:
+               "periodic" - Ex(m+ny_Ex,l) = Ex(m,l),
+               "PEC"      - Ex(0,l) = Ex(ny_Ex,l) = 0,
+               "PMC"      - Ex(0,l) = Ex(1,l); Ex(ny_Ex+1,l) = Ex(ny_Ex,l),
+               "PECPMC"   - Ex(0,l) = 0; Ex(ny_Ex+1,m,l) = Ex(ny_Ex,m,l),
+               "PMCPEC"   - Ex(0,l) = Ex(1,l); Ex(ny_Ex+1,m,l) = 0,
+             where PEC stands for perfect electric conductor and PMC stands for perfect
+             magnetic conductor.
+             When yBC is a numeric scalar, the Bloch periodic boundary condition is
+          used with Ex(m+ny_Ex,l) = Ex(m,l)*exp(1i*yBC); in other words, 
+          yBC = ky_B*ny_Ex*dx = ky_B*Lambda where ky_B is the Bloch wave number and 
+          Lambda = ny_Ex*dx is the periodicity in y.
+       zBC (character vector or numeric scalar; required):
+          Boundary condition in z direction, analogous to yBC.    
+       yPML (a two-element PML vector; optional):
+          Parameters for perfectly matched layer (PML) in y direction.
+          xPML = [PML_left, PML_right] 
+          If users do not want to put PML on either side, just set the field "npixels" = 0.
+          For example, PML_left.npixels = 0: no PML on the left.
+          In each case, PML is a PML structure with the following fields:
+             npixels (non-negative integer scalar; required): Number of PML pixels.
+                Note this is within syst.epsilon or syst.inv_epsilon.
+             power_sigma (non-negative scalar; optional): Power of the polynomial 
+                grading for the conductivity sigma; defaults to 3.
+             sigma_max_over_omega (non-negative scalar; optional):
+                Conductivity at the end of the PML; defaults to
+                   0.8*(power_sigma+1)/(k0dx*sqrt(epsilon_bg)).
+                where epsilon_bg is the average relative permittivity along the
+                last slice of the PML. This is used to attenuate propagating waves.
+             power_kappa (non-negative scalar; optional): Power of the polynomial
+                grading for the real-coordinate-stretching factor kappa; defaults
+                to 3.
+             kappa_max (real scalar no smaller than 1; optional):
+                Real-coordinate-stretching factor at the end of the PML; defaults
+                to 15. This is used to accelerate the attenuation of evanescent 
+                waves. kappa_max = 1 means no real-coordinate stretching.
+             power_alpha (non-negative scalar; optional): Power of the polynomial
+                grading for the CFS alpha factor; defaults to 1.
+             alpha_max_over_omega (non-negative scalar; optional): Complex-
+                frequency-shifting (CFS) factor at the beginning of the PML. This
+                is typically used in time-domain simulations to suppress late-time
+                (low-frequency) reflections. We do not use it by default 
+                (alpha_max_over_omega = 0) since we are in frequency domain.
+          We use the following PML coordinate-stretching factor:
+             s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
+          with
+             sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+             kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+             alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+          where omega is frequency, and p goes linearly from 0 at the beginning of
+          the PML to 1 at the end of the PML. 
+       zPML (a two-element vector; optional):
+          Parameters for PML in z direction, analogous to yPML.
+       use_UPML (logical scalar; optional, defaults to true):
+          Whether to use uniaxial PML (UPML) or not. If not, stretched-coordinate
+          PML (SC-PML) will be used.
+
+       === Output Arguments ===
        A (sparse matrix):
           nt_Ex-by-nt_Ex sparse matrix representing the 2D FDFD operator. 
           nt_Ex = ny_Ex*nz_Ex is the total number of grids for Ex.
+       is_symmetric_A (logical scalar):
+          Whether matrix A is symmetric or not.
+       yPML (two-element vector):
+          PML parameters used on the low and high sides of y direction, if any.
+       zPML (two-element vector):
+          PML parameters used on the low and high sides of z direction, if any.
 """
 function mesti_build_fdfd_matrix(epsilon_xx::Union{Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, k0dx::Union{Float64,ComplexF64}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
-    return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, k0dx, nothing, yBC, zBC, nothing, yPML, zPML, use_UPML)
+    return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, k0dx, nothing, yBC, zBC, nothing, yPML, zPML, use_UPML)
 end
 
+"""
+When only the diagonal terms of epsilon (i.e. epsilon_xx, epsilon_yy, epsilon_zz) are specified in the 3D case.
+"""
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
+    return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, nothing, epsilon_yy, nothing, nothing, nothing, epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
+end
 
 """
-    CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, n_Ez, direction) check the consistency of boundary condition and number of grids in n_Ex, n_Ey, and n_Ez. 
+    CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, n_Ez, direction) is a helper function and checks the consistency of boundary condition and number of grids in n_Ex, n_Ey, and n_Ez. 
 """
 function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int64, n_Ey::Int64, n_Ez::Int64, direction::String)
     if isa(BC, Number)
@@ -462,7 +620,7 @@ function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int
 end
 
 """
-    CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, direction) check the consistency of boundary condition and number of grids in n_Ex, and n_Ey. 
+    CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, direction) is a helper function and checks the consistency of boundary condition and number of grids in n_Ex, and n_Ey. 
 """
 function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int64, n_Ey::Int64, direction::String)
     if isa(BC, Number)
@@ -483,7 +641,7 @@ function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int
 end
 
 """
-    CONVERT_BC is a helper function to handle the case of string in BC
+    CONVERT_BC is a helper function to handles the case of string in BC
 """
 function convert_BC(BC::Union{String,Int64,Float64,ComplexF64},direction::String)
     if isa(BC, Number)
@@ -506,7 +664,7 @@ function convert_BC(BC::Union{String,Int64,Float64,ComplexF64},direction::String
 end
 
 """
-    BUIlD_DDX_E build the first-derivative matrix
+    BUIlD_DDX_E builds the first-derivative matrix
         The following documentation all take direction = x for example and can be analogous to other direction.
         ddx: x-direction first-derivative matrix (acting on Ey or Ez)
         avg: average matrix (acting on Ey, or Ez)
@@ -584,7 +742,6 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
 
     n = n_E  # Also works for 2D TM fields
              # Will add 2D TE case later
-    
     # Cannot have more PML pixels than the number of pixels
     # In our implementation, the conductivity goes to zero at one pixel before PML. So there needs to be at least one more pixel in addition to PML.
     if sum(npixels) >= n
@@ -665,8 +822,60 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
     return ddx, avg, s_E, s_H, ind_PML_E
 end
 
+
 """
-    Set default values for PML parameters
+    BUIlD_AVE_X_EX builds the average matrix that acts on Ex along the x-direction and can be analogous to other direction.
+        avg: average matrix (acting on Ex along x-direction)
+"""
+function build_ave_x_Ex(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, direction::String)
+    
+    # Handle periodic and Bloch periodic boundary (adding the feature later) conditions
+    if isa(BC, Number)
+        kLambda = BC
+        BC = "Bloch"
+        if ~isa(kLambda, Real)
+            @warn "k$(direction)_B*periodicity = $(real(kLambda)) + 1im*$(imag(kLambda)) is a complex number."
+        end
+    elseif BC == "periodic"
+        kLambda = 0
+        BC = "Bloch"
+    end
+
+    # Build the first-derivative matrix and the average matrix on E
+    # f = [f(1), ..., f(n_E)].' with f = Ey or Ez, on integer sites
+    # df = (df/dx)*dx, proportional to Hy or Hz, on half-integer sites
+    # avg_f = average of f between two neighboring sites, on half-integer sites
+    if BC == "Bloch"
+        # f(n_E+1) = f(1)*exp(1i*kLambda); f(0) = f(n_E)*exp(-1i*kLambda)
+        # avg*f = [avg_f(1.5), ..., avg_f(n_E+0.5)].'
+        avg = spdiagm(n_E, n_E, +1 => ones(n_E-1)/2, 0 => ones(n_E)/2, 1-n_E => exp(1im*kLambda)*ones(1)/2)
+    elseif BC == "PEC" # PEC on both sides
+        # f(0) = f(1); f(n_E+1) = f(n_E)
+        # avg*f = [avg_f(1.5), ..., avg_f(n_E-0.5)].'; exclude avg_f(0.5) and avg_f(n_E+0.5)
+        avg = spdiagm(n_E-1, n_E, +1 => ones(n_E-1)/2, 0 => ones(n_E-1)/2)
+    elseif BC == "PMC" # PMC on both sides
+        # f(0) = f(n_E+1) = 0
+        # avg*f = [avg_f(0.5), ..., avg_f(n_E+0.5)].'
+        avg = spdiagm(n_E+1, n_E, 0 => ones(n_E)/2, -1 => ones(n_E)/2)        
+    elseif BC == "PECPMC" # PEC on the low side, PMC on the high side
+        # f(0) = f(1); f(n_E+1) = 0
+        # avg*f = [avg_f(1.5), ..., avg_f(n_E+0.5)].'; exclude avg_f(0.5)
+        avg = spdiagm(n_E, n_E, +1 => ones(n_E-1)/2, 0 => ones(n_E)/2)
+    elseif BC == "PMCPEC" # PMC on the low side, PEC on the high side
+        # f(0) = 0; f(n_E+1) = f(n_E)
+        # avg*f = [avg_f(0.5), ..., avg_f(n_E-0.5)].'; we exclude avg_f(n_E+0.5)
+        avg = spdiagm(n_E, n_E, 0 => ones(n_E)/2, -1 => ones(n_E-1)/2)
+    else
+        throw(ArgumentError("Input argument $(direction)BC = \"$(BC)\" is not a supported option."))              
+    end
+
+    return avg
+end
+
+
+
+"""
+    SET_PML_PARAMS sets default values for PML parameters
 """
 function set_PML_params(pml::Vector{PML}, k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Vector{Int64},Vector{Float64}}, direction::String)
     
