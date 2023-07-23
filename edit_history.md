@@ -1,3 +1,8 @@
+### 20230723 Summary:
+
+1. Add more comments
+2. Add the off-diagonal terms of the epsilon feature.
+
 ### 20230525 Summary:
 
 1. Let the opts.symmetrize_K feature available for mesti2s() and mesti() for 2D TM cases.
