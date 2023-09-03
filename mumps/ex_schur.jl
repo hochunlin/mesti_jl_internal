@@ -19,4 +19,4 @@ set_job!(id,2); #Specify that Mumps will perform a factorization.
 invoke_mumps!(id); #Perform the factorization.
 S = get_schur_complement(id); #Take the Schur Complement.
 norm(D - C*A⁻¹*B - S) #Check the error of the Schur Complement.
-println("norm(D - C*A⁻¹*B - S)=", D - C*A⁻¹*B - S")
+println("norm(D - C*A⁻¹*B - S)=", D - C*A⁻¹*B - S)
