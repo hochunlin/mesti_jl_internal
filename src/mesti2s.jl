@@ -112,7 +112,7 @@ end
           syst.epsilon_xx (numeric array or matrix, real or complex):
              For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
              profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
-             epsilon_xx(n,m,l) averaged over a square with area (syst.dx)^2 centered at
+             epsilon_xx(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
              the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
              Outside the scattering region (with z < 0 and z > H), epsilon_xx(x,y,z)
              is given by scalars syst.epsilon_low and syst.epsilon_high for the
@@ -123,7 +123,7 @@ end
           syst.epsilon_xy (numeric array or matrix, real or complex, optional):
              For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
              profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
-             epsilon_xy(n,m,l) averaged over a square with area (syst.dx)^2 centered at
+             epsilon_xy(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
              the low corner on the Yee lattice (n,m,l).
           syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
              Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
@@ -182,8 +182,8 @@ end
                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
                "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
                             Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ey(nx_Ez,m,l),    
-               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
+                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
+               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
              where PEC stands for perfect electric conductor and PMC stands for perfect
