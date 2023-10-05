@@ -39,8 +39,8 @@ LPORD    = -L$(LPORDDIR) -lpord
 # If METIS has been installed, you can uncomment the following two lines to specify 
 # your own path of METIS.
 # The following is the path of the METIS on Hsu's group in USC Discovery cluster:
-#LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
-#IMETIS    = -I/project/cwhsu_38/shared/software/metis-5.1.0/include
+#LMETISDIR = /usr/local/lib
+#IMETIS    = -I/usr/local/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -83,8 +83,7 @@ FPIC_OPT = -fPIC
 SONAME = -soname
 # Adapt/uncomment RPATH_OPT to avoid modifying
 # LD_LIBRARY_PATH in case of shared libraries
-# The following is the path of the MUMPS shared libraries on Hsu's group in USC Discovery cluster:
-RPATH_OPT = -Wl,-rpath,/project/cwhsu_38/shared/software/mumps-5.6.0-par/lib/
+RPATH_OPT = -Wl,-rpath,/home/hclin/MUMPS_5.6.0/lib/
 OUTC    = -o 
 OUTF    = -o 
 # RM : remove files
