@@ -1,4 +1,4 @@
-# Julia Code for Testing MUMPS Solver with Sparse Matrices and Schur Complement in MESTI
+# Julia Code for Testing MUMPS Solver with Sparse Matrices and Schur Complement
 
 # This Julia script demonstrates the usage of the MUMPS solver for solving sparse linear systems,
 # specifically focusing on computing the Schur complement, which MESTI would utilize in APF method.
