@@ -5,14 +5,17 @@
 MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://doi.org/10.1038/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
 Compared to MESTI.m which is a 2D MATLAB version of MESTI, MESTI.jl here uses Julia with single-precision or double-precision arithmetic and considers either full 3D systems 
+
 $$
 \left[ \nabla\times\left( \nabla\times \right) - \frac{\omega^2}{c^2}\bar{\bar{\varepsilon}}(\bf r) \right] {\bf E}(\bf r) = {\bf b}(\bf r),
 $$
+
 or 2D systems in transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) with
 
 $$
 \left[ -\frac{\partial^2}{\partial x^2} -\frac{\partial^2}{\partial y^2} - \frac{\omega^2}{c^2}\varepsilon(x,y) \right] E_z(x,y)= b(x,y),
 $$
+
 where (**b**(**r**) or *b*(*x*,*y*)) is the source profile.
 
 A 3D vectorial version written in Julia, to be named MESTI.jl, is under development and will be released in the near future. In addition to 3D vectorial support, MESTI.jl will also provide MPI parallelization, subpixel smoothing, and single-precision arithmetic.
@@ -22,11 +25,10 @@ MESTI.m is a general-purpose solver with its interface written to provide maxima
  - TM polarization for 2D system.
  - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*(*x*,*y*)), real-valued or complex-valued. The imaginary part of  $\bar{\bar{\varepsilon}}(\bf r)$ describes absorption and linear gain. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) (which can utilize another code SBPSM.jl) before calling MESTI.jl.
  - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
- - Any material dispersion *ε*(*ω*) can be used since this is in frequency domain.
+ - Any material dispersion $\bar{\bar{\varepsilon}}$(*ω*) can be used since this is in frequency domain.
  - Any list of input source profiles (user-specified or automatically built).
  - Any list of output projection profiles (or no projection, in which case the complete field profiles are returned).
  - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
- - Exact outgoing boundaries in two-sided or one-sided geometries in 2D TM.
  - Real-valued or complex-valued frequency *ω*.
  - Automatic or manual choice between APF, conventional direct solver (*e.g.*, to compute the full field profile) as the solution method.
  - Linear solver using MUMPS (requires installation) or the built-in routines in Julia (which uses UMFPACK).
@@ -56,7 +58,7 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 ## Installation
 
-No installation is required for MESTI itself. To use, simply download it and add the <code>MESTI.jl/src</code> folder ......................................................
+No installation is required for MESTI itself. To use, simply download it.
 
 However, to use the APF method, the user needs to install the parallel version of [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) and its Julia interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
