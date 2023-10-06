@@ -6,8 +6,7 @@
 ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
 
 # Import necessary packages
-using MUMPS3
-using MPI, LinearAlgebra, SparseArrays, Test
+using MUMPS3, MPI, LinearAlgebra, SparseArrays, Test
 
 # Check if MPI is initialized, and initialize if not
 MPI.Initialized() ? nothing : MPI.Init()

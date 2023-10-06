@@ -1,7 +1,14 @@
 ###### Update on 20230719
+#=
 include("setup_longitudinal.jl")
 include("build_transverse_function_1d.jl")
-include("mesti.jl")
+include("mesti_main.jl")
+=#
+
+export Channels_two_sided
+export Channels_one_sided
+
+export mesti_build_channels
 
 abstract type Channels end
 

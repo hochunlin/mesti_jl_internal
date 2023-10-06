@@ -64,7 +64,7 @@ However, to use the APF method, the user needs to install the parallel version o
 
 ## Usage Summary 
 
-The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile *b*(*x*,*y*). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
+The function [<code>mesti(syst, B, C, D)</code>](./src/mesti_main.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile *b*(*x*,*y*). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
 
 The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation.
 Flux normalization in *x* is applied automatically and exactly, so the full scattering matrix is always unitary when *ε*(*x*,*y*) is real-valued. 
@@ -80,7 +80,7 @@ Additional functions that build the input/output matrices for different applicat
 ## Documentation
 
 Detailed documentation is given in comments at the beginning of the function files:
- - [<code>mesti.jl</code>](./src/mesti.jl)
+ - [<code>mesti_main.jl</code>](./src/mesti_main.jl)
  - [<code>mesti2s.jl</code>](./src/mesti2s.jl)
  - [<code>mesti_build_channels.jl</code>](./src/mesti_build_channels.jl)
 

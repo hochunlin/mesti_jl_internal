@@ -2,10 +2,11 @@
 # matrix in a homogeneous space and compare the result with the analytic
 # prediction.
 
-# Include mesti2s.jl
-include("mesti2s.jl")
+# Include MESTI module
+include("MESTI.jl")
+using .MESTI
 # The environmental variable for MUMPS3 (it should be the path to libraries of MUMPS)
-ENV["MUMPS_PREFIX"] = "/project/cwhsu_38/hochunli/carc_help/shared_lib/lib"
+ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0/lib"
 
 # Load the essential modules 
 using MUMPS3 # MUMPS-julia interface

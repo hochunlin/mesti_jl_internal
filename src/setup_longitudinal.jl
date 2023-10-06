@@ -1,4 +1,9 @@
 ###### Update on 20230719
+
+export Side
+
+export setup_longitudinal
+
 mutable struct Side
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}

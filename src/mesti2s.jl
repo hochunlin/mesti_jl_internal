@@ -1,13 +1,21 @@
 ###### Update on 20230721
 
+#=
 using SparseArrays
 using LinearAlgebra
 using Statistics
 using Printf
 using TensorCast
 
-include("mesti.jl")
+include("mesti_main.jl")
 include("mesti_build_channels.jl")
+=#
+
+export channel_type
+export channel_index
+export wavefront
+
+export mesti2s
 
 mutable struct channel_type
     side::String
@@ -42,6 +50,7 @@ mutable struct wavefront
     
     wavefront() = new()
 end   
+
 
 """
     MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.

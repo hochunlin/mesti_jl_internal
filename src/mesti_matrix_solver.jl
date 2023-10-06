@@ -1,9 +1,16 @@
 ###### Update on 20230718
-
+#=
 using SparseArrays
 using LinearAlgebra
 using Statistics
 using Printf
+=#
+
+export Matrices
+export Opts
+export Info
+
+export mesti_matrix_solver!
 
 mutable struct Matrices
     A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Nothing}
@@ -431,12 +438,6 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             str_sym_K = " (symmetric K)"
         end
 
-        # Use AMD by default because it does not require additional efforts to compile METIS
-        if ~isdefined(opts, :use_METIS)
-            opts.use_METIS = false
-        elseif ~isa(opts.use_METIS, Bool)
-            throw(ArgumentError("opts.use_METIS must be a boolean, if given."))   
-        end                            
         if opts.use_METIS
             str_ordering = " with METIS ordering"
         else
@@ -762,7 +763,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                 if opts.solver == "MUMPS"
                     set_job!(id,3) # what to do: solve
                     # Note that we need to specify that the RHS is sparse first, and then provide RHS
-                    set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
+                    set_icntl!(id,20,1;displaylevel=0) # tell MUMPS that the RHS is sparse
                     if opts.use_single_precision_MUMPS
                         # Convert the double-precision to single-precision
                         if eltype(matrices.B) == ComplexF64
@@ -809,7 +810,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                         in_list = k:min(k+opts.nrhs-1, M_in)
                         set_job!(id,3)  # what to do: solve
                         # Note that we need to specify that the RHS is sparse first, and then provide RHS
-                        set_icntl!(id,20,1) # tell MUMPS that the RHS is sparse
+                        set_icntl!(id,20,1;displaylevel=0) # tell MUMPS that the RHS is sparse
                         if opts.use_single_precision_MUMPS
                             # Convert the double-precision to single-precision
                             if eltype(matrices.B) == ComplexF64
@@ -946,30 +947,31 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     MPI.Initialized() ? nothing : MPI.Init()
     id = Mumps(A, sym=sym, par=par) # get the default parameters    
 
+    set_icntl!(id,4,0;displaylevel=0); # Turn off diagnostic messages 
     if opts.verbal_solver
         # Output to standard output stream, which is labeled by 6 in fortran
         # Note that the output behavior depends on the compiler used to compile MUMPS:
         # - ifortran will let output go to the standard output
         # - other compilers like gfortran will sometimes write output to a file fort.6, sometimes give nothing
-        set_icntl!(id,3,6)
+        set_icntl!(id,3,6;displaylevel=0)
     else
-        set_icntl!(id,3,0);  # turn off output
+        set_icntl!(id,3,0;displaylevel=0)  # turn off output
     end
 
     # Set the number of OpenMP threads, if given (only avaiable after MUMPS 5.2.0)
     if isdefined(opts, :nthreads_OMP)
-        set_icntl!(id,16,opts.nthreads_OMP)
+        set_icntl!(id,16,opts.nthreads_OMP;displaylevel=0)
     end 
     
     # Activate the BLR, if given
     if opts.use_BLR
-        set_icntl!(id,35,2)
-        set_cntl!(id,7,opts.threshold_BLR)
+        set_icntl!(id,35,2;displaylevel=0)
+        set_cntl!(id,7,opts.threshold_BLR;displaylevel=0)
         if isdefined(opts, :icntl_36)
-            set_icntl!(id,36,opts.icntl_36)
+            set_icntl!(id,36,opts.icntl_36;displaylevel=0)
         end
         if isdefined(opts, :icntl_38)
-            set_icntl!(id,38,opts.icntl_38)            
+            set_icntl!(id,38,opts.icntl_38;displaylevel=0)            
         end        
     end
     
@@ -983,13 +985,13 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
         set_schur_centralized_by_column!(id, ind_schur)
 
         # Discard factors, since all we need is the Schur complement
-        set_icntl!(id,31,1)
+        set_icntl!(id,31,1;displaylevel=0)
     elseif opts.iterative_refinement
-        set_cntl!(id,10,1000)# Enable iterative refinement and set maximum number of iterations; usually 1-2 iterations is sufficient
+        set_cntl!(id,10,1000;displaylevel=0)# Enable iterative refinement and set maximum number of iterations; usually 1-2 iterations is sufficient
         # Lower the stopping criterion (omega_1 + omega_2 < id.cntl[2]) for iterative refinement to machine precision.
         # Note that iterative refinement will also stop when omega_1 + omega_2 does not decrease by at least a factor of 5.
         #@printf("Changing stopping criterion of iterative refinement from id.cntl[2] = %g to %g\n", id.cntl[2], 1e-16);        
-        set_cntl!(id,2,1e-16)      
+        set_cntl!(id,2,1e-16;displaylevel=0)      
     end
 
     ## Analysis stage

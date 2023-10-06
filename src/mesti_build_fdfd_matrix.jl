@@ -1,9 +1,15 @@
 ###### Update on 20230613 for off-diagonal terms
 ###### Update on 20230717
+#=
 using LinearAlgebra
 using SparseArrays
 using Statistics
 using LazyGrids
+=#
+
+export PML
+
+export mesti_build_fdfd_matrix
 
 mutable struct PML
     npixels::Integer
@@ -29,6 +35,7 @@ mutable struct PML
     PML(n) = (pml = new(); pml.npixels=n; pml.power_sigma=3.0; pml.alpha_max_over_omega=0.0; 
               pml.power_alpha=1.0; pml.kappa_max=15.0; pml.power_kappa=3.0; return pml) 
 end
+
 """
     MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator in 3D.
        A = mesti_build_fdfd_matrix(epsilon_xx, epsilon_xy, epsilon_xz, epsilon_yx, epsilon_yy, epsilon_yz, epsilon_zx, epsilon_zy, epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML) returns A as a sparse matrix representing 
