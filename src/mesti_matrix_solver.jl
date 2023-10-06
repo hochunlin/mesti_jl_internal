@@ -1,4 +1,4 @@
-###### Update on 20230718
+###### Update on 20231005
 #=
 using SparseArrays
 using LinearAlgebra
@@ -89,20 +89,20 @@ end
 
 """
     MESTI_MATRIX_SOLVER! Computes matrices.C*inv(matrices.A)*matrices.B or inv(matrices.A)*matrices.B.
-       (X, info) = MESTI_MATRIX_SOLVER(matrices), when matrices.A != nothing, matrices.B != nothing, 
+       (X, info) = MESTI_MATRIX_SOLVER!(matrices), when matrices.A != nothing, matrices.B != nothing, 
        and matrices.C = nothing, returns X = inv(matrices.A)*matrices.B for sparse matrix matrices.A 
        and (sparse or dense) matrix matrices.B, with the information of the computation 
        returned in structure "info".
     
-       (S, info) = MESTI_MATRIX_SOLVER(matrices), when matrices.A != nothing, matrices.B != nothing, 
+       (S, info) = MESTI_MATRIX_SOLVER!(matrices), when matrices.A != nothing, matrices.B != nothing, 
        and matrices.C != nothing, returns S = matrices.C*inv(matrices.A)*matrices.B 
        where matrix matrices.C is either sparse or dense. When the MUMPS3 is available, this is done by 
        computing the Schur complement of an augmented matrix K = [matrices.A,matrices.B;matrices.C,0] 
        through a partial factorization.
     
-       (X, info) = MESTI_MATRIX_SOLVER(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
+       (X, info) = MESTI_MATRIX_SOLVER!(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
        and matrices.C = nothing, and
-       (S, info) = MESTI_MATRIX_SOLVER(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
+       (S, info) = MESTI_MATRIX_SOLVER!(matrices, opts), when matrices.A != nothing, matrices.B != nothing, 
        and matrices.C != nothing, 
        allow detailed options to be specified with structure "opts" of the input arguments.
     
@@ -424,6 +424,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     opts.use_given_ordering = false
     str_ordering = nothing
     str_sym_K = nothing
+    str_MUMPS_precision = nothing
     if opts.solver == "MUMPS"
         # Determine the symmetry of matrix matrices.A if not specified
         # To skip this step (which can be slow), the user should specify opts.is_symmetric_A
