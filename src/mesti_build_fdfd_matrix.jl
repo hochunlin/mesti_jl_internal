@@ -1,4 +1,4 @@
-###### Update on 20231005
+###### Update on 20231007
 #=
 using LinearAlgebra
 using SparseArrays
@@ -431,27 +431,27 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
             # Following Oskooi et al, Optics Letters 34, 2778 (2009), we average two points of Ey along y, multiply by epsilon_xy to get Ex, and then average two such points along direction x. To summarize: avg_x*epsilon_xy*avg_y*Ey. Similarly for the other terms.
             if ~isa(epsilon_xy, Nothing)
                 matrix_epsilon_xy = spdiagm(nx_Ez*ny_Ez*nz_Ex, nx_Ez*ny_Ez*nz_Ex, epsilon_xy[:])
-                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] + kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_x*epsilon_xy*avg_y*Ey
+                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+1):(nt_Ex+nt_Ey)] - (k0dx)^2 * kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_x*epsilon_xy*avg_y*Ey
             end
             if ~isa(epsilon_xz, Nothing)
                 matrix_epsilon_xz = spdiagm(nx_Ey*ny_Ex*nz_Ey, nx_Ey*ny_Ex*nz_Ey, epsilon_xz[:])
-                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] +  kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_x*epsilon_xz*avg_z*Ez
+                A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[1:nt_Ex, (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] - (k0dx)^2 * kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex'))*matrix_epsilon_xz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_x*epsilon_xz*avg_z*Ez
             end
             if ~isa(epsilon_yx, Nothing)
                 matrix_epsilon_yx = spdiagm(nx_Ez*ny_Ez*nz_Ey, nx_Ez*ny_Ez*nz_Ey, epsilon_yx[:])
-                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] +  kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_y*epsilon_yx*avg_x*Ex
+                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), 1:nt_Ex] - (k0dx)^2 * kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_y*epsilon_yx*avg_x*Ex
             end
             if ~isa(epsilon_yz, Nothing)
                 matrix_epsilon_yz = spdiagm(nx_Ey*ny_Ex*nz_Ex, nx_Ey*ny_Ex*nz_Ex, epsilon_yz[:])
-                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] + kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_y*epsilon_yz*avg_z*Ez
+                A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] = A_off_diagonal_epsilon[(nt_Ex+1):(nt_Ex+nt_Ey), (nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez)] - (k0dx)^2 * kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey', sparse(I,nx_Ey,nx_Ey)))*matrix_epsilon_yz*kron(avg_z_Ez, kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez))) # avg_y*epsilon_yz*avg_z*Ez
             end
             if ~isa(epsilon_zx, Nothing)
                 matrix_epsilon_zx = spdiagm(nx_Ey*ny_Ez*nz_Ey, nx_Ey*ny_Ez*nz_Ey, epsilon_zx[:])
-                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] +  kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_z*epsilon_zx*avg_x*Ex
+                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), 1:nt_Ex] - (k0dx)^2 * kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zx*kron(sparse(I,nz_Ex,nz_Ex), kron(sparse(I,ny_Ex,ny_Ex), avg_x_Ex)) # avg_z*epsilon_zx*avg_x*Ex
             end
             if ~isa(epsilon_zy, Nothing)
                 matrix_epsilon_zy = spdiagm(nx_Ez*ny_Ex*nz_Ex, nx_Ez*ny_Ex*nz_Ex, epsilon_zy[:])
-                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] +  kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_z*epsilon_zy*avg_y*Ey
+                A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] = A_off_diagonal_epsilon[(nt_Ex+nt_Ey+1):(nt_Ex+nt_Ey+nt_Ez), (nt_Ex+1):(nt_Ex+nt_Ey)] - (k0dx)^2 * kron(avg_z_Ez', kron(sparse(I,ny_Ez,ny_Ez), sparse(I,nx_Ez,nx_Ez)))*matrix_epsilon_zy*kron(sparse(I,nz_Ey,nz_Ey), kron(avg_y_Ey, sparse(I,nx_Ey,nx_Ey))) # avg_z*epsilon_zy*avg_y*Ey
             end
             A = A + A_off_diagonal_epsilon
         end
