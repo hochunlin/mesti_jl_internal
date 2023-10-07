@@ -6,7 +6,7 @@
 # For example, we can set the number of threads to be two by "$export OMP_NUM_THREADS = 2".
 
 # Include MESTI module
-include("MESTI.jl")
+include("mesti.jl")
 using .MESTI
 # The environmental variable for MUMPS3 (it should be the path to libraries of MUMPS)
 ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0/lib"

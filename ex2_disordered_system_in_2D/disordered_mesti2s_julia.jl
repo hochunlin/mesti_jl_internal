@@ -3,7 +3,7 @@
 # matrix for the s-polarization. We can get the same result from mesti2s.m.
 
 # Include MESTI module
-include("MESTI.jl")
+include("mesti.jl")
 using .MESTI
 # The environmental variable for MUMPS3 (it should be the path to libraries of MUMPS)
 ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0/lib"

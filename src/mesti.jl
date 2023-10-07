@@ -1,4 +1,4 @@
-###### Update on 20231005
+###### Update on 20231007
 module MESTI
 
 using SparseArrays
@@ -7,6 +7,10 @@ using Statistics
 using Printf
 using TensorCast
 using LazyGrids
+if haskey(ENV, "MUMPS_PREFIX")
+    using MUMPS3
+    using MPI
+end
 
 include("build_transverse_function_1d.jl")
 include("mesti_build_fdfd_matrix.jl")

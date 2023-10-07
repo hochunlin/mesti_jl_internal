@@ -1,5 +1,5 @@
 # Include MESTI module
-include("MESTI.jl")
+include("mesti.jl")
 using .MESTI
 using LinearAlgebra, SparseArrays, Test
 
