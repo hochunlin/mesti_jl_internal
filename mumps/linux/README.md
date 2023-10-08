@@ -124,4 +124,4 @@ export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_blacs_intelmpi_lp64.so
 export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_scalapack_lp64.so
 ```
 
-After setting the environment variables and preloading the libraries, we can proceed to run Julia examples calling MUMPS like, [basic_solve.jl](../basic_solve.jl), [schur_complement.jl](../schur_complement.jl), and [schur_implementation_in_MESTI.jl](../schur_implementation_in_MESTI.jl).
+After setting the environment variables and preloading the libraries, we can proceed to run Julia examples calling MUMPS such as, <code>[basic_solve.jl](../basic_solve.jl)</code>, <code>[schur_complement.jl](../schur_complement.jl)</code>, and <code>[schur_implementation_in_MESTI.jl](../schur_implementation_in_MESTI.jl)</code>.

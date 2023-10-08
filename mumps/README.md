@@ -75,9 +75,9 @@ It helps us to add the Julia interface for MUMPS, [MUMPS3](https://github.com/wr
 
 Now, open Julia and run the following test scripts:
 
-- <code>basic_solve.jl</code>
-- <code>schur_complement.jl</code>
-- <code>schur_implementation_in_MESTI.jl</code>
+- <code>[basic_solve.jl](basic_solve.jl)</code>
+- <code>[schur_complement.jl](schur_complement.jl)</code>
+- <code>[schur_implementation_in_MESTI.jl](schur_implementation_in_MESTI.jl)</code>
 
 If any of them does not run successfully, look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
 
