@@ -64,7 +64,7 @@ Follow the standard process to download and install Julia. We can download Julia
 
 where  <code>... </code> is the path to your Julia.
 
-Then run the provided [install_packages.jl](./install_packages.jl)
+Then run the provided <code>[install_packages.jl](./install_packages.jl)</code>
 
     julia install_packages.jl
 
