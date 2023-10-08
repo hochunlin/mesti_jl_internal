@@ -1,3 +1,9 @@
+### 20231008 Summary:
+
+1. Wrap up code in a module called MESTI
+2. Rename mesti.jl to mesti_main.jl
+3. Add testset.
+
 ### 20230723 Summary:
 
 1. Add more comments
