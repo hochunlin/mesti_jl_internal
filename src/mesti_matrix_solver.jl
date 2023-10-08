@@ -439,6 +439,13 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             str_sym_K = " (symmetric K)"
         end
 
+        # Use AMD by default because it does not require additional efforts to compile METIS
+	if ~isdefined(opts, :use_METIS)
+	    opts.use_METIS = false
+	elseif ~isa(opts.use_METIS, Bool)
+	    throw(ArgumentError("opts.use_METIS must be a boolean, if given."))   
+	end                 
+
         if opts.use_METIS
             str_ordering = " with METIS ordering"
         else

@@ -1,9 +1,8 @@
-ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
+#ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
 # Include MESTI module
-include("mesti.jl")
-using .MESTI
-using LinearAlgebra, SparseArrays, Test
-using MAT
+#include("MESTI.jl")
+#using .MESTI
+#using LinearAlgebra, SparseArrays, Test
 
 # Define the size of matrix and the number of RHS
 syst = Syst()
