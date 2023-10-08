@@ -2,15 +2,15 @@
 MESTI.jl uses the parallel version of MUMPS for the augmented partial factorization (APF) method, and optionally for the factorize-and-solve method. Here are the steps to install MUMPS.
 
 ## Download MUMPS
-Go to the [MUMPS website](https://graal.ens-lyon.fr/MUMPS/index.php?page=dwnld) and fill out the download request. The MUMPS maintainers will email you the download link.
+Go to the [MUMPS website](https://graal.ens-lyon.fr/MUMPS/index.php?page=dwnld) and fill out the download request form. The MUMPS maintainers will email you the download link.
 
 ## Prerequisites
-To compile the parallel version of MUMPS, you need compilation tools like <code>make</code>, <code>ar</code>, and <code>ranlib</code>, C and Fortran compilers, BLAS library, LAPACK library, ScaLAPACK library, and MPI libraries. Instructions specific to the operating system are provided below:
+To compile the parallel version of MUMPS, you need compilation tools like <code>make</code>, <code>ar</code>, and <code>ranlib</code>, C and Fortran compilers, BLAS library, LAPACK library, ScaLAPACK library, and MPI library. Instructions specific to the operating system are provided below:
 1. [Linux](./linux)
 2. [macOS](./macOS)
 3. [Windows](./windows)
 
-If you are interested in full 3D systems, we highly recommend you install the [METIS](./windows) program for graph partitioning (not to be confused with MESTI). You can find the installation instructions in the operating system folders. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. In 3D, METIS is strongly recommended, which is much faster than AMD. Overall, which one is better depends on the problem.
+If you are interested in 3D systems or memory usage in 2D systems is important for you, we highly recommend you install the [METIS](https://github.com/scivision/METIS/tree/743ae96033f31907d89c80e3470c0325e9a97f7b) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). You can find the installation instructions in the operating system folders. After installing METIS, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. In 3D, METIS is strongly recommended, which is much faster than AMD. By default, 2D systems use AMD, while 3D systems use METIS (if it is available).
 
 ## Compile MUMPS
 Suppose you downloaded the 5.6.0 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
@@ -20,24 +20,24 @@ cd MUMPS_5.6.0
 ```
 in terminal.
 
-Read the file <code>INSTALL</code>, and copy the closest <code>Makefile.inc</code> file in the <code>Make.inc</code> folder, and modify it to fit your environment and machine. Most importantly, in <code>Makefile.inc</code> you need to specify:
+Read the file <code>INSTALL</code>, copy the closest <code>Makefile.inc</code> file in the <code>Make.inc</code> folder, and modify it to fit your environment and machine. Most importantly, in <code>Makefile.inc</code> you need to specify:
  - <code>CC</code>: the C compiler to use
  - <code>FC</code>: the Fortran compiler to use
  - <code>FL</code>: the Fortran linker to use
  - <code>LAPACK</code>: how the Fortran compiler can link to the LAPACK library
  - <code>SCALAP</code>: how the Fortran compiler can link to the ScaLAPACK library
  - <code>LIBBLAS</code>: how the Fortran compiler can link to the BLAS library
- - <code>RPATH_OPT</code>: the path the shared libraries will be built up, such as ~/Downloads/MUMPS_5.6.1/lib/
+ - <code>RPATH_OPT</code>: the path the shared libraries will be built up, such as <code>/home/hclin/MUMPS_5.6.0/lib/</code>
 
-Note that from our experience, **<code>RPATH_OPT</code>** must be specified to successfully install MUMPS.
+Note that from our experience, <code>RPATH_OPT</code> must be specified to successfully install the parallel version of MUMPS.
 
-With installed METIS, you also need to specify
+If you installed METIS, you also need to specify
  - <code>LMETISDIR</code>: path to the folder where the METIS library is
  - <code>IMETIS</code>: path to the folder where the METIS headers are
 
 and add <code>-Dmetis</code> to <code>ORDERINGSF</code>.
 
-Examples of <code>Makefile.inc</code> are provided below (the macOS and Windows versions would be released soon):
+Examples of <code>Makefile.inc</code> are provided below:
 1. [Linux](./linux/Makefile.inc)
 2. [macOS](./macOS/Makefile.inc)
 3. [Windows](./windows/Makefile.inc)

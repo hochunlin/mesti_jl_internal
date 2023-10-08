@@ -2,6 +2,27 @@
 #  This file is part of MUMPS 5.6.0, released
 #  on Wed Apr 19 15:50:57 UTC 2023
 #
+################################################################################
+#
+#   Makefile.inc.generic
+#
+#   This defines some parameters dependent on your platform; you should
+#   look for the approriate file in the directory ./Make.inc/ and copy it
+#   into a file called Makefile.inc. For example, from the MUMPS root
+#   directory, use
+#   "cp Make.inc/Makefile.inc.generic ./Makefile.inc"
+#   (see the main README file for details)
+#
+#   If you do not find any suitable Makefile in Makefile.inc, use this file:
+#   "cp Make.inc/Makefile.inc.generic ./Makefile.inc" and modify it according
+#   to the comments given below. If you manage to build MUMPS on a new platform,
+#   and think that this could be useful to others, you may want to send us
+#   the corresponding Makefile.inc file.
+#
+################################################################################
+
+
+########################################################################
 #Begin orderings
 
 # NOTE that PORD is distributed within MUMPS by default. It is recommended to
@@ -106,7 +127,7 @@ RANLIB  = echo
 # installed. It is set to the default install directory for Intel MKL.
 
 # Default install directory for Intel MKL on a local machine is following:
-# MKLROOT=/opt/intel/oneapi/mkl
+# MKLROOT=/opt/intel/oneapi/mkl/latest
 # However, in different Linux clusters, the Intel MKL may be put in different
 # path. If you are using in Lmod module system and Intel MKL are installed,
 # you can use "module load intel", "module load intel-mkl", and "echo $MKLROOT".
@@ -115,7 +136,7 @@ RANLIB  = echo
 #
 # If Lmod module system is not used in your cluster, then you can also try to
 # find the path like ".../mkl", where "..." is the Intel oneapi directory path.
-# You can specify the MKLROOT by "source .../mkl/bin/mklvars.sh intel64"
+# You can specify the MKLROOT by "source /opt/intel/oneapi/mkl/latest/env/vars.sh"
 # and type "echo $MKLROOT". MKLROOT path should be printed out.
 #
 # If you still cannot figure out the path of the libraries, you may need to

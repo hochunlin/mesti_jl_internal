@@ -4,9 +4,9 @@ We need the following tools before compiling MUMPS on Linux.
 
 ### Compilers 
 
-The compilation of MUMPS requires both C and Fortran compilers. Although both C and Fortran compilers are included in GNU Compiler Collection (GCC), we recommend using Intel [C](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html#gs.gtmcma), [Fortran](https://www.intel.com/content/www/us/en/developer/tools/oneapi/fortran-compiler.html#gs.gtma2f) compilers, and [MPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.gtmtr3) libraries.
+The compilation of MUMPS requires both C and Fortran compilers. Although both C and Fortran compilers are included in GNU Compiler Collection (GCC), we recommend using Intel [C compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html#gs.gtmcma), [Fortran compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/fortran-compiler.html#gs.gtma2f), and [MPI library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.gtmtr3).
 
-On a Linux cluster, if Intel compilers are not loaded, we may load them on a Lmod module system by typing
+On a Linux cluster, if Intel compilers and MPI library are not loaded, we may load them on a Lmod module system by typing
 ```shell
 module load intel
 module load intel intel-mpi
@@ -18,7 +18,7 @@ source  .../intel/oneapi/mpi/latest/env/vars.sh
 ```
 where `...` is the path to Intel folder.
 
-On a local machine, we can download the Intel installer [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/hpc-toolkit.html). Make sure to use custom installation and choose the following: 
+On a local Linux machine, we can download the Intel installer [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/hpc-toolkit.html). Make sure to use custom installation and choose the following: 
 	(a) Intel Inspector
 	(b) Intel MPI Library
 	(c) Intel oneAPI DPC++/C++ Compiler \& Intel C++ Compiler Classic
@@ -52,7 +52,7 @@ echo $MKLROOT
 If Lmod module system is not used in our cluster, then we can also try to find the path like `.../intel/oneapi/mkl`, where `...` is the Intel directory path. Then we can assign the `MKLROOT` by 
 
 ```shell
-source .../intel/oneapi/mkl/latest/env/vars.sh
+source .../mkl/bin/mklvars.sh intel64
 echo $MKLROOT
 ```
 
@@ -69,14 +69,12 @@ echo $MKLROOT
 
 `MKLROOT`  is assigned and should be printed out.
 
-
-
 Note that MUMPS supports shared memory, multithreaded parallelism through the use of multithreaded
 BLAS libraries. We provide `Makefile.inc` on Linux and they activate the OpenMP feature. We can use the environment variable `OMP_NUM_THREADS` to set the number of threads.
 
 ### METIS
 
-In 3D system, because METIS ordering is more efficient than AMD ordering, we should install the METIS program for graph partitioning (not to be confused with MESTI).  We can use [METIS](https://github.com/scivision/METIS/tree/743ae96033f31907d89c80e3470c0325e9a97f7b) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). We can install them in the following steps:
+In 3D system, because METIS ordering is more efficient than AMD ordering, we should install the METIS program for graph partitioning (not to be confused with MESTI).  We can use [METIS](https://github.com/scivision/METIS/tree/743ae96033f31907d89c80e3470c0325e9a97f7b) (version 5.1.0) program for graph partitioning. We can install them in the following steps:
 
 (a) Downloading METIS (version 5.1.0)
 
@@ -126,4 +124,4 @@ export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_blacs_intelmpi_lp64.so
 export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_scalapack_lp64.so
 ```
 
-After setting the environment variables and preloading the libraries, we can proceed to run examples.
+After setting the environment variables and preloading the libraries, we can proceed to run Julia examples calling MUMPS like, [basic_solve.jl](../basic_solve.jl), [schur_complement.jl](../schur_complement.jl), and [schur_implementation_in_MESTI.jl](../schur_implementation_in_MESTI.jl).

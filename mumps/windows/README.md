@@ -8,11 +8,9 @@ Directly building MUMPS on Windows can be very challenging. To overcome this iss
 
 Please install WSL following the instruction [here](https://learn.microsoft.com/en-us/windows/wsl/install). 
 
-
-
 ### Compilers  on WSL
 
-The compilation of MUMPS requires both C and Fortran compilers. We recommend using Intel [C](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html#gs.gtmcma), [Fortran](https://www.intel.com/content/www/us/en/developer/tools/oneapi/fortran-compiler.html#gs.gtma2f) compilers, and [MPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.gtmtr3) libraries. On WSL, we can download the Intel installer [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/hpc-toolkit.html). Make sure to use custom installation and choose the following: 
+The compilation of MUMPS requires both C and Fortran compilers. We recommend using Intel [C compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html#gs.gtmcma), [Fortran compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/fortran-compiler.html#gs.gtma2f), and [MPI library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.gtmtr3).. On WSL, we can download the Intel installer [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/hpc-toolkit.html). Make sure to use custom installation and choose the following: 
 	(a) Intel Inspector
 	(b) Intel MPI Library
 	(c) Intel oneAPI DPC++/C++ Compiler \& Intel C++ Compiler Classic
@@ -26,8 +24,6 @@ source opt/intel/oneapi/mpi/latest/env/vars.sh
 ```
 
 These commands will configure the necessary environment variables for the Intel compilers, and Intel MPI.
-
-
 
 ### BLAS, LAPACK, and ScaLPACK on WSL
 
@@ -99,4 +95,4 @@ export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_blacs_intelmpi_lp64.so
 export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_scalapack_lp64.so
 ```
 
-After setting the environment variables and preloading the libraries, we can proceed to run examples.
+After setting the environment variables and preloading the libraries, we can proceed to run Julia examples calling MUMPS like, [basic_solve.jl](../basic_solve.jl), [schur_complement.jl](../schur_complement.jl), and [schur_implementation_in_MESTI.jl](../schur_implementation_in_MESTI.jl).

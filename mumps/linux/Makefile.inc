@@ -2,6 +2,27 @@
 #  This file is part of MUMPS 5.6.0, released
 #  on Wed Apr 19 15:50:57 UTC 2023
 #
+################################################################################
+#
+#   Makefile.inc.generic
+#
+#   This defines some parameters dependent on your platform; you should
+#   look for the approriate file in the directory ./Make.inc/ and copy it
+#   into a file called Makefile.inc. For example, from the MUMPS root
+#   directory, use
+#   "cp Make.inc/Makefile.inc.generic ./Makefile.inc"
+#   (see the main README file for details)
+#
+#   If you do not find any suitable Makefile in Makefile.inc, use this file:
+#   "cp Make.inc/Makefile.inc.generic ./Makefile.inc" and modify it according
+#   to the comments given below. If you manage to build MUMPS on a new platform,
+#   and think that this could be useful to others, you may want to send us
+#   the corresponding Makefile.inc file.
+#
+################################################################################
+
+
+########################################################################
 #Begin orderings
 
 # NOTE that PORD is distributed within MUMPS by default. It is recommended to
