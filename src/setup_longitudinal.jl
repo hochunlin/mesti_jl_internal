@@ -4,7 +4,7 @@
 export Side
 
 mutable struct Side
-    # A composite data type to store the info on a side
+    # A composite data type to store the items on a side
     # See also: setup_longitudinal
     N_prop::Integer
     kzdx_all::Vector{ComplexF64}

@@ -1,12 +1,13 @@
-###### Update on 20231007
+###### Update on 20231008
 module MESTI
 
-using SparseArrays
 using LinearAlgebra
+using SparseArrays
 using Statistics
-using Printf
 using TensorCast
 using LazyGrids
+using Printf
+# If users specfiy the ENV["MUMPS_PREFIX"], they want to utilize MUMPS, so using MUMPS3 and MPI
 if haskey(ENV, "MUMPS_PREFIX")
     using MUMPS3
     using MPI

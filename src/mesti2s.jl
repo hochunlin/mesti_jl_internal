@@ -1,29 +1,25 @@
-###### Update on 20231005
+###### Update on 20231008
 
-#=
-using SparseArrays
-using LinearAlgebra
-using Statistics
-using Printf
-using TensorCast
-
-include("mesti_main.jl")
-include("mesti_build_channels.jl")
-=#
-
+# Export composite data types
 export channel_type
 export channel_index
 export wavefront
 
+# Export a function mesti2s()
 export mesti2s
 
 mutable struct channel_type
+    # A composite data type to specify channel type
+    # See also: mesti and mesti2s   
     side::String
     polarization::String   
     channel_type() = new()    
 end
 
 mutable struct channel_index
+    # A composite data type to specify channel index
+    # See also: mesti and mesti2s   
+
     # Used in 3D systems
     ind_low_s::Vector{Int64}
     ind_low_p::Vector{Int64}
@@ -38,6 +34,9 @@ mutable struct channel_index
 end
 
 mutable struct wavefront
+    # A composite data type to specify wavefront, which is linear combinations of channels
+    # See also: mesti and mesti2s   
+
     # Used in 3D systems
     v_low_s::Union{Array{Int64,2}, Array{Float64,2}, Array{ComplexF64,2}}
     v_low_p::Union{Array{Int64,2}, Array{Float64,2}, Array{ComplexF64,2}}
@@ -54,603 +53,608 @@ end
 
 """
     MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
-       ---3D field profile---
-       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input) returns the spatial field profiles
-       of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
-          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
-          i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
-       The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
-       are specified by structure "syst". epsilon(x,y,z) must have homogeneous spaces on the low (-z) 
-       and high (+z) sides, with an outgoing boundary in z for the scattered waves and a closed
-       boundary in x and y.  
-          Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
-                             [epsilon_xx, epsilon_xy, epsilon_xz; 
-                              epsilon_yx, epsilon_yy, epsilon_yz; 
-                              epsilon_zx, epsilon_zy, epsilon_zz] in general. 
-       Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
-       or all of them.
-       The incident wavefronts from low and/or high are specified by variable "input".
-          The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
-       being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
-       The information of the computation is returned in structure "info".
+        ---3D field profile---
+        (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input) returns the spatial field profiles
+        of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
+            [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
+            i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
+        The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
+        are specified by structure "syst". epsilon(x,y,z) must have homogeneous spaces on the low (-z) 
+        and high (+z) sides, with an outgoing boundary in z for the scattered waves and a closed
+        boundary in x and y.  
+            Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
+                [epsilon_xx, epsilon_xy, epsilon_xz; 
+                epsilon_yx, epsilon_yy, epsilon_yz; 
+                epsilon_zx, epsilon_zy, epsilon_zz] in general. 
+        Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
+        or all of them.
+        The incident wavefronts from low and/or high are specified by variable "input".
+            The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
+        being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
+        The information of the computation is returned in structure "info".
 
-       ---2D TM field profile---
-       (Ex, channels, info) = MESTI2S(syst, input) returns the spatial
-       field profiles of Ex(y,z) for scattering problems of 2D transverse-magnetic (TM) fields satisfying
-       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon_xx(y,z)] Ex(y,z) = 0,
-       where Ex is each a superposition of incident and scattered waves.
-       The returned "Ex" is a 3D array, with Ex(:,:,i) being the total (incident + scattered) field profile
-       of Ex given the i-th incident wavefront.
-    
-       ---Scattering matrix S---
-       (S, channels, info) = MESTI2S(syst, input, output) returns the scattering matrix
-       S, where "input" and "output" specify either the list of input/output channels or
-       the input/output wavefronts. When the MUMPS solver is available,
-       this is typically done by computing the Schur complement of an augmented
-       matrix K through a partial factorization.
-    
-       (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input, opts), 
-       (Ex, channels, info) = MESTI2S(syst, input, opts), and
-       (S, channels, info) = MESTI2S(syst, input, output, opts) allow detailed options to
-       be specified with structure "opts".
-   
-       In mesti2s(), for 3D cases, the boundary condition in x and y must be closed 
-       e.g., periodic or PEC. For 2D cases, the boundary condition in y must be closed. 
-       Given the closed boundary, the set of transverse modes forms a
-       complete and orthonormal basis of propagating and evanescent channels.
-       The inputs and outputs are specified in the basis of these propagating 
-       channels, with coefficients normalized with respect to the flux in the
-       longitudinal (z) direction. Properties of those channels are given by
-       mesti_build_channels().
-
-       When in 3D cases an open boundary in x or y is of interest (in 2D cases an open boundary 
-       in y is of interest), the appropriate input/output basis depends on the problem, 
-       so the user should use the more general function mesti() and will need to specify 
-       the input and output matrices B and C.
-    
-       MESTI only considers nonmagnetic materials.
-    
-       This file builds the input and output channels using mesti_build_channels(),
-       builds the matrices B and C, and then calls mesti() to solve the scattering
-       problems.
-    
-       === Input Arguments ===
-       syst (Syst struct; required):
-          A structure that specifies the system, used to build the FDFD matrix A.
-          It contains the following fields:
-          syst.epsilon_xx (numeric array or matrix, real or complex):
-             For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
-             profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
-             epsilon_xx(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
-             the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
-             Outside the scattering region (with z < 0 and z > H), epsilon_xx(x,y,z)
-             is given by scalars syst.epsilon_low and syst.epsilon_high for the
-             homogeneous spaces on the two sides. Note that nx_Ez = 0 corresponds
-             to H = 0 (ie, no scattering region) and is allowed.
-             For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
-             profile epsilon_xx(y,z).
-          syst.epsilon_xy (numeric array or matrix, real or complex, optional):
-             For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
-             profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
-             epsilon_xy(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
-             the low corner on the Yee lattice (n,m,l).
-          syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_yy (numeric array or nothing, real or complex, required required for 3D):    
-             Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
-             analogous to syst.epsilon_xx.
-          syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zz (numeric array or nothing, real or complex, required required for 3D):    
-             Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
-             analogous to syst.epsilon_xx.
-          syst.epsilon_low (real scalar; required):
-             Relative permittivity of the homogeneous space on the low.
-          syst.epsilon_high (real scalar or nothing; optional):
-             Relative permittivity of the homogeneous space on the high. If
-             syst.epsilon_high is not given or is nothing, for 3D cases the system
-             will be one-sided, terminated on the high with a PEC boundary with 
-             Ez(n,m,l) = 0 at l = nz_Ez + 1, and for 2D TM caes the system
-             will be one-sided, terminated on the high with a PEC boundary with 
-             Ex(m,l) = 0 at l = nx_Ex + 1.
-          syst.length_unit (string; optional):
-             Length unit, such as micron, nm, or some reference wavelength. This
-             code only uses dimensionless quantities, so syst.length_unit is never
-             used. This syst.length_unit is meant to help the user interpret the
-             units of (x,y,z), dx, wavelength, kx_B, ky_B, etc.
-          syst.wavelength (numeric scalar, real or complex; required):
-             Vacuum wavelength 2*pi*c/omega, in units of syst.length_unit.
-          syst.dx (positive scalar; required):
-             Discretization grid size, in units of syst.length_unit.    
-          syst.xBC (string or nothing; required unless syst.kx_B is specified):
-             Boundary condition (BC) at the two ends in x direction, effectively
-             specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
-                        Ey(n,m,l) at n=0 and n=nx_Ey+1,
-                        Ez(n,m,l) at n=0 and n=nx_Ez+1.    
-             one pixel beyond the computation domain. Available choices are:
-               "Bloch"    - Ex(n+nx_Ex,m,l) = Ex(n,m,l)*exp(1i*syst.kx_B*nx_Ex*syst.dx),
-                            Ey(n+nx_Ey,m,l) = Ey(n,m,l)*exp(1i*syst.kx_B*nx_Ey*syst.dx),
-                            Ez(n+nx_Ez,m,l) = Ez(n,m,l)*exp(1i*syst.kx_B*nx_Ez*syst.dx).   
-               "periodic" - equivalent to "Bloch" with syst.kx_B = 0
-               "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
-                            Ey(0,m,l) = Ey(nx_Ey+1,m,l) = 0,
-                            Ez(0,m,l) = Ez(nx_Ez+1,m,l) = 0.   
-               "PMC"      - Ex(0,m,l) = Ex(nx_Ex+1,m,l) = 0,
-                            Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
-               "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
-                            Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
-               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
-                            Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
-                            Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
-             where PEC stands for perfect electric conductor and PMC stands for perfect
-             magnetic conductor.
-                Note that this xBC also defines a complete and orthonormal set of
-             transverse modes, upon which the input and output channels in 
-             arguments "input" and "output" are defined; mesti2s() does not support PML
-             in x direction because a closed boundary is necessary for defining
-             such a transverse basis.
-                Here, syst.xBC is required, with no default choice (except when
-             syst.kx_B is given, in which case syst.xBC = "Bloch" is automatically
-             used).
-                For 2D TM fields, xBC = nothing.
-          syst.yBC (string; optional):
-             Boundary condition in y direction, analogous to syst.xBC.    
-          syst.kx_B (real scalar; optional):
-             Bloch wave number in x direction, in units of 1/syst.length_unit.
-             syst.kx_B is only used when syst.xBC = "Bloch". It is allowed to
-             specify a complex-valued syst.kx_B, but a warning will be displayed.
-          syst.ky_B (real scalar; optional):
-             Bloch wave number in y direction, analogous to syst.kx_B.
-          syst.zPML (a vector of PML structure; required):
-             Parameters of the perfectly matched layer (PML) used to simulate an
-             open boundary, which attenuates outgoing waves with minimal reflection. 
-                Note that in mesti2s(), the PML is placed in the homogeneous spaces
-             specified by syst.epsilon_low and syst.epsilon_high, outside of the
-             scattering region specified by syst.epsilon_xx/Ey/Ez. (This is different 
-             from the more general function mesti(), where syst.epsilon_xx/Ey/Ez
-             specifies the entire simulation domain, so PML is placed inside 
-             syst.epsilon_xx/Ey/Ez.)
-                To use the same PML on both sides or to use PML on the low of a
-             one-sided geometry, set syst.zPML to be a scalar structure with the
-             following fields:    
-                npixels (positive integer scalar; required): Number of PML pixels.
-                   This number of pixels is added in addition to the
-                   scattering region.
-                power_sigma (non-negative scalar; optional): Power of the
-                   polynomial grading for the conductivity sigma; defaults to 3.
-                sigma_max_over_omega (non-negative scalar; optional):
-                   Conductivity at the end of the PML; defaults to
-                      0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
-                   where epsilon_bg is the average relative permittivity along the
-                   last slice of the PML. This is used to attenuate propagating
-                   waves.
-                power_kappa (non-negative scalar; optional): Power of the
-                   polynomial grading for the real-coordinate-stretching factor
-                   kappa; defaults to 3.
-                kappa_max (real scalar no smaller than 1; optional):
-                   Real-coordinate-stretching factor at the end of the PML;
-                   defaults to 15. This is used to accelerate the attenuation of
-                   evanescent waves. kappa_max = 1 means no real-coordinate
-                   stretching.
-                power_alpha (non-negative scalar; optional): Power of the
-                   polynomial grading for the CFS alpha factor; defaults to 1.
-                alpha_max_over_omega (non-negative scalar; optional): Complex-
-                   frequency-shifting (CFS) factor at the beginning of the PML.
-                   This is typically used in time-domain simulations to suppress
-                   late-time (low-frequency) reflections. We don't use it by
-                   default (alpha_max_over_omega = 0) since we are in frequency
-                   domain.
-             We use the following PML coordinate-stretching factor:
-                s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
-             with
-                sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
-                kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
-                alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
-             where omega is frequency, and p goes linearly from 0 at the beginning
-             of the PML to 1 at the end of the PML. 
-                When there is just one PML element in the vector, 
-                syst.zPML = [PML],
-             then the same PML parameters are used in the both sides of two-sided geometry, 
-             or the PML parameters are used in low side of one-sided geometry.
-                When multiple sets of PML parameters are used in the two-sided geometry 
-             (e.g., a thinner PML on one side, a thicker PML on another side), these
-             parameters can be specified with a vector of PML strcture.
-                syst.zPML = [PML_low, PML_high],
-             with PML_low and PML_high each being a structure containing the above
-             fields; they can specify different PML parameters on low and high sides.
-                With real-coordinate stretching, PML can attenuate evanescent waves
-             more efficiently than free space, so there is no need to place free
-             space in front of PML.
-                The PML thickness should be chosen based on the acceptable level of
-             reflectivity given the discretization resolution and the range of wave
-             numbers (i.e., angles) involved; more PML pixels gives lower
-             reflectivity. Typically 10-40 pixels are sufficient.
-       input (channel_type, channel_index, or wavefront structure; required):
-          The set of input channels or input wavefronts
-               To specify all propagating channels on one side or on both sides for 
-             polarizations, use ''input = channel_type()'', then it contains the following fields:
-                   input.side (string, required): specify all propagating channels on 
-                      sides. Available choices are:
-                        "low"    - specify all (input.polarization)-polarization 
-                                   propagating channels on the low side
-                        "high"   - specify all (input.polarization)-polarization 
-                                   propagating channels on the high side
-                        "both"   - specify all (input.polarization)-polarization  
-                                   propagating channels on the both sides
-                   input.polarization (string, optional): specify polarizations on 
-                      sides for 3D systems. Available choices are:
-                        "s"      - specify s-polarization channels on the input.side
-                        "p"      - specify p-polarization channels on the input.side
-                        "both"   - specify both polarizations (s and p) channels on
-                                   on the input.side
-                       By default, input.polarization = "both";                  
-                To specify a subset of the propagating channels use ''input = channel_index()'',
-             then it contains the following fields:
-                  For 3D systems:
-                   input.ind_low_s (integer vector): Vector containing the indices of
-                      propagating channels incident on the low side with s-polarization
-                   input.ind_low_p (integer vector): Vector containing the indices of
-                      propagating channels incident on the low side with p-polarization
-                   input.ind_high_s (integer vector): Vector containing the indices of
-                      propagating channels incident on the high side with s-polarization
-                   input.ind_high_p (integer vector): Vector containing the indices of
-                      propagating channels incident on the high side with p-polarization
-                   One can provide only one or more of them.
-                      The user can first use mesti_build_channels() to get the indices, wave
-                   numbers, and transverse profiles of the propagating channels; based on
-                   that, the user can specify the list of channels of interest through
-                   input.ind_low_s, input.ind_low_p, input.ind_high_s, and input.ind_high_p 
-                   above, or a list of customized wavefronts through input.v_low_s, 
-                   input.v_low_p, input.v_high_s, or input.v_high_p below.
-                  For 2D TM case:
-                   input.ind_low (integer vector): Vector containing the indices of
-                      propagating channels incident on the left side.
-                   input.ind_high (integer vector): Vector containing the indices of
-                      propagating channels incident on the right side.
-                To specify a custom input wavefronts, a superposition of multiple 
-             propagating channels, use ''input = wavefront()'', then it contains the following fields:
-                   For 3D systems:
-                   input.v_low_s (numeric matrix): Matrix where each column specifies the
-                      coefficients of s-polarization propagating channels on the low 
-                      for one input wavefront from the low; the wavefront is a superposition 
-                      of all propagating channels with the superposition coefficients 
-                      given by that column of input.v_low_s. size(input.v_low_s, 1) must equal 
-                      N_prop_low, the total number of propagating channels on the low; 
-                      size(input.v_low_s, 2) is the number of input wavefronts.
-                   input.v_low_p (numeric matrix): Analogous to to input.v_low_s, but 
-                      specifying input p-polarization wavefronts from the low instead.
-                   input.v_high_s (numeric matrix): Analogous to to input.v_low_s, but 
-                      specifying input s-polarization wavefronts from the high instead.
-                   input.v_high_p (numeric matrix): Analogous to to input.v_low_s, but 
-                      specifying input p-polarization wavefronts from the high instead.    
-             Note that the input wavefronts from the low and the input wavefronts
-             from the high and two polarizations are treated as separate inputs. In other 
-             words, each input either comes from the low or comes from the high on one
-             polarization. If an input with incidence from both sides or both polarization 
-             is of interest, the user can manually superimpose results from the separate
-             computations.
-                For 2D TM case:
-                input.v_low (numeric matrix): Matrix where each column specifies the
-                   coefficients of propagating channels on the left for one input
-                   wavefront from the left, with the superposition coefficients given by that 
-                   column of input.v_low. size(input.v_low, 1) must equal N_prop_low, the total 
-                   number of propagating channels on the left; size(input.v_L, 2) is the number
-                   of input wavefronts.
-                input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
-                   input wavefronts from the right instead.
-       output (channel_type, channel_index, wavefront structure, or nothing; optional):
-          The set of output channels or output wavefronts.
-             When out = nothing or when out is omitted, no output projection is used, and 
-          the spatial field profiles Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) corresponding to 
-          the set of inputs are returned.
-             When out is given, the scattering matrix is returned, with the output
-          basis of the scattering matrix specified by "output". In this case, out
-          follows the same syntax as the argument "input".    
-               To specify all propagating channels on one side or on both sides for 
-             polarizations, use ''output = channel_type()'', then it contains the following fields:
-                   output.side (string, required): specify all propagating channels on 
-                      sides. Available choices are:
-                        "low"    - specify all propagating channels on the low side for 
-                                   polarization specified by output.polarization
-                        "high"   - specify all propagating channels on the high side for 
-                                   polarization specified by output.polarization
-                        "both"   - specify all propagating channels on the both sides
-                                   (low and high) for polarization specified by 
-                                   output.polarization
-                   output.polarization (string, optional): specify polarizations on 
-                      sides for 3D systems. Available choices are:
-                        "s"      - specify s-polarization channels on the output.side
-                        "p"      - specify p-polarization channels on the output.side
-                        "both"   - specify both polarizations (s and p) channels on
-                                   on the output.side
-                      By default, output.polarization = "both";                  
-                To specify a subset of the propagating channels use ''output = channel_index()'',
-                then it contains the following fields:
-                For 3D systems:
-                   output.ind_low_s (integer vector): Vector containing the indices of
-                      propagating channels incident on the low side with s-polarization
-                   output.ind_low_p (integer vector): Vector containing the indices of
-                      propagating channels incident on the low side with p-polarization
-                   output.ind_high_s (integer vector): Vector containing the indices of
-                      propagating channels incident on the high side with s-polarization
-                   output.ind_high_p (integer vector): Vector containing the indices of
-                      propagating channels incident on the high side with p-polarization
-                   One can provide only one or more of them.
-                      The user can first use mesti_build_channels() to get the indices, wave
-                   numbers, and transverse profiles of the propagating channels; based on
-                   that, the user can specify the list of channels of interest through
-                   output.ind_low_s, output.ind_low_p, output.ind_high_s, and output.ind_high_p 
-                   above, or a list of customized wavefronts through output.v_low_s, output.v_low_p, 
-                   output.v_high_s, or output.v_high_p below.
-                  For 2D TM case:
-                   output.ind_low (integer vector): Vector containing the indices of
-                      propagating channels incident on the left side.
-                   output.ind_high (integer vector): Vector containing the indices of
-                      propagating channels incident on the right side.
-                To specify a custom output wavefronts, a superposition of multiple 
-             propagating channels, use ''output = wavefront()'', then it contains the following fields:
-                   For 3D systems:
-                   output.v_low_s (numeric matrix): Matrix where each column specifies the
-                      coefficients of s-polarization propagating channels on the low 
-                      for one output wavefront from the low; the wavefront is a superposition 
-                      of all propagating channels with the superposition coefficients 
-                      given by that column of output.v_low_s. size(output.v_low_s, 1) must equal 
-                      N_prop_low, the total number of propagating channels on the low; 
-                      size(output.v_low_s, 2) is the number of output wavefronts.
-                   output.v_low_p (numeric matrix): Analogous to to output.v_low_s, but 
-                      specifying output p-polarization wavefronts from the low instead.
-                   output.v_high_s (numeric matrix): Analogous to to output.v_low_s, but 
-                      specifying output s-polarization wavefronts from the high instead.
-                   output.v_high_p (numeric matrix): Analogous to to output.v_low_s, but 
-                      specifying output p-polarization wavefronts from the high instead.        
-             Here, each row of the scattering matrix corresponds to projection onto an
-          output wavefront specified by a column of output.v_low_s, output.v_low_p, 
-          output.v_high_s, or output.v_high_p.
-                For 2D TM case:
-                input.v_low (numeric matrix): Matrix where each column specifies the
-                   coefficients of propagating channels on the left for one input
-                   wavefront from the left, with the superposition coefficients given by that column of input.v_low.
-                   size(input.v_low, 1) must equal N_prop_low, the total number of
-                   propagating channels on the left; size(input.v_L, 2) is the number
-                   of input wavefronts.
-                input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
-                   input wavefronts from the right instead.
-       opts (Opts structure; optional):
-          A structure that specifies the options of computation. 
-          It can contain the following fields (all optional):
-          opts.verbal (boolean scalar; optional, defaults to true):
-             Whether to print system information and timing to the standard output.
-          opts.nz_low (non-negative integer scalar; optional, defaults to 0):
-             Number of pixels of homogeneous space on the low (syst.epsilon_low) to
-             include when returning the spatial field profile; not used for
-             scattering matrix computations.
-          opts.nz_high (non-negative integer scalar; optional, defaults to 0):
-             Number of pixels of homogeneous space on the high (syst.epsilon_high) to
-             include when returning the spatial field profile; not used for
-             scattering matrix computations. Note that opts.nx_high can still be used
-             in one-sided geometries where syst.epsilon_high is not given; the field
-             profile on the high is simply zero in such case.
-          opts.solver (string; optional):
-             The solver used for sparse matrix factorization. Available choices
-             are (case-insensitive):
-                "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
-                           interface MUMPS3.jl must be installed.
-                "JULIA" -  (default when MUMPS is not available) Uses the built-in 
-                           lu() function in JULIA, which uses UMFPACK. 
-             MUMPS is faster and uses less memory than lu(), and is required for
-             the APF method.
-          opts.method (string; optional):
-             The solution method. Available choices are (case-insensitive):
-                "APF" - Augmented partial factorization. C*inv(A)*B is obtained
-                        through the Schur complement of an augmented matrix
-                        K = [A,B;C,0] using a partial factorization. Must have
-                        opts.solver = "MUMPS". This is the most efficient method,
-                        but it cannot be used for computing the full field profile
-                        X=inv(A)*B or with iterative refinement.
-                "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
-                        through C*inv(U)*inv(L)*B with optimized grouping. Must
-                        have opts.solver = "JULIA". This is slightly better than
-                        "FS" when MUMPS is not available, but it cannot be used for
-                        computing the full field profile X=inv(A)*B.
-                "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-                        with forward and backward substitutions, and project with
-                        C as C*inv(A)*B = C*X. Here, opts.solver can be either
-                        "MUMPS" or "JULIA", and it can be used for computing
-                        the full field profile X=inv(A)*B or with iterative
-                        refinement.
-                "C*inv(U)*inv(L)*B"   - Same as "FG".    
-                "factorize_and_solve" - Same as "FS".
-             By default, if C is given and opts.iterative_refinement = false, then
-             "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
-             used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
-             used.
-          opts.symmetrize_K (boolean scalar; optional):
-             Whether or not to pad input and/or output channels and perform
-             permutations to make matrix K = [A,B;C,0] symmetric when computing its
-             Schur complement, which lowers computing time and memory usage. Such
-             channel padding and permutation is reversed afterwards and does not
-             affect what mesti2s() returns.
-          opts.clear_syst (boolean scalar; optional, defaults to false):
-             When opts.clear_syst = true, variable "syst" will be cleared in the
-             caller's workspace to reduce peak memory usage. This can be used when
-             syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz take up
-             significant memory and are not needed after calling mesti().
-          opts.clear_memory (boolean scalar; optional, defaults to true):
-             Whether or not to clear variables inside mesti() to reduce peak memory
-             usage.
-          opts.verbal_solver (boolean scalar; optional, defaults to false):
-             Whether to have the solver print detailed information to the standard
-             output. Note the behavior of output from MUMPS depends on compiler.
-          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
-             Whether to use single precision version of MUMPS; used only when 
-             opts.solver = "MUMPS". Using single precision version of MUMPS can 
-             reduce memory usage and computing time.
-          opts.use_METIS (boolean scalar; optional, defaults to false):
-             Whether to use METIS (instead of the default AMD) to compute the
-             ordering in MUMPS. Using METIS can sometimes reduce memory usage
-             and/or factorization and solve time, but it typically takes longer at
-             the analysis (i.e., ordering) stage.
-          opts.nrhs (positive integer scalar; optional):
-             The number of right-hand sides (number of columns of the input matrix
-             B) to consider simultaneously, used only when opts.method =
-             "factorize_and_solve" and C is given. Defaults to 1 if
-             opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
-             opts.iterative_refinement = false, 4 otherwise.
-          opts.store_ordering (boolean scalar; optional, defaults to false):
-             Whether to store the ordering sequence (permutation) for matrix A or
-             matrix K; only possible when opts.solver = "MUMPS". If
-             opts.store_ordering = true, the ordering will be returned in
-             info.ordering.
-          opts.ordering (positive integer vector; optional):
-             A user-specified ordering sequence for matrix A or matrix K, used only
-             when opts.solver = "MUMPS". Using the ordering from a previous
-             computation can speed up (but does not eliminate) the analysis stage.
-             The matrix size must be the same, and the sparsity structure should be
-             similar among the previous and the current computation.
-          opts.analysis_only (boolean scalar; optional, defaults to false):
-             When opts.analysis_only = true, the factorization and solution steps
-             will be skipped, and S = nothing will be returned. The user can use
-             opts.analysis_only = true with opts.store_ordering = true to return
-             the ordering for A or K; only possible when opts.solver = "MUMPS".
-          opts.nthreads_OMP (positive integer scalar; optional):
-             Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
-             environment variable.
-          opts.parallel_dependency_graph (logical scalar; optional):
-             If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
-             This typically improve the time performance, but marginally increase 
-             the memory usage.
-          opts.iterative_refinement (boolean scalar; optional, defaults to false):
-             Whether to use iterative refinement in MUMPS to lower round-off
-             errors. Iterative refinement can only be used when opts.solver =
-             "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
-             case opts.nrhs must equal 1. When iterative refinement is used, the
-             relevant information will be returned in info.itr_ref_nsteps,
-             info.itr_ref_omega_1, and info.itr_ref_omega_2.
-          opts.use_continuous_dispersion (boolean scalar; optional):
-             Whether to use the dispersion equation of the continuous wave equation
-             when building the input/output channels. Defaults to false, in which
-             case the finite-difference dispersion is used.
-          opts.n0 (real numeric scalar; optional, defaults to 0):
-             Center of the 1D transverse mode profile with periodic or Bloch periodic
-             boundary condition, u(m,a) = exp(i*kx(a)*syst.dx*(m-m0))/sqrt(nx),
-             where kx(a) = syst.kx_B + a*(2*pi/nx*syst.dx) and nx = nx_Ex = nx_Ey = nx_Ez.
-          opts.m0 (real numeric scalar; optional, defaults to 0):
-             Center of the 1D transverse mode profile with periodic or Bloch periodic
-             boundary conditions, analogous to opts.n0.
-          opts.use_BLR (logical scalar; optional, defaults to false):
-             Whether to use block low-rank approximation in MUMPS to possibly lower computational
-             cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
-          opts.threshold_BLR (positive real scalar; optional):
-             The dropping parameter controls the accuracy of the block low-rank approximations. 
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
-          opts.icntl_36 (positive integer scalar; optional):
-             It controls the choice of the BLR factorization variant. 
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
-          opts.icntl_38 (positive integer scalar; optional):
-             It estimated compression rate of LU factors.
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
-
-       === Output Arguments ===
-       ---When users specify out---
-       field_profiles (4D array):
-          For field-profile computations (i.e., when "out" is not given), the
-          returned field_profiles is a 4D array containing the field profiles, such
-          that field_profiles(:,:,:,a) is the total (incident + scattered) field of
-          Ex/Ey/Ez corresponding to the a-th input wavefront, with
-             Recall that nz_Ez = nz_Ex + 1 = nz_Ey + 1 = H/syst.dx + 1 for a 
-          two-sided geometry; nz_Ez = nz_Ex = nz_Ey = H/syst.dx for a one-sided geometry.
-             By default, opts.nz_low = opts.nz_high = 0, and field_profiles only contain
-          field_profiles in the scattering region. When opts.nz_low and opts.nz_high are
-          specified, field_profiles will also contain opts.nz_low pixels in the homogeneous 
-          space on the low, opts.nz_high pixel in the homogeneous space on the high.
-             To be specific, the field_profiles contains:
-             For 3D systems:
-                Ex (4D array):
-                   electrical field profile for Ex component
-                   (nx_Ex, ny_Ex, nz_Ex, number of inputs) = size(Ex)
-                Ey (4D array):
-                   electrical field profile for Ex component
-                   (nx_Ey, ny_Ey, nz_Ey, number of inputs) = size(Ey)
-                Ez (4D array):
-                   electrical field profile for Ex component
-                   (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
-             For 2D TM case:
-                Ex (3D array):
-                   electrical field profile for Ex component
-                   (ny_Ex, nz_Ex, number of inputs) = size(Ex)
-       ---or when users  do not specify out---
-       S (numeric matrix):
-         For scattering-matrix computations (i.e., when ''output'' is given), S is the
-         scattering matrix, such that S(b,a) is the flux-normalized field
-         coefficient in the b-th propagating output channel (or the b-th output
-         wavefront) given incident wave in the a-th propagating input channel (or
-         the a-th input wavefront).
-            When all propagating channels on one side or on both sides are
-         requested, e.g. with ''input = channel_type()'', ''input.side = high'' or 
-         ''output = channel_type()'', ''output.side = both'',  matrix S includes 
-         channels.low.N_prop propagating channels on the low and/or
-         2*channels.high.N_prop on the high, with longitudinal wave
-         numbers given by vectors channels.low.kzdx_prop and channels.high.kzdx_prop.
-            The phases of the elements of the scattering matrix depend on the
-         reference plane. For channels on the low, the reference plane is at
-         z = 0. For channels on the high, the reference plane is at z = H.
-            When a subset of the propagating channels are requested,
-         ''input = channel_index()'' and ''input = channel_index()''
-         with in.ind_low_s, in.ind_low_p, in.ind_high_s, in.ind_high_p, 
-         out.ind_low_s, out.ind_low_p, out.ind_low_p and/or out.ind_high_p, 
-         matrix S includes such subset of the propagating channels. 
-            When the input wavefronts and/or output basis, i.e. ''input = wavefront()''
-         and/or ''output = wavefront()'' is specified by input.v_low_s, input.v_low_p, 
-         input.v_high_s, input.v_high_p, output.v_low_s, output.v_low_p, output.v_high_s, 
-         and/or output.v_high_p, matrix S is the full scattering matrix with the input 
-         and/or output basis changed.
-       channels (Channel structure):
-          A structure returned by function mesti_build_channels() that contains
-          properties of the propagating and evanescent channels of the homogeneous
-          spaces on the low and high. Type "? mesti_build_channels" for more
-          information.   
-       info (Info structure):
-          A structure that contains the following fields:
-          info.opts (Opts structure):
-             The final "opts" used, excluding the user-specified matrix ordering.
-          info.timing_init (non-negative scalar):
-          info.timing_build (non-negative scalar):
-          info.timing_analyze (non-negative scalar):
-          info.timing_factorize (non-negative scalar):
-          info.timing_total (non-negative scalar):    
-          info.zPML (two-element cell array);
-             PML parameters on the sides of z direction.
-          info.ordering_method (string; optional):
-             Ordering method used in MUMPS.
-          info.ordering (positive integer vector; optional):
-             Ordering sequence returned by MUMPS when opts.store_ordering = true.
-          info.itr_ref_nsteps (integer vector; optional):
-             Number of steps of iterative refinement for each input, if
-             opts.iterative_refinement = true; 0 means no iterative refinement.
-          info.itr_ref_omega_1 (real vector; optional):
-             Scaled residual omega_1 at the end of iterative refinement for each
-             input; see MUMPS user guide section 3.3.2 for definition.
-          info.itr_ref_omega_2 (real vector; optional):
-             Scaled residual omega_2 at the end of iterative refinement for each
-             input; see MUMPS user guide section 3.3.2 for definition.
+        ---2D TM field profile---
+        (Ex, channels, info) = MESTI2S(syst, input) returns the spatial
+        field profiles of Ex(y,z) for scattering problems of 2D transverse-magnetic (TM) fields satisfying
+        [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon_xx(y,z)] Ex(y,z) = 0,
+        where Ex is each a superposition of incident and scattered waves.
+        The returned "Ex" is a 3D array, with Ex(:,:,i) being the total (incident + scattered) field profile
+        of Ex given the i-th incident wavefront.
         
-       See also: mesti_build_channels, mesti2s
+        ---Scattering matrix S---
+        (S, channels, info) = MESTI2S(syst, input, output) returns the scattering matrix
+        S, where "input" and "output" specify either the list of input/output channels or
+        the input/output wavefronts. When the MUMPS solver is available,
+        this is typically done by computing the Schur complement of an augmented
+        matrix K through a partial factorization.
+        
+        (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input, opts), 
+        (Ex, channels, info) = MESTI2S(syst, input, opts), and
+        (S, channels, info) = MESTI2S(syst, input, output, opts) allow detailed options to
+        be specified with structure "opts".
+    
+        In mesti2s(), for 3D cases, the boundary condition in x and y must be closed 
+        e.g., periodic or PEC. For 2D cases, the boundary condition in y must be closed. 
+        Given the closed boundary, the set of transverse modes forms a
+        complete and orthonormal basis of propagating and evanescent channels.
+        The inputs and outputs are specified in the basis of these propagating 
+        channels, with coefficients normalized with respect to the flux in the
+        longitudinal (z) direction. Properties of those channels are given by
+        mesti_build_channels().
+
+        When in 3D cases an open boundary in x or y is of interest (in 2D cases an open boundary 
+        in y is of interest), the appropriate input/output basis depends on the problem, 
+        so the user should use the more general function mesti() and will need to specify 
+        the input and output matrices B and C.
+        
+        MESTI only considers nonmagnetic materials.
+        
+        This file builds the input and output channels using mesti_build_channels(),
+        builds the matrices B and C, and then calls mesti() to solve the scattering
+        problems.
+        
+        === Input Arguments ===
+        syst (Syst struct; required):
+            A structure that specifies the system, used to build the FDFD matrix A.
+            It contains the following fields:
+            syst.epsilon_xx (numeric array or matrix, real or complex):
+                For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
+                profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
+                epsilon_xx(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
+                the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
+                Outside the scattering region (with z < 0 and z > H), epsilon_xx(x,y,z)
+                is given by scalars syst.epsilon_low and syst.epsilon_high for the
+                homogeneous spaces on the two sides. Note that nx_Ez = 0 corresponds
+                to H = 0 (ie, no scattering region) and is allowed.
+                For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
+                profile epsilon_xx(y,z).
+            syst.epsilon_xy (numeric array or matrix, real or complex, optional):
+                For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
+                profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
+                epsilon_xy(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
+                the low corner on the Yee lattice (n,m,l).
+            syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_yy (numeric array or nothing, real or complex, required for 3D):    
+                Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
+                analogous to syst.epsilon_xx.
+            syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zz (numeric array or nothing, real or complex, required for 3D):    
+                Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
+                analogous to syst.epsilon_xx.
+            syst.epsilon_low (real scalar; required):
+                Relative permittivity of the homogeneous space on the low.
+            syst.epsilon_high (real scalar or nothing; optional):
+                Relative permittivity of the homogeneous space on the high. If
+                syst.epsilon_high is not given or is nothing, for 3D cases the system
+                will be one-sided, terminated on the high with a PEC boundary with 
+                Ez(n,m,l) = 0 at l = nz_Ez + 1, and for 2D TM caes the system
+                will be one-sided, terminated on the high with a PEC boundary with 
+                Ex(m,l) = 0 at l = nx_Ex + 1.
+            syst.length_unit (string; optional):
+                Length unit, such as micron, nm, or some reference wavelength. This
+                code only uses dimensionless quantities, so syst.length_unit is never
+                used. This syst.length_unit is meant to help the user interpret the
+                units of (x,y,z), dx, wavelength, kx_B, ky_B, etc.
+            syst.wavelength (numeric scalar, real or complex; required):
+                Vacuum wavelength 2*pi*c/omega, in units of syst.length_unit.
+            syst.dx (positive scalar; required):
+                Discretization grid size, in units of syst.length_unit.    
+            syst.xBC (string or nothing; required unless syst.kx_B is specified):
+                Boundary condition (BC) at the two ends in x direction, effectively
+                specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
+                           Ey(n,m,l) at n=0 and n=nx_Ey+1,
+                           Ez(n,m,l) at n=0 and n=nx_Ez+1.    
+                one pixel beyond the computation domain. Available choices are:
+                "Bloch"    - Ex(n+nx_Ex,m,l) = Ex(n,m,l)*exp(1i*syst.kx_B*nx_Ex*syst.dx),
+                             Ey(n+nx_Ey,m,l) = Ey(n,m,l)*exp(1i*syst.kx_B*nx_Ey*syst.dx),
+                             Ez(n+nx_Ez,m,l) = Ez(n,m,l)*exp(1i*syst.kx_B*nx_Ez*syst.dx).   
+                "periodic" - equivalent to "Bloch" with syst.kx_B = 0
+                "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
+                             Ey(0,m,l) = Ey(nx_Ey+1,m,l) = 0,
+                             Ez(0,m,l) = Ez(nx_Ez+1,m,l) = 0.   
+                "PMC"      - Ex(0,m,l) = Ex(nx_Ex+1,m,l) = 0,
+                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
+                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
+                "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
+                             Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
+                             Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
+                "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
+                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
+                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
+                where PEC stands for perfect electric conductor and PMC stands for perfect
+                magnetic conductor.
+                    Note that this xBC also defines a complete and orthonormal set of
+                transverse modes, upon which the input and output channels in 
+                arguments "input" and "output" are defined; mesti2s() does not support PML
+                in x direction because a closed boundary is necessary for defining
+                such a transverse basis.
+                    Here, syst.xBC is required, with no default choice (except when
+                syst.kx_B is given, in which case syst.xBC = "Bloch" is automatically
+                used).
+                    For 2D TM fields, xBC = nothing.
+            syst.yBC (string; optional):
+                Boundary condition in y direction, analogous to syst.xBC.    
+            syst.kx_B (real scalar; optional):
+                Bloch wave number in x direction, in units of 1/syst.length_unit.
+                syst.kx_B is only used when syst.xBC = "Bloch". It is allowed to
+                specify a complex-valued syst.kx_B, but a warning will be displayed.
+            syst.ky_B (real scalar; optional):
+                Bloch wave number in y direction, analogous to syst.kx_B.
+            syst.zPML (a vector of PML structure; required):
+                Parameters of the perfectly matched layer (PML) used to simulate an
+                open boundary, which attenuates outgoing waves with minimal reflection. 
+                    Note that in mesti2s(), the PML is placed in the homogeneous spaces
+                specified by syst.epsilon_low and syst.epsilon_high, outside of the
+                scattering region specified by syst.epsilon_xx/Ey/Ez. (This is different 
+                from the more general function mesti(), where syst.epsilon_xx/Ey/Ez
+                specifies the entire simulation domain, so PML is placed inside 
+                syst.epsilon_xx/Ey/Ez.)
+                    To use the same PML on both sides or to use PML on the low of a
+                one-sided geometry, set syst.zPML to be a scalar structure with the
+                following fields:    
+                    npixels (positive integer scalar; required): Number of PML pixels.
+                        This number of pixels is added in addition to the
+                        scattering region.
+                    power_sigma (non-negative scalar; optional): 
+                        Power of the polynomial grading for the conductivity sigma; 
+                        defaults to 3.
+                    sigma_max_over_omega (non-negative scalar; optional):
+                        Conductivity at the end of the PML; defaults to
+                        0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
+                        where epsilon_bg is the average relative permittivity along the
+                        last slice of the PML. This is used to attenuate propagating
+                        waves.
+                    power_kappa (non-negative scalar; optional): 
+                        Power of the polynomial grading for the real-coordinate-stretching 
+                        factor kappa; defaults to 3.
+                    kappa_max (real scalar no smaller than 1; optional):
+                        Real-coordinate-stretching factor at the end of the PML;
+                        defaults to 15. This is used to accelerate the attenuation of
+                        evanescent waves. kappa_max = 1 means no real-coordinate
+                        stretching.
+                    power_alpha (non-negative scalar; optional): 
+                        Power of the polynomial grading for the CFS alpha factor; 
+                        defaults to 1.
+                    alpha_max_over_omega (non-negative scalar; optional): 
+                        Complex-frequency-shifting (CFS) factor at the beginning 
+                        of the PML. This is typically used in time-domain simulations 
+                        to suppress late-time (low-frequency) reflections. 
+                        We don't use it by default (alpha_max_over_omega = 0) 
+                        since we are in frequency domain.
+                We use the following PML coordinate-stretching factor:
+                    s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
+                with
+                    sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+                    kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+                    alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+                where omega is frequency, and p goes linearly from 0 at the beginning
+                of the PML to 1 at the end of the PML. 
+                    When there is just one PML element in the vector, 
+                    syst.zPML = [PML],
+                then the same PML parameters are used in the both sides of two-sided geometry, 
+                or the PML parameters are used in low side of one-sided geometry.
+                    When multiple sets of PML parameters are used in the two-sided geometry 
+                (e.g., a thinner PML on one side, a thicker PML on another side), these
+                parameters can be specified with a vector of PML strcture.
+                    syst.zPML = [PML_low, PML_high],
+                with PML_low and PML_high each being a structure containing the above
+                fields; they can specify different PML parameters on low and high sides.
+                    With real-coordinate stretching, PML can attenuate evanescent waves
+                more efficiently than free space, so there is no need to place free
+                space in front of PML.
+                    The PML thickness should be chosen based on the acceptable level of
+                reflectivity given the discretization resolution and the range of wave
+                numbers (i.e., angles) involved; more PML pixels gives lower
+                reflectivity. Typically 10-40 pixels are sufficient.
+        input (channel_type, channel_index, or wavefront structure; required):
+            The set of input channels or input wavefronts
+                To specify all propagating channels on one side or on both sides for 
+                polarizations, use ''input = channel_type()'', then it contains the following fields:
+                    input.side (string, required): specify all propagating channels on 
+                        sides. Available choices are:
+                            "low"    - specify all (input.polarization)-polarization 
+                                    propagating channels on the low side
+                            "high"   - specify all (input.polarization)-polarization 
+                                    propagating channels on the high side
+                            "both"   - specify all (input.polarization)-polarization  
+                                    propagating channels on the both sides
+                    input.polarization (string, optional): specify polarizations on 
+                        sides for 3D systems. Available choices are:
+                            "s"      - specify s-polarization channels on the input.side
+                            "p"      - specify p-polarization channels on the input.side
+                            "both"   - specify both polarizations (s and p) channels on
+                                    on the input.side
+                        By default, input.polarization = "both";                  
+                    To specify a subset of the propagating channels use ''input = channel_index()'',
+                    then it contains the following fields:
+                        For 3D systems:
+                        input.ind_low_s (integer vector): Vector containing the indices of
+                            propagating channels incident on the low side with s-polarization
+                        input.ind_low_p (integer vector): Vector containing the indices of
+                            propagating channels incident on the low side with p-polarization
+                        input.ind_high_s (integer vector): Vector containing the indices of
+                            propagating channels incident on the high side with s-polarization
+                        input.ind_high_p (integer vector): Vector containing the indices of
+                            propagating channels incident on the high side with p-polarization
+                        One can provide only one or more of them.
+                            The user can first use mesti_build_channels() to get the indices, wave
+                        numbers, and transverse profiles of the propagating channels; based on
+                        that, the user can specify the list of channels of interest through
+                        input.ind_low_s, input.ind_low_p, input.ind_high_s, and input.ind_high_p 
+                        above, or a list of customized wavefronts through input.v_low_s, 
+                        input.v_low_p, input.v_high_s, or input.v_high_p below.
+                        For 2D TM case:
+                        input.ind_low (integer vector): Vector containing the indices of
+                            propagating channels incident on the left side.
+                        input.ind_high (integer vector): Vector containing the indices of
+                            propagating channels incident on the right side.
+                    To specify a custom input wavefronts, a superposition of multiple 
+                    propagating channels, use ''input = wavefront()'', then it contains the following fields:
+                        For 3D systems:
+                        input.v_low_s (numeric matrix): Matrix where each column specifies the
+                            coefficients of s-polarization propagating channels on the low 
+                            for one input wavefront from the low; the wavefront is a superposition 
+                            of all propagating channels with the superposition coefficients 
+                            given by that column of input.v_low_s. size(input.v_low_s, 1) must equal 
+                            N_prop_low, the total number of propagating channels on the low; 
+                            size(input.v_low_s, 2) is the number of input wavefronts.
+                        input.v_low_p (numeric matrix): Analogous to to input.v_low_s, but 
+                            specifying input p-polarization wavefronts from the low instead.
+                        input.v_high_s (numeric matrix): Analogous to to input.v_low_s, but 
+                            specifying input s-polarization wavefronts from the high instead.
+                        input.v_high_p (numeric matrix): Analogous to to input.v_low_s, but 
+                            specifying input p-polarization wavefronts from the high instead.    
+                    Note that the input wavefronts from the low and the input wavefronts
+                    from the high and two polarizations are treated as separate inputs. In other 
+                    words, each input either comes from the low or comes from the high on one
+                    polarization. If an input with incidence from both sides or both polarization 
+                    is of interest, the user can manually superimpose results from the separate
+                    computations.
+                        For 2D TM case:
+                        input.v_low (numeric matrix): Matrix where each column specifies the
+                            coefficients of propagating channels on the left for one input
+                            wavefront from the left, with the superposition coefficients given by that 
+                            column of input.v_low. size(input.v_low, 1) must equal N_prop_low, the total 
+                            number of propagating channels on the left; size(input.v_L, 2) is the number
+                            of input wavefronts.
+                        input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
+                            input wavefronts from the right instead.
+        output (channel_type, channel_index, wavefront structure, or nothing; optional):
+            The set of output channels or output wavefronts.
+                When out = nothing or when out is omitted, no output projection is used, and 
+            the spatial field profiles Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) corresponding to 
+            the set of inputs are returned.
+                When out is given, the scattering matrix is returned, with the output
+            basis of the scattering matrix specified by "output". In this case, out
+            follows the same syntax as the argument "input".    
+                To specify all propagating channels on one side or on both sides for 
+                polarizations, use ''output = channel_type()'', then it contains the following fields:
+                    output.side (string, required): specify all propagating channels on sides. 
+                        Available choices are:
+                            "low"    - specify all propagating channels on the low side for 
+                                    polarization specified by output.polarization
+                            "high"   - specify all propagating channels on the high side for 
+                                    polarization specified by output.polarization
+                            "both"   - specify all propagating channels on the both sides
+                                    (low and high) for polarization specified by 
+                                    output.polarization
+                    output.polarization (string, optional): specify polarizations on sides for 3D systems. 
+                        Available choices are:
+                            "s"      - specify s-polarization channels on the output.side
+                            "p"      - specify p-polarization channels on the output.side
+                            "both"   - specify both polarizations (s and p) channels on
+                                    on the output.side
+                        By default, output.polarization = "both";                  
+                    To specify a subset of the propagating channels use ''output = channel_index()'',
+                    then it contains the following fields:
+                        For 3D systems:
+                        output.ind_low_s (integer vector): Vector containing the indices of
+                            propagating channels incident on the low side with s-polarization
+                        output.ind_low_p (integer vector): Vector containing the indices of
+                            propagating channels incident on the low side with p-polarization
+                        output.ind_high_s (integer vector): Vector containing the indices of
+                            propagating channels incident on the high side with s-polarization
+                        output.ind_high_p (integer vector): Vector containing the indices of
+                            propagating channels incident on the high side with p-polarization
+                        One can provide only one or more of them.
+                    The user can first use mesti_build_channels() to get the indices, wave
+                    numbers, and transverse profiles of the propagating channels; based on
+                    that, the user can specify the list of channels of interest through
+                    output.ind_low_s, output.ind_low_p, output.ind_high_s, and output.ind_high_p 
+                    above, or a list of customized wavefronts through output.v_low_s, output.v_low_p, 
+                    output.v_high_s, or output.v_high_p below.
+                        For 2D TM case:
+                        output.ind_low (integer vector): Vector containing the indices of
+                            propagating channels incident on the left side.
+                        output.ind_high (integer vector): Vector containing the indices of
+                            propagating channels incident on the right side.
+                    To specify a custom output wavefronts, a superposition of multiple 
+                propagating channels, use ''output = wavefront()'', then it contains the following fields:
+                    For 3D systems:
+                    output.v_low_s (numeric matrix): Matrix where each column specifies the
+                        coefficients of s-polarization propagating channels on the low 
+                        for one output wavefront from the low; the wavefront is a superposition 
+                        of all propagating channels with the superposition coefficients 
+                        given by that column of output.v_low_s. size(output.v_low_s, 1) must equal 
+                        N_prop_low, the total number of propagating channels on the low; 
+                        size(output.v_low_s, 2) is the number of output wavefronts.
+                    output.v_low_p (numeric matrix): Analogous to to output.v_low_s, but 
+                        specifying output p-polarization wavefronts from the low instead.
+                    output.v_high_s (numeric matrix): Analogous to to output.v_low_s, but 
+                        specifying output s-polarization wavefronts from the high instead.
+                    output.v_high_p (numeric matrix): Analogous to to output.v_low_s, but 
+                        specifying output p-polarization wavefronts from the high instead.        
+                Here, each row of the scattering matrix corresponds to projection onto an
+            output wavefront specified by a column of output.v_low_s, output.v_low_p, 
+            output.v_high_s, or output.v_high_p.
+                    For 2D TM case:
+                    input.v_low (numeric matrix): Matrix where each column specifies the
+                    coefficients of propagating channels on the left for one input
+                    wavefront from the left, with the superposition coefficients given by that column of input.v_low.
+                    size(input.v_low, 1) must equal N_prop_low, the total number of
+                    propagating channels on the left; size(input.v_L, 2) is the number
+                    of input wavefronts.
+                    input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
+                    input wavefronts from the right instead.
+        opts (Opts structure; optional):
+            A structure that specifies the options of computation. 
+            It can contain the following fields (all optional):
+            opts.verbal (boolean scalar; optional, defaults to true):
+                Whether to print system information and timing to the standard output.
+            opts.nz_low (non-negative integer scalar; optional, defaults to 0):
+                Number of pixels of homogeneous space on the low (syst.epsilon_low) to
+                include when returning the spatial field profile; not used for
+                scattering matrix computations.
+            opts.nz_high (non-negative integer scalar; optional, defaults to 0):
+                Number of pixels of homogeneous space on the high (syst.epsilon_high) to
+                include when returning the spatial field profile; not used for
+                scattering matrix computations. Note that opts.nx_high can still be used
+                in one-sided geometries where syst.epsilon_high is not given; the field
+                profile on the high is simply zero in such case.
+            opts.solver (string; optional):
+                The solver used for sparse matrix factorization. Available choices
+                are (case-insensitive):
+                    "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
+                            interface MUMPS3.jl must be installed.
+                    "JULIA" -  (default when MUMPS is not available) Uses the built-in 
+                            lu() function in JULIA, which uses UMFPACK. 
+                MUMPS is faster and uses less memory than lu(), and is required for
+                the APF method.
+            opts.method (string; optional):
+                The solution method. Available choices are (case-insensitive):
+                    "APF" - Augmented partial factorization. C*inv(A)*B is obtained
+                            through the Schur complement of an augmented matrix
+                            K = [A,B;C,0] using a partial factorization. Must have
+                            opts.solver = "MUMPS". This is the most efficient method,
+                            but it cannot be used for computing the full field profile
+                            X=inv(A)*B or with iterative refinement.
+                    "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+                            through C*inv(U)*inv(L)*B with optimized grouping. Must
+                            have opts.solver = "JULIA". This is slightly better than
+                            "FS" when MUMPS is not available, but it cannot be used for
+                            computing the full field profile X=inv(A)*B.
+                    "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+                            with forward and backward substitutions, and project with
+                            C as C*inv(A)*B = C*X. Here, opts.solver can be either
+                            "MUMPS" or "JULIA", and it can be used for computing
+                            the full field profile X=inv(A)*B or with iterative
+                            refinement.
+                    "C*inv(U)*inv(L)*B"   - Same as "FG".    
+                    "factorize_and_solve" - Same as "FS".
+                By default, if C is given and opts.iterative_refinement = false, then
+                "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
+                used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
+                used.
+            opts.symmetrize_K (boolean scalar; optional):
+                Whether or not to pad input and/or output channels and perform
+                permutations to make matrix K = [A,B;C,0] symmetric when computing its
+                Schur complement, which lowers computing time and memory usage. Such
+                channel padding and permutation is reversed afterwards and does not
+                affect what mesti2s() returns.
+            opts.clear_syst (boolean scalar; optional, defaults to false):
+                When opts.clear_syst = true, variable "syst" will be cleared in the
+                caller's workspace to reduce peak memory usage. This can be used when
+                syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz take up
+                significant memory and are not needed after calling mesti().
+            opts.clear_memory (boolean scalar; optional, defaults to true):
+                Whether or not to clear variables inside mesti() to reduce peak memory
+                usage.
+            opts.verbal_solver (boolean scalar; optional, defaults to false):
+                Whether to have the solver print detailed information to the standard
+                output. Note the behavior of output from MUMPS depends on compiler.
+            opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
+                Whether to use single precision version of MUMPS; used only when 
+                opts.solver = "MUMPS". Using single precision version of MUMPS can 
+                reduce memory usage and computing time.
+            opts.use_METIS (boolean scalar; optional, defaults to false in 2D and to true in 3D):
+                Whether to use METIS (instead of the default AMD) to compute the
+                ordering in MUMPS. Using METIS can sometimes reduce memory usage
+                and/or factorization and solve time, but it typically takes longer at
+                the analysis (i.e., ordering) stage in 2D. In 3D METIS is general better 
+                than AMD.
+            opts.nrhs (positive integer scalar; optional):
+                The number of right-hand sides (number of columns of the input matrix
+                B) to consider simultaneously, used only when opts.method =
+                "factorize_and_solve" and C is given. Defaults to 1 if
+                opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
+                opts.iterative_refinement = false, 4 otherwise.
+            opts.store_ordering (boolean scalar; optional, defaults to false):
+                Whether to store the ordering sequence (permutation) for matrix A or
+                matrix K; only possible when opts.solver = "MUMPS". If
+                opts.store_ordering = true, the ordering will be returned in
+                info.ordering.
+            opts.ordering (positive integer vector; optional):
+                A user-specified ordering sequence for matrix A or matrix K, used only
+                when opts.solver = "MUMPS". Using the ordering from a previous
+                computation can speed up (but does not eliminate) the analysis stage.
+                The matrix size must be the same, and the sparsity structure should be
+                similar among the previous and the current computation.
+            opts.analysis_only (boolean scalar; optional, defaults to false):
+                When opts.analysis_only = true, the factorization and solution steps
+                will be skipped, and S = nothing will be returned. The user can use
+                opts.analysis_only = true with opts.store_ordering = true to return
+                the ordering for A or K; only possible when opts.solver = "MUMPS".
+            opts.nthreads_OMP (positive integer scalar; optional):
+                Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
+                environment variable.
+            opts.parallel_dependency_graph (logical scalar; optional):
+                If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+                This typically improve the time performance, but marginally increase 
+                the memory usage.
+            opts.iterative_refinement (boolean scalar; optional, defaults to false):
+                Whether to use iterative refinement in MUMPS to lower round-off
+                errors. Iterative refinement can only be used when opts.solver =
+                "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
+                case opts.nrhs must equal 1. When iterative refinement is used, the
+                relevant information will be returned in info.itr_ref_nsteps,
+                info.itr_ref_omega_1, and info.itr_ref_omega_2.
+            opts.use_continuous_dispersion (boolean scalar; optional):
+                Whether to use the dispersion equation of the continuous wave equation
+                when building the input/output channels. Defaults to false, in which
+                case the finite-difference dispersion is used.
+            opts.n0 (real numeric scalar; optional, defaults to 0):
+                Center of the 1D transverse mode profile with periodic or Bloch periodic
+                boundary condition, u(m,a) = exp(i*kx(a)*syst.dx*(m-m0))/sqrt(nx),
+                where kx(a) = syst.kx_B + a*(2*pi/nx*syst.dx) and nx = nx_Ex = nx_Ey = nx_Ez.
+            opts.m0 (real numeric scalar; optional, defaults to 0):
+                Center of the 1D transverse mode profile with periodic or Bloch periodic
+                boundary conditions, analogous to opts.n0.
+            opts.use_BLR (logical scalar; optional, defaults to false):
+                Whether to use block low-rank approximation in MUMPS to possibly lower computational
+                cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
+            opts.threshold_BLR (positive real scalar; optional):
+                The dropping parameter controls the accuracy of the block low-rank approximations. 
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
+            opts.icntl_36 (positive integer scalar; optional):
+                It controls the choice of the BLR factorization variant. 
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
+            opts.icntl_38 (positive integer scalar; optional):
+                It estimated compression rate of LU factors.
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
+
+        === Output Arguments ===
+        ---When users specify out---
+        field_profiles (4D array):
+            For field-profile computations (i.e., when "out" is not given), the
+            returned field_profiles is a 4D array containing the field profiles, such
+            that field_profiles(:,:,:,a) is the total (incident + scattered) field of
+            Ex/Ey/Ez corresponding to the a-th input wavefront, with
+                Recall that nz_Ez = nz_Ex + 1 = nz_Ey + 1 = H/syst.dx + 1 for a 
+            two-sided geometry; nz_Ez = nz_Ex = nz_Ey = H/syst.dx for a one-sided geometry.
+                By default, opts.nz_low = opts.nz_high = 0, and field_profiles only contain
+            field_profiles in the scattering region. When opts.nz_low and opts.nz_high are
+            specified, field_profiles will also contain opts.nz_low pixels in the homogeneous 
+            space on the low, opts.nz_high pixel in the homogeneous space on the high.
+                To be specific, the field_profiles contains:
+                For 3D systems:
+                    Ex (4D array):
+                    electrical field profile for Ex component
+                    (nx_Ex, ny_Ex, nz_Ex, number of inputs) = size(Ex)
+                    Ey (4D array):
+                    electrical field profile for Ex component
+                    (nx_Ey, ny_Ey, nz_Ey, number of inputs) = size(Ey)
+                    Ez (4D array):
+                    electrical field profile for Ex component
+                    (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
+                For 2D TM case:
+                    Ex (3D array):
+                    electrical field profile for Ex component
+                    (ny_Ex, nz_Ex, number of inputs) = size(Ex)
+        ---or when users  do not specify out---
+        S (numeric matrix):
+            For scattering-matrix computations (i.e., when ''output'' is given), S is the
+            scattering matrix, such that S(b,a) is the flux-normalized field
+            coefficient in the b-th propagating output channel (or the b-th output
+            wavefront) given incident wave in the a-th propagating input channel (or
+            the a-th input wavefront).
+                When all propagating channels on one side or on both sides are
+            requested, e.g. with ''input = channel_type()'', ''input.side = high'' or 
+            ''output = channel_type()'', ''output.side = both'',  matrix S includes 
+            channels.low.N_prop propagating channels on the low and/or
+            2*channels.high.N_prop on the high, with longitudinal wave
+            numbers given by vectors channels.low.kzdx_prop and channels.high.kzdx_prop.
+                The phases of the elements of the scattering matrix depend on the
+            reference plane. For channels on the low, the reference plane is at
+            z = 0. For channels on the high, the reference plane is at z = H.
+                When a subset of the propagating channels are requested, in 3D
+            ''input = channel_index()'' and ''output = channel_index()''
+            with in.ind_low_s, in.ind_low_p, in.ind_high_s, in.ind_high_p, 
+            out.ind_low_s, out.ind_low_p, out.ind_low_p and/or out.ind_high_p, 
+            matrix S includes such subset of the propagating channels. 
+            In 2D, it used with in.ind_low, in.ind_high, out.ind_low, and out.ind_high.
+                When the input wavefronts and/or output basis, i.e. ''input = wavefront()''
+            and/or ''output = wavefront()'' is specified in 3D by input.v_low_s, input.v_low_p, 
+            input.v_high_s, input.v_high_p, output.v_low_s, output.v_low_p, output.v_high_s, 
+            and/or output.v_high_p. In 2D, it used with input.v_low, input.v_high, output.v_low, 
+            and output.v_high. Matrix S is the full scattering matrix with the input and/or output 
+            basis changed.
+        channels (Channel structure):
+            A structure returned by function mesti_build_channels() that contains
+            properties of the propagating and evanescent channels of the homogeneous
+            spaces on the low and high. Type "? mesti_build_channels" for more
+            information.   
+        info (Info structure):
+            A structure that contains the following fields:
+            info.opts (Opts structure):
+                The final "opts" used, excluding the user-specified matrix ordering.
+            info.timing_init (non-negative scalar):
+            info.timing_build (non-negative scalar):
+            info.timing_analyze (non-negative scalar):
+            info.timing_factorize (non-negative scalar):
+            info.timing_total (non-negative scalar):    
+            info.zPML (two-element cell array);
+                PML parameters on the sides of z direction.
+            info.ordering_method (string; optional):
+                Ordering method used in MUMPS.
+            info.ordering (positive integer vector; optional):
+                Ordering sequence returned by MUMPS when opts.store_ordering = true.
+            info.itr_ref_nsteps (integer vector; optional):
+                Number of steps of iterative refinement for each input, if
+                opts.iterative_refinement = true; 0 means no iterative refinement.
+            info.itr_ref_omega_1 (real vector; optional):
+                Scaled residual omega_1 at the end of iterative refinement for each
+                input; see MUMPS user guide section 3.3.2 for definition.
+            info.itr_ref_omega_2 (real vector; optional):
+                Scaled residual omega_2 at the end of iterative refinement for each
+                input; see MUMPS user guide section 3.3.2 for definition.
+            
+        See also: mesti_build_channels, mesti2s
 """
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront}, output::Union{channel_type, channel_index, wavefront, Nothing}, opts::Union{Opts, Nothing})
     # Make deepcopy of them to avoid mutating input argument 
@@ -1017,6 +1021,15 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     if ~isdefined(opts, :n0); opts.n0 = 0; end
     if ~isdefined(opts, :m0); opts.m0 = 0; end
     
+    # Use METIS in 3D and use AMD in 2D by default
+    if ~isdefined(opts, :use_METIS) && ~use_2D_TM
+        opts.use_METIS = true # If this is 3D system, we use METIS ordering by default
+    elseif ~isdefined(opts, :use_METIS) && use_2D_TM
+        opts.use_METIS = false # If this is 2D system, we use AMD ordering by default        
+    elseif ~isa(opts.use_METIS, Bool)
+        throw(ArgumentError("opts.use_METIS must be a boolean, if given."))   
+    end
+
     # opts.symmetrize_K will be checked/initialized later
 
 
@@ -1025,7 +1038,6 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     #    opts.method
     #    opts.verbal_solver
     #    opts.use_single_precision_MUMPS
-    #    opts.use_METIS
     #    opts.nrhs
     #    opts.store_ordering
     #    opts.ordering
@@ -1685,6 +1697,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         alpha_x_high_s = zeros(N_prop_high,0); alpha_y_high_s = zeros(N_prop_high,0)
         alpha_x_high_p = zeros(N_prop_high,0); alpha_y_high_p = zeros(N_prop_high,0); alpha_z_high_p = zeros(N_prop_high,0)
 
+        # Here we define kappa and use them to construct alpha, which is the x, y, and z coefficents for polarization basis.
+        # Note thes kappa_x, kappa_y, kappa_z are different from the real-coordinate-stretching factor kappa in PML parameters.
+        # Please refer to our upcoming 3D vectorial wave paper or email authors if you are interested in the theory.  
         kappa_x_low = sin.((channels.low.kxdx_prop)/2)
         kappa_y_low = sin.((channels.low.kydx_prop)/2)
         kappa_z_low = sin.((channels.low.kzdx_prop)/2)
@@ -1968,14 +1983,6 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     syst.epsilon_low = nothing # mesti() will throw warning if syst.epsilon_low is given
     syst.epsilon_high = nothing # mesti() will throw warning if syst.epsilon_high is given
 
-    # The original syst.epsilon_xx, syst.epsilon_yx, syst.epsilon_zx, syst.epsilon_xy, syst.epsilon_yy, syst.epsilon_zy, syst.epsilon_xz, syst.epsilon_yz, and syst.epsilon_zz are no longer needed but still exists in the caller's workspace; we may clear it to reduce memory usage
-    if opts.clear_syst
-        #syst_name = inputname(1); # name of the variable we call syst in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
-        #if ~isempty(syst_name)
-        #    evalin('caller', ['clear ', syst_name]); # do 'clear syst' in caller's workspace
-        #end
-    end
-
     # Whether we use PML or have a one-sided geometry, the BC in z direction will be Dirichlet when building matrix A in mesti()
     syst.zBC = "PEC"
 
@@ -2184,33 +2191,33 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         S = S[ind_out, ind_in]
     end        
 
-# Include the exp(-i*kzdx*dn) prefactors that should have been in the input matrix B
-if use_ind_in # input channels specified by ind_in_low_s, ind_in_low_p, ind_in_high_s, or ind_in_high_p
-              # or input channels specified by ind_in_low and ind_in_high
-    if ~use_2D_TM
-        prefactor = [exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low_s]); exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low_p])]
-        if two_sided
-            prefactor = [prefactor; exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high_s]); exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high_p])]
-        end
-        if opts.return_field_profile
-            Ex = Ex.*reshape(prefactor, 1, 1, 1, :) # use implicit expansion
-            Ey = Ey.*reshape(prefactor, 1, 1, 1, :)
-            Ez = Ez.*reshape(prefactor, 1, 1, 1, :)
+    # Include the exp(-i*kzdx*dn) prefactors that should have been in the input matrix B
+    if use_ind_in # input channels specified by ind_in_low_s, ind_in_low_p, ind_in_high_s, or ind_in_high_p
+                # or input channels specified by ind_in_low and ind_in_high
+        if ~use_2D_TM
+            prefactor = [exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low_s]); exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low_p])]
+            if two_sided
+                prefactor = [prefactor; exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high_s]); exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high_p])]
+            end
+            if opts.return_field_profile
+                Ex = Ex.*reshape(prefactor, 1, 1, 1, :) # use implicit expansion
+                Ey = Ey.*reshape(prefactor, 1, 1, 1, :)
+                Ez = Ez.*reshape(prefactor, 1, 1, 1, :)
+            else
+                S = S.*reshape(prefactor,1,:) # use implicit expansion
+            end
         else
-            S = S.*reshape(prefactor,1,:) # use implicit expansion
+            prefactor = channels.low.sqrt_nu_prop[ind_in_low].*exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low])
+            if two_sided
+                prefactor = [prefactor; channels.high.sqrt_nu_prop[ind_in_high].*exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high])]
+            end
+            if opts.return_field_profile
+                Ex = Ex.*reshape(prefactor, 1, 1, :) # use implicit expansion
+            else
+                S = S.*reshape(prefactor,1,:) # use implicit expansion
+            end
         end
-    else
-        prefactor = channels.low.sqrt_nu_prop[ind_in_low].*exp.((-1im*dn)*channels.low.kzdx_prop[ind_in_low])
-        if two_sided
-            prefactor = [prefactor; channels.high.sqrt_nu_prop[ind_in_high].*exp.((-1im*dn)*channels.high.kzdx_prop[ind_in_high])]
-        end
-        if opts.return_field_profile
-            Ex = Ex.*reshape(prefactor, 1, 1, :) # use implicit expansion
-        else
-            S = S.*reshape(prefactor,1,:) # use implicit expansion
-        end
-    end
-end            
+    end            
     
     if ~opts.return_field_profile
         # Include the exp(-i*kzdx*dn) prefactors that should have been in the output matrix C

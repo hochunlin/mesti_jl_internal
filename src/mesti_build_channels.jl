@@ -4,14 +4,14 @@
 export Channels_one_sided
 export Channels_two_sided
 
-# Export function mesti_build_channels()
+# Export a function mesti_build_channels()
 export mesti_build_channels
 
 abstract type Channels end
 
 mutable struct Channels_two_sided <: Channels
-    # A composite data type to store the info on two sides, transverse functions, and wave vectors
-    # See also: mesti_build_channels    
+    # A composite data type to store the items on two sides, transverse functions, and wave vectors
+    # See also: mesti_build_channels
     u_x_n::Function
     u_y_n::Function
     u_z_n::Function
@@ -28,7 +28,7 @@ mutable struct Channels_two_sided <: Channels
 end
 
 mutable struct Channels_one_sided <: Channels
-    # A composite data type to store the info on one side, transverse functions, and wave vectors
+    # A composite data type to store the items on one side, transverse functions, and wave vectors
     # See also: mesti_build_channels        
     u_x_n::Function
     u_y_n::Function

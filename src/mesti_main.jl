@@ -1,21 +1,15 @@
-###### Update on 20231005
-#=
-using SparseArrays
-using LinearAlgebra
-using Statistics
-using Printf
+###### Update on 20231008
 
-include("mesti_build_fdfd_matrix.jl")
-include("mesti_matrix_solver.jl")
-=#
-
+# Export composite data types
 export Source_struct
-
 export Syst
 
+# Export a function mesti()
 export mesti
 
 mutable struct Source_struct
+    # A composite data type to specfiy source
+    # See also: mesti and mesti2s   
    pos::Vector{Vector{Int64}}
    data::Union{Vector{Array{Int64,2}},Vector{Array{Float64,2}},Vector{Array{ComplexF64,2}},
          Vector{Array{Int64,4}},Vector{Array{Float64,4}},Vector{Array{ComplexF64,4}}} 
@@ -26,6 +20,9 @@ mutable struct Source_struct
 end
 
 mutable struct Syst
+    # A composite data type to specfiy system
+    # See also: mesti and mesti2s   
+
     # Below are used in both mesti() and mesti2s()
     epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64},Nothing}
     epsilon_xy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
@@ -63,599 +60,600 @@ end
 
 """
     MESTI Multi-source frequency-domain electromagnetic simulations.
-       ---3D field profile---
-       (Ex, Ey, Ez, info) = MESTI(syst, B) returns the spatial field profiles
-       of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
-          [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
-          i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
-       The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
-       are specified by structure "syst".
-          Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
-                             [epsilon_xx, epsilon_xy, epsilon_xz; 
-                              epsilon_yx, epsilon_yy, epsilon_yz; 
-                              epsilon_zx, epsilon_zy, epsilon_zz] in general. 
-       Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
-       or all of them.
-          Each column of matrix "B" specifies a distinct input source profile.
-          The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
-       being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
-       The information of the computation is returned in structure "info".
-    
-       MESTI uses finite-difference discretization on the Yee lattice, after which
-       the differential operator becomes an (nt_Ex*nt_Ey*nt_Ez)-by-(nt_Ex*nt_Ey*nt_Ez) sparse matrix A
-       where nt_Ex is the number of total grid sites for Ex and nt_Ex = nx_Ex*ny_Ex*nz_Ex
-       (nx_Ex, ny_Ex, nz_Ex) is the number of sites Ex is discretized onto. Same notation for Ey and Ez.
-       Ex = reshape((inv(A)*B)[nt_Ex,:], nx_Ex, ny_Ex, nz_Ex, :).
-       Ey = reshape((inv(A)*B)[nt_Ey,:], nx_Ey, ny_Ey, nz_Ey, :).
-       Ez = reshape((inv(A)*B)[nt_Ez,:], nx_Ez, ny_Ez, nz_Ez, :).
+        ---3D field profile---
+        (Ex, Ey, Ez, info) = MESTI(syst, B) returns the spatial field profiles
+        of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
+            [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
+            i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
+        The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
+        are specified by structure "syst".
+            Note that relative permittivity profile epsilon(x,y,z) is a rank 2 tenor: 
+                [epsilon_xx, epsilon_xy, epsilon_xz; 
+                epsilon_yx, epsilon_yy, epsilon_yz; 
+                epsilon_zx, epsilon_zy, epsilon_zz] in general. 
+        Users can specify the diagonal terms only (epsilon_xx(x,y,z), epsilon_yy(x,y,z), and epsilon_zz(x,y,z)) 
+        or all of them.
+        Each column of matrix "B" specifies a distinct input source profile.
+        The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
+        being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
+        The information of the computation is returned in structure "info".
         
-       ---2D TM field profile---
-       (Ex, info) = MESTI(syst, B) returns the spatial field profiles
-       of Ex(y,z) for 2D transverse-magnetic (TM) fields satisfying
-       [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = i*omega*mu_0*Jx(y,z).
-         The returned 'Ex' is a 3D array, with Ex(:,:,i) being the field profile
-       of Ex given the i-th input source profile. The information of the computation is returned in structure 'info'.
-         MESTI uses finite-difference discretization on the Yee lattice, after which
-       the differential operator becomes an (ny_Ex*nz_Ex)-by-(ny_Ex*nz_Ex) sparse matrix A
-       where (ny_Ex, nz_Ex) is the number of sites Ex is discretized onto, and
-       Ex = reshape(inv(A)*B, ny_Ex, nz_Ex, []).
+        MESTI uses finite-difference discretization on the Yee lattice, after which
+        the differential operator becomes an (nt_Ex*nt_Ey*nt_Ez)-by-(nt_Ex*nt_Ey*nt_Ez) sparse matrix A
+        where nt_Ex is the number of total grid sites for Ex and nt_Ex = nx_Ex*ny_Ex*nz_Ex
+        (nx_Ex, ny_Ex, nz_Ex) is the number of sites Ex is discretized onto. Same notation for Ey and Ez.
+        Ex = reshape((inv(A)*B)[nt_Ex,:], nx_Ex, ny_Ex, nz_Ex, :).
+        Ey = reshape((inv(A)*B)[nt_Ey,:], nx_Ey, ny_Ey, nz_Ey, :).
+        Ez = reshape((inv(A)*B)[nt_Ez,:], nx_Ez, ny_Ez, nz_Ez, :).
+            
+        ---2D TM field profile---
+        (Ex, info) = MESTI(syst, B) returns the spatial field profiles
+        of Ex(y,z) for 2D transverse-magnetic (TM) fields satisfying
+        [- (d/dy)^2 - (d/dz)^2 - (omega/c)^2*epsilon(y,z)] Ex(y,z) = i*omega*mu_0*Jx(y,z).
+            The returned 'Ex' is a 3D array, with Ex(:,:,i) being the field profile
+        of Ex given the i-th input source profile. The information of the computation is returned in structure 'info'.
+            MESTI uses finite-difference discretization on the Yee lattice, after which
+        the differential operator becomes an (ny_Ex*nz_Ex)-by-(ny_Ex*nz_Ex) sparse matrix A
+        where (ny_Ex, nz_Ex) is the number of sites Ex is discretized onto, and
+        Ex = reshape(inv(A)*B, ny_Ex, nz_Ex, []).
 
-       ---Generalized scattering matrix S---
-       (S, info) = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
-       inv(A)*B is projected onto the output channels or locations of interest
-       through matrix C; each row of matrix "C" is a distinct output projection
-       profile, discretized into a 1-by-(nt_Ex*nt_Ey*nt_Ez) vector for 3D or
-       1-by-(ny_Ex*nz_Ex) vector for 2D TM fields in the same order as matrix A.
-       When the MUMPS is available, this is done by computing the Schur complement of an 
-       augmented matrix K = [A,B;C,0] through a partial factorization.
-    
-       (S, info) = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
-       used for the computation of scattering matrices, where S is the scattering
-       matrix, and matrix D can be derived analytically or computed as D =
-       C*inv(A0)*B - S0 from a reference system A0 for which the scattering matrix
-       S0 is known.
-    
-       (Ex, Ey, Ez, info) = MESTI(syst, B, opts),
-       (Ex, info) = MESTI(syst, B, opts),
-       (S, info) = MESTI(syst, B, C, opts), and
-       (S, info) = MESTI(syst, B, C, D, opts) allow detailed options to be
-       specified with structure "opts".
-    
-       MESTI only considers nonmagnetic materials.
-    
-       This file checks and parses the parameters, and it can build matrices B and
-       C from its nonzero elements specified by the user (see details below). It
-       calls function mesti_build_fdfd_matrix() to build matrix A and function
-       mesti_matrix_solver!() to compute C*inv(A)*B or inv(A)*B, where most of the
-       computation is done.
-    
-       === Input Arguments ===
-       syst (Syst struct; required):
-          A structure that specifies the system, used to build the FDFD matrix A.
-          It contains the following fields:
-          syst.epsilon_xx (numeric array or matrix, real or complex, required for 3D and 2D TM):
-             For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
-             profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
-             epsilon_xx(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
-             the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
-             For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
-             profile epsilon_xx(y,z).
-          syst.epsilon_xy (numeric array or matrix, real or complex, optional):
-             For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
-             profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
-             epsilon_xy(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
-             the low corner on the Yee lattice (n,m,l).
-          syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_yy (numeric array or nothing, real or complex, required required for 3D):    
-             Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
-             analogous to syst.epsilon_xx.
-          syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
-             Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
-             analogous to syst.epsilon_xy.
-          syst.epsilon_zz (numeric array or nothing, real or complex, required required for 3D):    
-             Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
-             analogous to syst.epsilon_xx.
-          syst.length_unit (string; optional):
-             Length unit, such as micron, nm, or some reference wavelength. This
-             code only uses dimensionless quantities, so syst.length_unit is never
-             used. This syst.length_unit is meant to help the user interpret the
-             units of (x,y,z), dx, wavelength, kx_B, ky_B, kz_B, etc.
-          syst.wavelength (numeric scalar, real or complex; required):
-             Vacuum wavelength 2*pi*c/omega, in units of syst.length_unit.
-          syst.dx (positive scalar; required):
-             Discretization grid size, in units of syst.length_unit.
-          syst.PML (PML structure or a vector of PML structure; optional):
-             Parameters of the perfectly matched layer (PML) used to simulate an
-             open boundary. Note that PML is not a boundary condition; it is a
-             layer placed within the simulation domain (just before the boundary)
-             that attenuates outgoing waves with minimal reflection.
-                In mesti(), the PML starts from the interior of the system
-             specified by syst.epsilon_ij (i = x,y,z and j = x,y,z), 
-             and ends at the first or last pixel inside syst.epsilon_ij 
-             (i = x,y,z and j = x,y,z). (Note: this is different from the function 
-             mesti2s() that handles two-sided geometries, where the homogeneous spaces
-             on the low and high are specified separately through syst.epsilon_low 
-             and syst.epsilon_high, and where PML is placed in such homogeneous space, 
-             outside of the syst.epsilon_ij (i = x,y,z and j = x,y,z).
-                When only one set of PML parameters is used in the system (as is
-             the most common), such parameters can be specified with a scalar PML
-             structure syst.PML that contains the following fields:
-                npixels (positive integer scalar; required): Number of PML pixels.
-                   Note this is within syst.epsilon_ij (i = x,y,z and j = x,y,z),
-                   not in addition to.
-                direction (string; optional): Direction(s) where PML is
-                   placed. Available choices are (case-insensitive):
-                      "all" - (default) PML in x, y, and z directions for 3D and PML in y and z directions for 2D TM
-                      "x"   - PML in x direction
-                      "y"   - PML in y direction
-                      "z"   - PML in y direction    
-                side (string; optional): Side(s) where PML is placed.
-                   Available choices are (case-insensitive):
-                      "both" - (default) PML on both sides
-                      "-"    - one-sided PML; end at the first pixel
-                      "+"    - one-sided PML; end at the last pixel
-                power_sigma (non-negative scalar; optional): Power of the
-                   polynomial grading for the conductivity sigma; defaults to 3.
-                sigma_max_over_omega (non-negative scalar; optional):
-                   Conductivity at the end of the PML; defaults to
-                      0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
-                   where epsilon_bg is the average relative permittivity along the
-                   last slice of the PML. This is used to attenuate propagating
-                   waves.
-                power_kappa (non-negative scalar; optional): Power of the
-                   polynomial grading for the real-coordinate-stretching factor
-                   kappa; defaults to 3.
-                kappa_max (real scalar no smaller than 1; optional):
-                   Real-coordinate-stretching factor at the end of the PML;
-                   defaults to 15. This is used to accelerate the attenuation of
-                   evanescent waves. kappa_max = 1 means no real-coordinate
-                   stretching.
-                power_alpha (non-negative scalar; optional): Power of the
-                   polynomial grading for the CFS alpha factor; defaults to 1.
-                alpha_max_over_omega (non-negative scalar; optional): Complex-
-                   frequency-shifting (CFS) factor at the beginning of the PML.
-                   This is typically used in time-domain simulations to suppress
-                   late-time (low-frequency) reflections. We don't use it by
-                   default (alpha_max_over_omega = 0) since we are in frequency
-                   domain.
-             We use the following PML coordinate-stretching factor:
-                s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
-             with
-                sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
-                kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
-                alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
-             where omega is frequency, and p goes linearly from 0 at the beginning
-             of the PML to 1 at the end of the PML. 
-                If isdefined(syst, :PML) = false, which means no PML on any side. PML is
-             only placed on the side(s) specified by syst.PML.
-                When multiple sets of PML parameters are used in the system (e.g.,
-             a thinner PML on one side, a thicker PML on another side), these
-             parameters can be specified with a vector of PML strcture.
-                syst.PML = [PML_1, PML_2, ...],
-             with PML_1 and PML_2 each being a structure containing the above
-             fields; they can specify different PML parameters on different sides.
-             Each side cannot be specified more than once.
-                With real-coordinate stretching, PML can attenuate evanescent waves
-             more efficiently than free space, so there is no need to place free
-             space in front of PML.
-                The PML thickness should be chosen based on the acceptable level of
-             reflectivity given the discretization resolution and the range of wave
-             numbers (i.e., angles) involved; more PML pixels gives lower
-             reflectivity. Typically 10-40 pixels are sufficient.
-          syst.PML_type (string; optional):
-             Type of PML. Available choices are (case-insensitive):
-                "UPML"   - (default) uniaxial PML
-                "SC-PML" - stretched-coordinate PML
-             The two are mathematically equivalent, but using SC-PML has lower 
-             condition number.
-          syst.xBC (string or nothing; optional):
-             Boundary condition (BC) at the two ends in x direction, effectively
-             specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
-                        Ey(n,m,l) at n=0 and n=nx_Ey+1,
-                        Ez(n,m,l) at n=0 and n=nx_Ez+1.    
-             one pixel beyond the computation domain. Available choices are:
-               "Bloch"    - Ex(n+nx_Ex,m,l) = Ex(n,m,l)*exp(1i*syst.kx_B*nx_Ex*syst.dx),
-                            Ey(n+nx_Ey,m,l) = Ey(n,m,l)*exp(1i*syst.kx_B*nx_Ey*syst.dx),
-                            Ez(n+nx_Ez,m,l) = Ez(n,m,l)*exp(1i*syst.kx_B*nx_Ez*syst.dx).   
-               "periodic" - equivalent to "Bloch" with syst.kx_B = 0
-               "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
-                            Ey(0,m,l) = Ey(nx_Ey+1,m,l) = 0,
-                            Ez(0,m,l) = Ez(nx_Ez+1,m,l) = 0.   
-               "PMC"      - Ex(0,m,l) = Ex(nx_Ex+1,m,l) = 0,
-                            Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
-               "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
-                            Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
-                            Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
-               "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
-                            Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
-                            Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
-             where PEC stands for perfect electric conductor and PMC stands for perfect
-             magnetic conductor.
-                By default,
-                syst.xBC = "Bloch" if syst.kx_B is given; otherwise syst.xBC = "PEC"
-             The choice of syst.xBC has little effect on the numerical accuracy
-             when PML is used.
-             For 2D TM fields, xBC = nothing.
-          syst.yBC (string; optional):
-             Boundary condition in y direction, analogous to syst.xBC.
-          syst.zBC (string; optional):
-             Boundary condition in z direction, analogous to syst.xBC.
-          syst.kx_B (real scalar or nothing; optional):
-             Bloch wave number in x direction, in units of 1/syst.length_unit.
-             syst.kx_B is only used when syst.xBC = "Bloch". It is allowed to
-             specify a complex-valued syst.kx_B, but a warning will be displayed.
-             For 2D TM fields, kx_B = nothing.
-          syst.ky_B (real scalar; optional):
-             Bloch wave number in y direction, analogous to syst.kx_B.
-          syst.kz_B (real scalar; optional):
-             Bloch wave number in z direction, analogous to syst.kx_B.    
-       B (numeric matrix or vector of source structure; required):
-          Matrix specifying the input source profiles B in the C*inv(A)*B - D or
-          C*inv(A)*B or inv(A)*B returned. When the input argument B is a matrix,
-          it is directly used, and size(B,1) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case; 
-          each column of B specifies a source profile, placed on the grid points of E.
-             Note that matrix A is (syst.dx)^2 times the differential operator and
-          is unitless, so each column of B is (syst.dx)^2 times the i*omega*mu_0*[Jx;Jy;Jz] on
-          the right-hand side of the differential equation and has the same unit as E.
-             Instead of specifying matrix B directly, one can specify only its
-          nonzero parts, from which mesti() will build the sparse matrix B. To do
-          so, B in the input argument should be set as a source structure vector; 
-          (Bx_struct, By_struct, Bz_struct) here we refer to such source structure 
-          as Bx_struct as source for x component to distinguish it from the
-          resulting matrix B. If for every column of matrix B, all of its nonzero
-          elements are spatially located within a cuboid (e.g., block sources),
-          one can use the following fields:
-             Bx_struct.pos (six-element integer vector or four-element integer vector): Bx_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
-                the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
-                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
-                of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
-                of the higher-index corner of the cuboid.
-                For 2D TM case, users only need to specify [m1, l1, w, h].
-             Bx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix B for x component
-                within the cuboid specified by Bx_struct.pos.
-                   When it is a 4D array (general 3D system), Bx_struct.data[n',m',l',a] is the a-th input
-                source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
-                B[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Bx_struct.data[:,:,:,a] gives the
-                sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
-                size(Bx_struct.data) must equal (d, w, h, number of inputs).
-                    When it is a 3D array (2D TM system), Bx_struct.data(m',l',a) is the a-th input
-                source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
-                Bx(m+(l-1)*ny, a). In other words, Bx_struct.data(:,:,a) gives the
-                sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
-                size(Bx_struct.data, [1,2]) must equal [w, h], and
-                size(Bx_struct.data, 3) is the number of inputs.
-                   Alternatively, Bx_struct.data can be a 2D array that is
-                equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
-                size(Bx_struct.data, 2) is the number of inputs; in this case,
-                Bx_struct.data can be a sparse matrix, and its sparsity will be
-                preserved when building matrix B.
-             By_struct.pos (six-element integer vector): By_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ey-grid, analogous to Bx_struct.pos.
-             By_struct.data (2D or 4D numeric array): nonzero elements of matrix B for y component
-                within the cuboid specified by By_struct.pos, analogous to Bx_struct.data.
-             Bz_struct.pos (six-element integer vector): Bz_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ez-grid, analogous to Bx_struct.pos.
-             Bz_struct.data (2D or 4D numeric array): nonzero elements of matrix B for z component
-                within the cuboid specified by Bz_struct.pos, analogous to Bx_struct.data.
-             If different inputs are located within different cuboids (e.g.,
-          inputs from plane sources on the low and separate inputs from plane
-          sources on the high), Bx_struct can be a structure array with multiple
-          elements (e.g., Bx_struct.pos[1] and Bx_struct.data[1] specify plane sources
-          on the low; Bx_struct.pos[2] and Bx_struct.data[2] specify plane sources on
-          the high); these inputs are treated separately, and the total number of
-          inputs is size(Bx_struct.data[1], 4) + size(Bx_struct.data[2], 4) + ... +
-          size(Bx_struct.data[end], 4).
-             If the nonzero elements of matrix B do not have cuboid shapes in
-          space [e.g., for total-field/scattered-field (TF/SF) simulations], one
-          can use a source structure with the following fields:
-             Bx_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix B for x component, such that
-                f(Bx_struct.ind) are the points where the source is placed. Such linear 
-                indices can be constructed from Base._sub2ind().
-             Bx_struct.data (2D numeric matrix): nonzero elements of matrix B for x component 
-                at the locations specified by Bx_struct.ind. Specifically,
-                Bx_struct.data[i,a] is the a-th input source at the location of
-                f(Bx_struct.ind[i]), which becomes B[Bx_struct.ind[i], a]. So,
-                size(Bx_struct.data, 1) must equal length(Bx_struct.ind), and
-                size(Bx_struct.data, 2) is the number of inputs.
-             By_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix B for y component, analogous to Bx_struct.ind.
-             By_struct.data (2D numeric matrix): nonzero elements of matrix B for y component 
-                at the locations specified by By_struct.ind, analogous to Bx_struct.data.
-             Bz_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix B for z component, analogous to Bx_struct.ind.
-             Bz_struct.data (2D numeric matrix): nonzero elements of matrix B for z component 
-                at the locations specified by Bz_struct.ind, analogous to Bx_struct.data.
-             Similarly, one can use Bx_struct.ind[1], Bx_struct.ind[2] etc together
-          with Bx_struct.data[1], Bx_struct.data[2] etc to specify inputs at
-          different sets of locations. Every element of the structure array must
-          have the same fields (e.g., one cannot specify Bx_struct.pos[1] and
-          Bx_struct.ind[2]), so the more general Bx_struct.ind syntax should be used
-          when some of the inputs are rectangular and some are not.
-       C (numeric matrix, vector of source structure, or "transpose(B)"; optional):
-          Matrix specifying the output projections in the C*inv(A)*B - D or
-          C*inv(A)*B returned. When the input argument C is a matrix, it is
-          directly used, and size(C,2) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case;
-          each row of C specifies a projection profile, placed on the grid points of E.
-             Scattering matrix computations often have C = transpose(B); if that
-          is the case, the user can set C = "transpose(B)" as a string,
-          and it will be replaced by transpose(B) in the code.
-             For field-profile computations, the user can simply omit C from the
-          input arguments, as in mesti(syst, B). If opts is needed, the user can use
-          mesti(syst, B, opts).
-             Similar to B, here one can specify only the nonzero parts of the
-          output matrix C, from which mesti() will build the sparse matrix C. The
-          syntax of vector of source structure (Cx_struct, Cy_struct, Cz_struct) is 
-          the same as for B, summarized below. If for every row of matrix
-          C, all of its nonzero elements are spatially located withing a cuboid
-          (e.g., projection of fields on a line), one can set the input argument C
-          to be a structure array (referred to as Cx_struct below) with the
-          following fields:
-             Cx_struct.pos (six-element integer vector or four-element integer vector): Cx_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
-                the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
-                at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
-                of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
-                of the higher-index corner of the cuboid.
-                For 2D TM case, users only need to specify [m1, l1, w, h].
-             Cx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix C for x component
-                within the cuboid specified by Cx_struct.pos.
-                   When it is a 4D array (general 3D system), Cx_struct.data[n',m',l',a] is the a-th input
-                source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
-                C[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Cx_struct.data[:,:,:,a] gives the
-                sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
-                size(Cx_struct.data) must equal (d, w, h, number of inputs).
-                    When it is a 3D array (2D system), Cx_struct.data(m',l',a) is the a-th input
-                source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
-                Cx(m+(l-1)*ny, a). In other words, Cx_struct.data(:,:,a) gives the
-                sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
-                size(Cx_struct.data, [1,2]) must equal [w, h], and
-                size(Cx_struct.data, 3) is the number of inputs.
-                   Alternatively, Cx_struct.data can be a 2D array that is
-                equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
-                size(Cx_struct.data, 2) is the number of inputs; in this case,
-                Cx_struct.data can be a sparse matrix, and its sparsity will be
-                preserved when building matrix C.
-             Cy_struct.pos (six-element integer vector): Cy_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ey-grid, analogous to Cx_struct.pos.
-             Cy_struct.data (2D or 4D numeric array): nonzero elements of matrix C for y component
-                within the cuboid specified by Cy_struct.pos, analogous to Cx_struct.data.
-             Cz_struct.pos (six-element integer vector): Cz_struct.pos =
-                [n1, m1, l1, d, w, h] specifies the location and the size of the
-                cuboid on Ez-grid, analogous to Cx_struct.pos.
-             Cz_struct.data (2D or 4D numeric array): nonzero elements of matrix C for z component
-                within the cuboid specified by Cz_struct.pos, analogous to Cx_struct.data.
-             If the nonzero elements of matrix C do not have rectangular shapes in
-          space [e.g., for near-field-to-far-field transformations], one can set C
-          to a structure array with the following fields:
-             Cx_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix C for x component, such that
-                f(Cx_struct.ind) are the points where the source is placed.
-             Cx_struct.data (2D numeric matrix): nonzero elements of matrix C for x component 
-                at the locations specified by Cx_struct.ind. Specifically,
-                Cx_struct.data[i,a] is the a-th input source at the location of
-                f(Cx_struct.ind[i]), which becomes C[Cx_struct.ind[i], a]. So,
-                size(Cx_struct.data, 1) must equal length(Cx_struct.ind), and
-                size(Cx_struct.data, 2) is the number of inputs.
-             Cy_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix C for y component, analogous to Cx_struct.ind.
-             Cy_struct.data (2D numeric matrix): nonzero elements of matrix C for y component 
-                at the locations specified by Cy_struct.ind, analogous to Cx_struct.data.
-             Cz_struct.ind (integer vector): linear indices of the spatial
-                locations of the nonzero elements of matrix C for z component, analogous to Cx_struct.ind.
-             Cz_struct.data (2D numeric matrix): nonzero elements of matrix C for z component 
-                at the locations specified by Cz_struct.ind, analogous to Cx_struct.data.
-             Like in Bx_struct, one can use structure arrays with multiple elements
-          to specify outputs at different spatial locations.
-       D (numeric matrix; optional):
-          Matrix D in the C*inv(A)*B - D returned, which specifies the baseline
-          contribution; size(D,1) must equal size(C,1), and size(D,2) must equal
-          size(B,2). When D is not an input argument, it will not be subtracted from C*inv(A)*B. 
-          For field-profile computations where C is not an input argument, D should not be an input
-          argument, either.
-       opts (Opts structure; optional):
-          A structure that specifies the options of computation. 
-          It can contain the following fields (all optional):
-          opts.verbal (boolean scalar; optional, defaults to true):
-             Whether to print system information and timing to the standard output.
-          opts.prefactor (numeric scalar, real or complex; optional):
-             When opts.prefactor is given, mesti() will return
-             opts.prefactor*C*inv(A)*B - D or opts.prefactor*C*inv(A)*B or
-             opts.prefactor*inv(A)*B. Such prefactor makes it easier to use C =
-             transpose(B) to take advantage of reciprocity. Defaults to 1.
-          opts.exclude_PML_in_field_profiles (boolean scalar; optional, defaults to false):
-             When opts.exclude_PML_in_field_profiles = true, the PML pixels
-             (specified by syst.PML.npixels) are excluded from the returned
-             field_profiles on each side where PML is used; otherwise the full
-             field profiles are returned. Only used for field-profile computations
-             (i.e., when the output projection matrix C is not given).    
-          opts.solver (string; optional):
-             The solver used for sparse matrix factorization. Available choices
-             are (case-insensitive):
-                "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
-                           interface MUMPS3.jl must be installed.
-                "JULIA" -  (default when MUMPS is not available) Uses the built-in 
-                           lu() function in JULIA, which uses UMFPACK. 
-             MUMPS is faster and uses less memory than lu(), and is required for
-             the APF method.
-          opts.method (string; optional):
-             The solution method. Available choices are (case-insensitive):
-                "APF" - Augmented partial factorization. C*inv(A)*B is obtained
-                        through the Schur complement of an augmented matrix
-                        K = [A,B;C,0] using a partial factorization. Must have
-                        opts.solver = "MUMPS". This is the most efficient method,
-                        but it cannot be used for computing the full field profile
-                        X=inv(A)*B or with iterative refinement.
-                "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
-                        through C*inv(U)*inv(L)*B with optimized grouping. Must
-                        have opts.solver = "JULIA". This is slightly better than
-                        "FS" when MUMPS is not available, but it cannot be used for
-                        computing the full field profile X=inv(A)*B.
-                "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-                        with forward and backward substitutions, and project with
-                        C as C*inv(A)*B = C*X. Here, opts.solver can be either
-                        "MUMPS" or "JULIA", and it can be used for computing
-                        the full field profile X=inv(A)*B or with iterative
-                        refinement.
-                "C*inv(U)*inv(L)*B"   - Same as "FG".    
-                "factorize_and_solve" - Same as "FS".
-             By default, if C is given and opts.iterative_refinement = false, then
-             "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
-             used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
-             used.
-          opts.clear_BC (boolean scalar; optional, defaults to false):
-             When opts.clear_BC = true, variables "B" and "C" will be cleared in
-             the caller's workspace to reduce peak memory usage. Can be used when B
-             and/or C take up significant memory and are not needed after calling
-             mesti(). However, it is not implemented and does not work for current 
-             julia version.
-          opts.clear_syst (boolean scalar; optional, defaults to false):
-             When opts.clear_syst = true, variable "syst" will be cleared in the
-             caller's workspace to reduce peak memory usage. This can be used when
-             syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz take up
-             significant memory and are not needed after calling mesti(). However, 
-             it is not implemented and does not work for current julia version.
-          opts.clear_memory (boolean scalar; optional, defaults to true):
-             Whether or not to clear variables inside mesti() to reduce peak memory
-             usage. If opts.clear_memory == true, we call GC.gc() inside mesti().
-          opts.verbal_solver (boolean scalar; optional, defaults to false):
-             Whether to have the solver print detailed information to the standard
-             output. Note the behavior of output from MUMPS depends on compiler.
-          opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
-             Whether to use single precision version of MUMPS; used only when 
-             opts.solver = "MUMPS". Using single precision version of MUMPS can 
-             reduce memory usage and computing time.
-          opts.use_METIS (boolean scalar; optional, defaults to false):
-             Whether to use METIS (instead of the default AMD) to compute the
-             ordering in MUMPS. Using METIS can sometimes reduce memory usage
-             and/or factorization and solve time, but it typically takes longer at
-             the analysis (i.e., ordering) stage.
-          opts.nrhs (positive integer scalar; optional):
-             The number of right-hand sides (number of columns of the input matrix
-             B) to consider simultaneously, used only when opts.method =
-             "factorize_and_solve" and C is given. Defaults to 1 if
-             opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
-             opts.iterative_refinement = false, 4 otherwise.
-          opts.store_ordering (boolean scalar; optional, defaults to false):
-             Whether to store the ordering sequence (permutation) for matrix A or
-             matrix K; only possible when opts.solver = "MUMPS". If
-             opts.store_ordering = true, the ordering will be returned in
-             info.ordering.
-          opts.ordering (positive integer vector; optional):
-             A user-specified ordering sequence for matrix A or matrix K, used only
-             when opts.solver = "MUMPS". Using the ordering from a previous
-             computation can speed up (but does not eliminate) the analysis stage.
-             The matrix size must be the same, and the sparsity structure should be
-             similar among the previous and the current computation.
-          opts.analysis_only (boolean scalar; optional, defaults to false):
-             When opts.analysis_only = true, the factorization and solution steps
-             will be skipped, and S = nothing will be returned. The user can use
-             opts.analysis_only = true with opts.store_ordering = true to return
-             the ordering for A or K; only possible when opts.solver = "MUMPS".
-          opts.nthreads_OMP (positive integer scalar; optional):
-             Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
-             environment variable.
-          opts.parallel_dependency_graph (logical scalar; optional):
-             If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
-             This typically improve the time performance, but marginally increase 
-             the memory usage.
-          opts.iterative_refinement (boolean scalar; optional, defaults to false):
-             Whether to use iterative refinement in MUMPS to lower round-off
-             errors. Iterative refinement can only be used when opts.solver =
-             "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
-             case opts.nrhs must equal 1. When iterative refinement is used, the
-             relevant information will be returned in info.itr_ref_nsteps,
-             info.itr_ref_omega_1, and info.itr_ref_omega_2.
-          opts.use_BLR (logical scalar; optional, defaults to false):
-             Whether to use block low-rank approximation in MUMPS to possibly lower computational
-             cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
-          opts.threshold_BLR (positive real scalar; optional):
-             The dropping parameter controls the accuracy of the block low-rank approximations. 
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
-          opts.icntl_36 (positive integer scalar; optional):
-             It controls the choice of the BLR factorization variant. 
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
-          opts.icntl_38 (positive integer scalar; optional):
-             It estimated compression rate of LU factors.
-             It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
-             Please refer to the section of BLR API in MUMPS userguide.
+        ---Generalized scattering matrix S---
+        (S, info) = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
+        inv(A)*B is projected onto the output channels or locations of interest
+        through matrix C; each row of matrix "C" is a distinct output projection
+        profile, discretized into a 1-by-(nt_Ex*nt_Ey*nt_Ez) vector for 3D or
+        1-by-(ny_Ex*nz_Ex) vector for 2D TM fields in the same order as matrix A.
+        When the MUMPS is available, this is done by computing the Schur complement of an 
+        augmented matrix K = [A,B;C,0] through a partial factorization.
+        
+        (S, info) = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
+        used for the computation of scattering matrices, where S is the scattering
+        matrix, and matrix D can be derived analytically or computed as D =
+        C*inv(A0)*B - S0 from a reference system A0 for which the scattering matrix
+        S0 is known.
+        
+        (Ex, Ey, Ez, info) = MESTI(syst, B, opts),
+        (Ex, info) = MESTI(syst, B, opts),
+        (S, info) = MESTI(syst, B, C, opts), and
+        (S, info) = MESTI(syst, B, C, D, opts) allow detailed options to be
+        specified with structure "opts".
+        
+        MESTI only considers nonmagnetic materials.
+        
+        This file checks and parses the parameters, and it can build matrices B and
+        C from its nonzero elements specified by the user (see details below). It
+        calls function mesti_build_fdfd_matrix() to build matrix A and function
+        mesti_matrix_solver!() to compute C*inv(A)*B or inv(A)*B, where most of the
+        computation is done.
+        
+        === Input Arguments ===
+        syst (Syst struct; required):
+            A structure that specifies the system, used to build the FDFD matrix A.
+            It contains the following fields:
+            syst.epsilon_xx (numeric array or matrix, real or complex, required):
+                For 3D systems, an nx_Ex-by-ny_Ex-by-nz_Ex array discretizing the relative permittivity
+                profile epsilon_xx(x,y,z). Specifically, syst.epsilon_xx(n,m,l) is the scalar
+                epsilon_xx(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
+                the point (x_n, y_m, z_l) where Ex(x,y,z) is located on the Yee lattice.
+                For 2D TM fields, an ny_Ex-by-nz_Ex matrix discretizing the relative permittivity
+                profile epsilon_xx(y,z).
+            syst.epsilon_xy (numeric array or matrix, real or complex, optional):
+                For 3D, an nx_Ez-by-ny_Ez-by-nz_Ex array discretizing the relative permittivity
+                profile epsilon_xy(x,y,z). Specifically, syst.epsilon_xy(n,m,l) is the scalar
+                epsilon_xy(n,m,l) averaged over a cube with volume (syst.dx)^3 centered at
+                the low corner on the Yee lattice (n,m,l).
+            syst.epsilon_xz (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_xz(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_yx (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_yx(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_yy (numeric array or nothing, real or complex, required for 3D):    
+                Discretizing the relative permittivity profile epsilon_yy(x,y,z), 
+                analogous to syst.epsilon_xx.
+            syst.epsilon_yz (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_yz(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zx (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_zx(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zy (numeric array or nothing, real or complex, optional):    
+                Discretizing the relative permittivity profile epsilon_zy(x,y,z), 
+                analogous to syst.epsilon_xy.
+            syst.epsilon_zz (numeric array or nothing, real or complex, required for 3D):    
+                Discretizing the relative permittivity profile epsilon_zz(x,y,z), 
+                analogous to syst.epsilon_xx.
+            syst.length_unit (string; optional):
+                Length unit, such as micron, nm, or some reference wavelength. This
+                code only uses dimensionless quantities, so syst.length_unit is never
+                used. This syst.length_unit is meant to help the user interpret the
+                units of (x,y,z), dx, wavelength, kx_B, ky_B, kz_B, etc.
+            syst.wavelength (numeric scalar, real or complex; required):
+                Vacuum wavelength 2*pi*c/omega, in units of syst.length_unit.
+            syst.dx (positive scalar; required):
+                Discretization grid size, in units of syst.length_unit.
+            syst.PML (PML structure or a vector of PML structure; optional):
+                Parameters of the perfectly matched layer (PML) used to simulate an
+                open boundary. Note that PML is not a boundary condition; it is a
+                layer placed within the simulation domain (just before the boundary)
+                that attenuates outgoing waves with minimal reflection.
+                    In mesti(), the PML starts from the interior of the system
+                specified by syst.epsilon_ij (i = x,y,z and j = x,y,z), 
+                and ends at the first or last pixel inside syst.epsilon_ij 
+                (i = x,y,z and j = x,y,z). (Note: this is different from the function 
+                mesti2s() that handles two-sided geometries, where the homogeneous spaces
+                on the low and high are specified separately through syst.epsilon_low 
+                and syst.epsilon_high, and where PML is placed in such homogeneous space, 
+                outside of the syst.epsilon_ij (i = x,y,z and j = x,y,z).
+                    When only one set of PML parameters is used in the system (as is
+                the most common), such parameters can be specified with a scalar PML
+                structure syst.PML that contains the following fields:
+                    npixels (positive integer scalar; required): 
+                        Number of PML pixels.
+                        Note this is within syst.epsilon_ij (i = x,y,z and j = x,y,z),
+                        not in addition to.
+                    direction (string; optional): 
+                        Direction(s) where PML is placed. Available choices are (case-insensitive):
+                            "all" - (default) PML in x, y, and z directions for 3D and PML in y and z directions for 2D TM
+                            "x"   - PML in x direction
+                            "y"   - PML in y direction
+                            "z"   - PML in y direction    
+                    side (string; optional): 
+                        Side(s) where PML is placed.Available choices are (case-insensitive):
+                            "both" - (default) PML on both sides
+                            "-"    - one-sided PML; end at the first pixel
+                            "+"    - one-sided PML; end at the last pixel
+                    power_sigma (non-negative scalar; optional): 
+                        Power of the polynomial grading for the conductivity sigma; defaults to 3.
+                    sigma_max_over_omega (non-negative scalar; optional):
+                        Conductivity at the end of the PML; defaults to
+                        0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
+                        where epsilon_bg is the average relative permittivity along the
+                        last slice of the PML. This is used to attenuate propagating
+                        waves.
+                    power_kappa (non-negative scalar; optional): 
+                        Power of the polynomial grading for the real-coordinate-stretching factor
+                        kappa; defaults to 3.
+                    kappa_max (real scalar no smaller than 1; optional):
+                        Real-coordinate-stretching factor at the end of the PML;
+                        defaults to 15. This is used to accelerate the attenuation of
+                        evanescent waves. kappa_max = 1 means no real-coordinate
+                        stretching.
+                    power_alpha (non-negative scalar; optional): 
+                        Power of the polynomial grading for the CFS alpha factor; defaults to 1.
+                    alpha_max_over_omega (non-negative scalar; optional): 
+                        Complex-frequency-shifting (CFS) factor at the beginning of the PML.
+                        This is typically used in time-domain simulations to suppress
+                        late-time (low-frequency) reflections. We don't use it by
+                        default (alpha_max_over_omega = 0) since we are in frequency
+                        domain.
+                We use the following PML coordinate-stretching factor:
+                    s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
+                with
+                    sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+                    kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+                    alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+                where omega is frequency, and p goes linearly from 0 at the beginning
+                of the PML to 1 at the end of the PML. 
+                    If isdefined(syst, :PML) = false, which means no PML on any side. PML is
+                only placed on the side(s) specified by syst.PML.
+                    When multiple sets of PML parameters are used in the system (e.g.,
+                a thinner PML on one side, a thicker PML on another side), these
+                parameters can be specified with a vector of PML strcture.
+                    syst.PML = [PML_1, PML_2, ...],
+                with PML_1 and PML_2 each being a structure containing the above
+                fields; they can specify different PML parameters on different sides.
+                Each side cannot be specified more than once.
+                    With real-coordinate stretching, PML can attenuate evanescent waves
+                more efficiently than free space, so there is no need to place free
+                space in front of PML.
+                    The PML thickness should be chosen based on the acceptable level of
+                reflectivity given the discretization resolution and the range of wave
+                numbers (i.e., angles) involved; more PML pixels gives lower
+                reflectivity. Typically 10-40 pixels are sufficient.
+            syst.PML_type (string; optional):
+                Type of PML. Available choices are (case-insensitive):
+                    "UPML"   - (default) uniaxial PML
+                    "SC-PML" - stretched-coordinate PML
+                The two are mathematically equivalent, but using SC-PML has lower 
+                condition number.
+            syst.xBC (string or nothing; optional):
+                Boundary condition (BC) at the two ends in x direction, effectively
+                specifying Ex(n,m,l) at n=0 and n=nx_Ex+1,
+                           Ey(n,m,l) at n=0 and n=nx_Ey+1,
+                           Ez(n,m,l) at n=0 and n=nx_Ez+1.    
+                one pixel beyond the computation domain. Available choices are:
+                "Bloch"    - Ex(n+nx_Ex,m,l) = Ex(n,m,l)*exp(1i*syst.kx_B*nx_Ex*syst.dx),
+                             Ey(n+nx_Ey,m,l) = Ey(n,m,l)*exp(1i*syst.kx_B*nx_Ey*syst.dx),
+                             Ez(n+nx_Ez,m,l) = Ez(n,m,l)*exp(1i*syst.kx_B*nx_Ez*syst.dx).   
+                "periodic" - equivalent to "Bloch" with syst.kx_B = 0
+                "PEC"      - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = Ez(nx_Ex,m,l),
+                             Ey(0,m,l) = Ey(nx_Ey+1,m,l) = 0,
+                             Ez(0,m,l) = Ez(nx_Ez+1,m,l) = 0.   
+                "PMC"      - Ex(0,m,l) = Ex(nx_Ex+1,m,l) = 0,
+                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
+                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l).    
+                "PECPMC"   - Ex(0,m,l) = Ex(1,m,l); Ex(nx_Ex+1,m,l) = 0,
+                             Ey(0,m,l) = 0; Ey(nx_Ey+1,m,l) = Ey(nx_Ey,m,l),
+                             Ez(0,m,l) = 0; Ez(nx_Ez+1,m,l) = Ez(nx_Ez,m,l),    
+                "PMCPEC"   - Ex(0,m,l) = 0; Ex(nx_Ex+1,m,l) = Ex(nx_Ex,m,l),
+                             Ey(0,m,l) = Ey(1,m,l); Ey(nx_Ey+1,m,l) = 0,
+                             Ez(0,m,l) = Ez(1,m,l); Ez(nx_Ez+1,m,l) = 0.
+                where PEC stands for perfect electric conductor and PMC stands for perfect
+                magnetic conductor.
+                By default, syst.xBC = "Bloch" if syst.kx_B is given; otherwise syst.xBC = "PEC"
+                The choice of syst.xBC has little effect on the numerical accuracy
+                when PML is used.
+                For 2D TM fields, xBC = nothing.
+            syst.yBC (string; optional):
+                Boundary condition in y direction, analogous to syst.xBC.
+            syst.zBC (string; optional):
+                Boundary condition in z direction, analogous to syst.xBC.
+            syst.kx_B (real scalar or nothing; optional):
+                Bloch wave number in x direction, in units of 1/syst.length_unit.
+                syst.kx_B is only used when syst.xBC = "Bloch". It is allowed to
+                specify a complex-valued syst.kx_B, but a warning will be displayed.
+                For 2D TM fields, kx_B = nothing.
+            syst.ky_B (real scalar; optional):
+                Bloch wave number in y direction, analogous to syst.kx_B.
+            syst.kz_B (real scalar; optional):
+                Bloch wave number in z direction, analogous to syst.kx_B.    
+        B (numeric matrix or vector of source structure; required):
+            Matrix specifying the input source profiles B in the C*inv(A)*B - D or
+            C*inv(A)*B or inv(A)*B returned. When the input argument B is a matrix,
+            it is directly used, and size(B,1) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case; 
+            each column of B specifies a source profile, placed on the grid points of E.
+                Note that matrix A is (syst.dx)^2 times the differential operator and
+            is unitless, so each column of B is (syst.dx)^2 times the i*omega*mu_0*[Jx;Jy;Jz] on
+            the right-hand side of the differential equation and has the same unit as E.
+                Instead of specifying matrix B directly, one can specify only its
+            nonzero parts, from which mesti() will build the sparse matrix B. To do
+            so, B in the input argument should be set as a source structure vector; 
+            (Bx_struct, By_struct, Bz_struct) here we refer to such source structure 
+            as Bx_struct as source for x component to distinguish it from the
+            resulting matrix B. If for every column of matrix B, all of its nonzero
+            elements are spatially located within a cuboid (e.g., block sources),
+            one can use the following fields:
+                Bx_struct.pos (six-element integer vector or four-element integer vector): Bx_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
+                    the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
+                    at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
+                    of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
+                    of the higher-index corner of the cuboid.
+                    For 2D TM case, users only need to specify [m1, l1, w, h].
+                Bx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix B for x component
+                    within the cuboid specified by Bx_struct.pos.
+                    When it is a 4D array (general 3D system), Bx_struct.data[n',m',l',a] is the a-th input
+                    source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
+                    B[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Bx_struct.data[:,:,:,a] gives the
+                    sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
+                    size(Bx_struct.data) must equal (d, w, h, number of inputs).
+                        When it is a 3D array (2D TM system), Bx_struct.data(m',l',a) is the a-th input
+                    source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
+                    Bx(m+(l-1)*ny, a). In other words, Bx_struct.data(:,:,a) gives the
+                    sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
+                    size(Bx_struct.data, [1,2]) must equal [w, h], and
+                    size(Bx_struct.data, 3) is the number of inputs.
+                    Alternatively, Bx_struct.data can be a 2D array that is
+                    equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
+                    size(Bx_struct.data, 2) is the number of inputs; in this case,
+                    Bx_struct.data can be a sparse matrix, and its sparsity will be
+                    preserved when building matrix B.
+                By_struct.pos (six-element integer vector): By_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ey-grid, analogous to Bx_struct.pos.
+                By_struct.data (2D or 4D numeric array): nonzero elements of matrix B for y component
+                    within the cuboid specified by By_struct.pos, analogous to Bx_struct.data.
+                Bz_struct.pos (six-element integer vector): Bz_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ez-grid, analogous to Bx_struct.pos.
+                Bz_struct.data (2D or 4D numeric array): nonzero elements of matrix B for z component
+                    within the cuboid specified by Bz_struct.pos, analogous to Bx_struct.data.
+                If different inputs are located within different cuboids (e.g.,
+            inputs from plane sources on the low and separate inputs from plane
+            sources on the high), Bx_struct can be a structure array with multiple
+            elements (e.g., Bx_struct.pos[1] and Bx_struct.data[1] specify plane sources
+            on the low; Bx_struct.pos[2] and Bx_struct.data[2] specify plane sources on
+            the high); these inputs are treated separately, and the total number of
+            inputs is size(Bx_struct.data[1], 4) + size(Bx_struct.data[2], 4) + ... +
+            size(Bx_struct.data[end], 4).
+                If the nonzero elements of matrix B do not have cuboid shapes in
+            space [e.g., for total-field/scattered-field (TF/SF) simulations], one
+            can use a source structure with the following fields:
+                Bx_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix B for x component, such that
+                    f(Bx_struct.ind) are the points where the source is placed. Such linear 
+                    indices can be constructed from Base._sub2ind().
+                Bx_struct.data (2D numeric matrix): nonzero elements of matrix B for x component 
+                    at the locations specified by Bx_struct.ind. Specifically,
+                    Bx_struct.data[i,a] is the a-th input source at the location of
+                    f(Bx_struct.ind[i]), which becomes B[Bx_struct.ind[i], a]. So,
+                    size(Bx_struct.data, 1) must equal length(Bx_struct.ind), and
+                    size(Bx_struct.data, 2) is the number of inputs.
+                By_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix B for y component, analogous to Bx_struct.ind.
+                By_struct.data (2D numeric matrix): nonzero elements of matrix B for y component 
+                    at the locations specified by By_struct.ind, analogous to Bx_struct.data.
+                Bz_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix B for z component, analogous to Bx_struct.ind.
+                Bz_struct.data (2D numeric matrix): nonzero elements of matrix B for z component 
+                    at the locations specified by Bz_struct.ind, analogous to Bx_struct.data.
+                Similarly, one can use Bx_struct.ind[1], Bx_struct.ind[2] etc together
+            with Bx_struct.data[1], Bx_struct.data[2] etc to specify inputs at
+            different sets of locations. Every element of the structure array must
+            have the same fields (e.g., one cannot specify Bx_struct.pos[1] and
+            Bx_struct.ind[2]), so the more general Bx_struct.ind syntax should be used
+            when some of the inputs are rectangular and some are not.
+        C (numeric matrix, vector of source structure, or "transpose(B)"; optional):
+            Matrix specifying the output projections in the C*inv(A)*B - D or
+            C*inv(A)*B returned. When the input argument C is a matrix, it is
+            directly used, and size(C,2) must equal nt_Ex*nt_Ey*nt_Ez for 3D system and nt_Ex for 2D TM case;
+            each row of C specifies a projection profile, placed on the grid points of E.
+                Scattering matrix computations often have C = transpose(B); if that
+            is the case, the user can set C = "transpose(B)" as a string,
+            and it will be replaced by transpose(B) in the code.
+                For field-profile computations, the user can simply omit C from the
+            input arguments, as in mesti(syst, B). If opts is needed, the user can use
+            mesti(syst, B, opts).
+                Similar to B, here one can specify only the nonzero parts of the
+            output matrix C, from which mesti() will build the sparse matrix C. The
+            syntax of vector of source structure (Cx_struct, Cy_struct, Cz_struct) is 
+            the same as for B, summarized below. If for every row of matrix
+            C, all of its nonzero elements are spatially located withing a cuboid
+            (e.g., projection of fields on a line), one can set the input argument C
+            to be a structure array (referred to as Cx_struct below) with the
+            following fields:
+                Cx_struct.pos (six-element integer vector or four-element integer vector): Cx_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ex-grid. Here, (n1, m1, l1) is the index of the (x, y, z) coordinate of
+                    the smaller-x, smaller-y, and smaller-z corner of the cuboid, 
+                    at the location of f(n1, m1, l1) where f = Ex; (d, w, h) is the depth, width, and height 
+                    of the cuboid, such that (n2, m2, l2) = (n1+d-1, m1+w-1, l1+h-1) is the index
+                    of the higher-index corner of the cuboid.
+                    For 2D TM case, users only need to specify [m1, l1, w, h].
+                Cx_struct.data (2D, 3D or 4D numeric array): nonzero elements of matrix C for x component
+                    within the cuboid specified by Cx_struct.pos.
+                    When it is a 4D array (general 3D system), Cx_struct.data[n',m',l',a] is the a-th input
+                    source at the location of f(n=n1+n'-1, m=m1+m'-1, l=l1+l'-1), which becomes
+                    C[n+(m-1)*nx_Ex+(l-1)*nx_Ex*ny_Ex, a]. In other words, Cx_struct.data[:,:,:,a] gives the
+                    sources at the cuboid f(n1+(0:(d-1)), m1+(0:(w-1)), l1+(0:(h-1))). So,
+                    size(Cx_struct.data) must equal (d, w, h, number of inputs).
+                        When it is a 3D array (2D system), Cx_struct.data(m',l',a) is the a-th input
+                    source at the location of f(m=m1+m'-1, l=l1+l'-1), which becomes
+                    Cx(m+(l-1)*ny, a). In other words, Cx_struct.data(:,:,a) gives the
+                    sources at the rectangle f(m1+(0:(w-1)), l1+(0:(h-1))). So,
+                    size(Cx_struct.data, [1,2]) must equal [w, h], and
+                    size(Cx_struct.data, 3) is the number of inputs.
+                    Alternatively, Cx_struct.data can be a 2D array that is
+                    equivalent to reshape(data_in_4D_array, d*w*h, :) or reshape(data_in_3D_array, w*h, :), in which case
+                    size(Cx_struct.data, 2) is the number of inputs; in this case,
+                    Cx_struct.data can be a sparse matrix, and its sparsity will be
+                    preserved when building matrix C.
+                Cy_struct.pos (six-element integer vector): Cy_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ey-grid, analogous to Cx_struct.pos.
+                Cy_struct.data (2D or 4D numeric array): nonzero elements of matrix C for y component
+                    within the cuboid specified by Cy_struct.pos, analogous to Cx_struct.data.
+                Cz_struct.pos (six-element integer vector): Cz_struct.pos =
+                    [n1, m1, l1, d, w, h] specifies the location and the size of the
+                    cuboid on Ez-grid, analogous to Cx_struct.pos.
+                Cz_struct.data (2D or 4D numeric array): nonzero elements of matrix C for z component
+                    within the cuboid specified by Cz_struct.pos, analogous to Cx_struct.data.
+                If the nonzero elements of matrix C do not have rectangular shapes in
+            space [e.g., for near-field-to-far-field transformations], one can set C
+            to a structure array with the following fields:
+                Cx_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix C for x component, such that
+                    f(Cx_struct.ind) are the points where the source is placed.
+                Cx_struct.data (2D numeric matrix): nonzero elements of matrix C for x component 
+                    at the locations specified by Cx_struct.ind. Specifically,
+                    Cx_struct.data[i,a] is the a-th input source at the location of
+                    f(Cx_struct.ind[i]), which becomes C[Cx_struct.ind[i], a]. So,
+                    size(Cx_struct.data, 1) must equal length(Cx_struct.ind), and
+                    size(Cx_struct.data, 2) is the number of inputs.
+                Cy_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix C for y component, analogous to Cx_struct.ind.
+                Cy_struct.data (2D numeric matrix): nonzero elements of matrix C for y component 
+                    at the locations specified by Cy_struct.ind, analogous to Cx_struct.data.
+                Cz_struct.ind (integer vector): linear indices of the spatial
+                    locations of the nonzero elements of matrix C for z component, analogous to Cx_struct.ind.
+                Cz_struct.data (2D numeric matrix): nonzero elements of matrix C for z component 
+                    at the locations specified by Cz_struct.ind, analogous to Cx_struct.data.
+                Like in Bx_struct, one can use structure arrays with multiple elements
+            to specify outputs at different spatial locations.
+        D (numeric matrix; optional):
+            Matrix D in the C*inv(A)*B - D returned, which specifies the baseline
+            contribution; size(D,1) must equal size(C,1), and size(D,2) must equal
+            size(B,2). When D is not an input argument, it will not be subtracted from C*inv(A)*B. 
+            For field-profile computations where C is not an input argument, D should not be an input
+            argument, either.
+        opts (Opts structure; optional):
+            A structure that specifies the options of computation. 
+            It can contain the following fields (all optional):
+            opts.verbal (boolean scalar; optional, defaults to true):
+                Whether to print system information and timing to the standard output.
+            opts.prefactor (numeric scalar, real or complex; optional):
+                When opts.prefactor is given, mesti() will return
+                opts.prefactor*C*inv(A)*B - D or opts.prefactor*C*inv(A)*B or
+                opts.prefactor*inv(A)*B. Such prefactor makes it easier to use C =
+                transpose(B) to take advantage of reciprocity. Defaults to 1.
+            opts.exclude_PML_in_field_profiles (boolean scalar; optional, defaults to false):
+                When opts.exclude_PML_in_field_profiles = true, the PML pixels
+                (specified by syst.PML.npixels) are excluded from the returned
+                field_profiles on each side where PML is used; otherwise the full
+                field profiles are returned. Only used for field-profile computations
+                (i.e., when the output projection matrix C is not given).    
+            opts.solver (string; optional):
+                The solver used for sparse matrix factorization. Available choices
+                are (case-insensitive):
+                    "MUMPS"  - (default when MUMPS is available) Use MUMPS. Its JULIA 
+                            interface MUMPS3.jl must be installed.
+                    "JULIA" -  (default when MUMPS is not available) Uses the built-in 
+                            lu() function in JULIA, which uses UMFPACK. 
+                MUMPS is faster and uses less memory than lu(), and is required for
+                the APF method.
+            opts.method (string; optional):
+                The solution method. Available choices are (case-insensitive):
+                    "APF" - Augmented partial factorization. C*inv(A)*B is obtained
+                            through the Schur complement of an augmented matrix
+                            K = [A,B;C,0] using a partial factorization. Must have
+                            opts.solver = "MUMPS". This is the most efficient method,
+                            but it cannot be used for computing the full field profile
+                            X=inv(A)*B or with iterative refinement.
+                    "FG"  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+                            through C*inv(U)*inv(L)*B with optimized grouping. Must
+                            have opts.solver = "JULIA". This is slightly better than
+                            "FS" when MUMPS is not available, but it cannot be used for
+                            computing the full field profile X=inv(A)*B.
+                    "FS"  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+                            with forward and backward substitutions, and project with
+                            C as C*inv(A)*B = C*X. Here, opts.solver can be either
+                            "MUMPS" or "JULIA", and it can be used for computing
+                            the full field profile X=inv(A)*B or with iterative
+                            refinement.
+                    "C*inv(U)*inv(L)*B"   - Same as "FG".    
+                    "factorize_and_solve" - Same as "FS".
+                By default, if C is given and opts.iterative_refinement = false, then
+                "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is
+                used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is
+                used.
+            opts.clear_BC (boolean scalar; optional, defaults to false):
+                When opts.clear_BC = true, variables "B" and "C" will be cleared in
+                the caller's workspace to reduce peak memory usage. Can be used when B
+                and/or C take up significant memory and are not needed after calling
+                mesti(). However, it is not implemented and does not work for current 
+                julia version.
+            opts.clear_syst (boolean scalar; optional, defaults to false):
+                When opts.clear_syst = true, variable "syst" will be cleared in the
+                caller's workspace to reduce peak memory usage. This can be used when
+                syst.epsilon_xx, syst.epsilon_yy, and syst.epsilon_zz take up
+                significant memory and are not needed after calling mesti(). However, 
+                it is not implemented and does not work for current julia version.
+            opts.clear_memory (boolean scalar; optional, defaults to true):
+                Whether or not to clear variables inside mesti() to reduce peak memory
+                usage. If opts.clear_memory == true, we call GC.gc() inside mesti().
+            opts.verbal_solver (boolean scalar; optional, defaults to false):
+                Whether to have the solver print detailed information to the standard
+                output. Note the behavior of output from MUMPS depends on compiler.
+            opts.use_single_precision_MUMPS (boolean scalar; optional, defaults to true):
+                Whether to use single precision version of MUMPS; used only when 
+                opts.solver = "MUMPS". Using single precision version of MUMPS can 
+                reduce memory usage and computing time.
+            opts.use_METIS (boolean scalar; optional, defaults to false in 2D and to true in 3D):
+                Whether to use METIS (instead of the default AMD) to compute the
+                ordering in MUMPS. Using METIS can sometimes reduce memory usage
+                and/or factorization and solve time, but it typically takes longer at
+                the analysis (i.e., ordering) stage in 2D. In 3D METIS is general better 
+                than AMD.
+            opts.nrhs (positive integer scalar; optional):
+                The number of right-hand sides (number of columns of the input matrix
+                B) to consider simultaneously, used only when opts.method =
+                "factorize_and_solve" and C is given. Defaults to 1 if
+                opts.iterative_refinement = true, 10 if opts.solver = "MUMPS" with
+                opts.iterative_refinement = false, 4 otherwise.
+            opts.store_ordering (boolean scalar; optional, defaults to false):
+                Whether to store the ordering sequence (permutation) for matrix A or
+                matrix K; only possible when opts.solver = "MUMPS". If
+                opts.store_ordering = true, the ordering will be returned in
+                info.ordering.
+            opts.ordering (positive integer vector; optional):
+                A user-specified ordering sequence for matrix A or matrix K, used only
+                when opts.solver = "MUMPS". Using the ordering from a previous
+                computation can speed up (but does not eliminate) the analysis stage.
+                The matrix size must be the same, and the sparsity structure should be
+                similar among the previous and the current computation.
+            opts.analysis_only (boolean scalar; optional, defaults to false):
+                When opts.analysis_only = true, the factorization and solution steps
+                will be skipped, and S = nothing will be returned. The user can use
+                opts.analysis_only = true with opts.store_ordering = true to return
+                the ordering for A or K; only possible when opts.solver = "MUMPS".
+            opts.nthreads_OMP (positive integer scalar; optional):
+                Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
+                environment variable.
+            opts.parallel_dependency_graph (logical scalar; optional):
+                If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+                This typically improve the time performance, but marginally increase 
+                the memory usage.
+            opts.iterative_refinement (boolean scalar; optional, defaults to false):
+                Whether to use iterative refinement in MUMPS to lower round-off
+                errors. Iterative refinement can only be used when opts.solver =
+                "MUMPS" and opts.method = "factorize_and_solve" and C is given, in
+                case opts.nrhs must equal 1. When iterative refinement is used, the
+                relevant information will be returned in info.itr_ref_nsteps,
+                info.itr_ref_omega_1, and info.itr_ref_omega_2.
+            opts.use_BLR (logical scalar; optional, defaults to false):
+                Whether to use block low-rank approximation in MUMPS to possibly lower computational
+                cost (but in most case it does not). It can only be used when opts.solver = "MUMPS".
+            opts.threshold_BLR (positive real scalar; optional):
+                The dropping parameter controls the accuracy of the block low-rank approximations. 
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
+            opts.icntl_36 (positive integer scalar; optional):
+                It controls the choice of the BLR factorization variant. 
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
+            opts.icntl_38 (positive integer scalar; optional):
+                It estimated compression rate of LU factors.
+                It can only be used when opts.solver = "MUMPS" and opts.use_BLR = true.
+                Please refer to the section of BLR API in MUMPS userguide.
 
-       === Output Arguments ===
-       ---When users specify C---
-       S (full numeric matrix):
-          The generalized scattering matrix S = C*inv(A)*B or S = C*inv(A)*B - D.
-       ---or when users do not specify C---
-          When opts.exclude_PML_in_field_profiles = false,
-          For 3D system,
-       Ex (4D array):
-          Electrical field profile for Ex component
-          (nx_Ex, ny_Ex, nz_Ex, number of inputs) = size(Ex)
-       Ey (4D array):
-          Electrical field profile for Ey component
-          (nx_Ey, ny_Ey, nz_Ey, number of inputs) = size(Ey)
-       Ez (4D array):
-          Electrical field profile for Ez component
-          (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
-           ---For 2D TM case---
-           Ex (3D array):
-              Electrical field profile for Ex component
-              (ny_Ex, nz_Ex, number of inputs) = size(Ex)
-       When opts.exclude_PML_in_field_profiles = true, the PML pixels
-          (specified by syst.PML.npixels) are excluded from Ex, Ey, and Ez on each
-          side where PML is used.    
-       info (Info structure):
-          A structure that contains the following fields:
-          info.opts (Opts structure):
-             The final "opts" used, excluding the user-specified matrix ordering.
-          info.timing_init (non-negative scalar):
-             Timing in the "init" stages
-          info.timing_build (non-negative scalar):
-             Timing in the "building" stages
-          info.timing_analyze (non-negative scalar):
-             Timing in the "analysis" stages
-          info.timing_factorize (non-negative scalar):
-             Timing in the "factorizing" stages
-          info.timing_total (non-negative scalar):    
-             Timing in total
-          info.xPML (two-element cell array; optional);
-             PML parameters on the sides of x direction, if used.
-          info.yPML (two-element cell array; optional);
-             PML parameters on the sides of y direction, if used.
-          info.zPML (two-element cell array; optional);
-             PML parameters on the sides of z direction, if used.    
-          info.ordering_method (string; optional):
-             Ordering method used in MUMPS.
-          info.ordering (positive integer vector; optional):
-             Ordering sequence returned by MUMPS when opts.store_ordering = true.
-          info.itr_ref_nsteps (integer vector; optional):
-             Number of steps of iterative refinement for each input, if
-             opts.iterative_refinement = true; 0 means no iterative refinement.
-          info.itr_ref_omega_1 (real vector; optional):
-             Scaled residual omega_1 at the end of iterative refinement for each
-             input; see MUMPS user guide section 3.3.2 for definition.
-          info.itr_ref_omega_2 (real vector; optional):
-             Scaled residual omega_2 at the end of iterative refinement for each
-             input; see MUMPS user guide section 3.3.2 for definition.
+        === Output Arguments ===
+        ---When users specify C---
+        S (full numeric matrix):
+            The generalized scattering matrix S = C*inv(A)*B or S = C*inv(A)*B - D.
+        ---or when users do not specify C---
+            When opts.exclude_PML_in_field_profiles = false,
+            For 3D system,
+        Ex (4D array):
+            Electrical field profile for Ex component
+            (nx_Ex, ny_Ex, nz_Ex, number of inputs) = size(Ex)
+        Ey (4D array):
+            Electrical field profile for Ey component
+            (nx_Ey, ny_Ey, nz_Ey, number of inputs) = size(Ey)
+        Ez (4D array):
+            Electrical field profile for Ez component
+            (nx_Ez, ny_Ez, nz_Ez, number of inputs) = size(Ez)
+            ---For 2D TM case---
+            Ex (3D array):
+                Electrical field profile for Ex component
+                (ny_Ex, nz_Ex, number of inputs) = size(Ex)
+        When opts.exclude_PML_in_field_profiles = true, the PML pixels
+            (specified by syst.PML.npixels) are excluded from Ex, Ey, and Ez on each
+            side where PML is used.    
+        info (Info structure):
+            A structure that contains the following fields:
+            info.opts (Opts structure):
+                The final "opts" used, excluding the user-specified matrix ordering.
+            info.timing_init (non-negative scalar):
+                Timing in the "init" stages
+            info.timing_build (non-negative scalar):
+                Timing in the "building" stages
+            info.timing_analyze (non-negative scalar):
+                Timing in the "analysis" stages
+            info.timing_factorize (non-negative scalar):
+                Timing in the "factorizing" stages
+            info.timing_total (non-negative scalar):    
+                Timing in total
+            info.xPML (two-element cell array; optional);
+                PML parameters on the sides of x direction, if used.
+            info.yPML (two-element cell array; optional);
+                PML parameters on the sides of y direction, if used.
+            info.zPML (two-element cell array; optional);
+                PML parameters on the sides of z direction, if used.    
+            info.ordering_method (string; optional):
+                Ordering method used in MUMPS.
+            info.ordering (positive integer vector; optional):
+                Ordering sequence returned by MUMPS when opts.store_ordering = true.
+            info.itr_ref_nsteps (integer vector; optional):
+                Number of steps of iterative refinement for each input, if
+                opts.iterative_refinement = true; 0 means no iterative refinement.
+            info.itr_ref_omega_1 (real vector; optional):
+                Scaled residual omega_1 at the end of iterative refinement for each
+                input; see MUMPS user guide section 3.3.2 for definition.
+            info.itr_ref_omega_2 (real vector; optional):
+                Scaled residual omega_2 at the end of iterative refinement for each
+                input; see MUMPS user guide section 3.3.2 for definition.
     
        See also: mesti_build_fdfd_matrix, mesti_matrix_solver!, mesti2s
 """
@@ -1201,9 +1199,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     end                
                 end
 
-            # We first pick the most efficient way to build matrix B.
-            # If all of the following are satisfied: (1) length(B_struct) is small, (2) B_struct[ii].pos is used, and (3) the cuboid specified by B_struct[ii].pos is a single vertical slice in x-y plane or if it spans the full cross area of nx_list[ii]*ny_list[ii], then we will stack reshaped B_struct(ii).data with zeros. This avoids the overhead of building B with index-value pairs.
-            # If any of the above is not satisfied, we will build B with index-value pairs.
+                # We first pick the most efficient way to build matrix B.
+                # If all of the following are satisfied: (1) length(B_struct) is small, (2) B_struct[ii].pos is used, and (3) the cuboid specified by B_struct[ii].pos is a single vertical slice in x-y plane or if it spans the full cross area of nx_list[ii]*ny_list[ii], then we will stack reshaped B_struct(ii).data with zeros. This avoids the overhead of building B with index-value pairs.
+                # If any of the above is not satisfied, we will build B with index-value pairs.
                 use_iv_pairs = false
                 if length(B_struct.data) > 10
                     use_iv_pairs = true
@@ -1348,11 +1346,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             if ~(size(B_ii[1],2) == size(B_ii[2],2) && size(B_ii[1],2) == size(B_ii[3],2))
                 throw(ArgumentError("B cannot have different number of inputs for x, y, or z components."))                     
             end
-            # B=[Bx; By; Bz]
-            matrices.B = [B_ii[1]; B_ii[2]; B_ii[3]]   
+            matrices.B = [B_ii[1]; B_ii[2]; B_ii[3]] # B=[Bx; By; Bz]
         else
-            # B = Bx for 2D TM field
-            matrices.B = B_ii[1]
+            matrices.B = B_ii[1] # B = Bx for 2D TM field
         end
         if opts.clear_BC
             B_ii = nothing
@@ -1414,9 +1410,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     end                
                 end
 
-            # We first pick the most efficient way to build matrix C.
-            # If all of the following are satisfied: (1) length(C_struct) is small, (2) C_struct[ii].pos is used, and (3) the cuboid specified by C_struct[ii].pos is a single vertical slice in x-y plane or if it spans the full cross area of nx_list[ii]*ny_list[ii], then we will stack reshaped C_struct(ii).data with zeros. This avoids the overhead of building C with index-value pairs.
-            # If any of the above is not satisfied, we will build C with index-value pairs.
+                # We first pick the most efficient way to build matrix C.
+                # If all of the following are satisfied: (1) length(C_struct) is small, (2) C_struct[ii].pos is used, and (3) the cuboid specified by C_struct[ii].pos is a single vertical slice in x-y plane or if it spans the full cross area of nx_list[ii]*ny_list[ii], then we will stack reshaped C_struct(ii).data with zeros. This avoids the overhead of building C with index-value pairs.
+                # If any of the above is not satisfied, we will build C with index-value pairs.
                 use_iv_pairs = false
                 if length(C_struct.data) > 10
                     use_iv_pairs = true
@@ -1559,11 +1555,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             if size(C_ii[1],1) != size(C_ii[2],1) || size(C_ii[1],1) != size(C_ii[3],1)
                 throw(ArgumentError("C cannot have different number of inputs for x, y, or z components."))                     
             end
-            # C = [Cx Cy Cz]
-            matrices.C = [C_ii[1] C_ii[2] C_ii[3]] 
+            matrices.C = [C_ii[1] C_ii[2] C_ii[3]] # C = [Cx Cy Cz]
         else
-            # C = Cx for 2D TM field
-            matrices.C = C_ii[1]
+            matrices.C = C_ii[1] # C = Cx for 2D TM field
         end
         if opts.clear_BC
             C_ii = nothing
