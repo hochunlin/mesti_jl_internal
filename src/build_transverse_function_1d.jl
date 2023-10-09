@@ -1,45 +1,50 @@
-###### Update on 20230718
+###### Update on 20231008
+
 """
-    BUILD_TRANSVERSE_FUNCTION_1D sets up transverse function and wave number in the homogeneous space.
+    BUILD_TRANSVERSE_FUNCTION_1D sets up 1D transverse function and wave number in the homogeneous space.
 
-       === Input Arguments ===
-       nx (positive integer scalar; required):
-          Number of grid points in the transverse direction. 
-       xBC (string or scalar number; required):
-          Boundary condition in the transverse direction. 
-          When xBC is a character vector, available choices are (case-insensitive): 
-             "periodic"              - f(n+nx) = f(n) 
-             "Dirichlet"             - f(0) = f(nx+1,n) = 0 
-             "Neumann"               - f(0) = f(1); f(nx+1) = f(nx) 
-             "DirichletNeumann"      - f(0) = 0; f(nx+1) = f(nx) 
-             "NeumannDirichlet"      - f(0) = f(1); f(nx+1) = 0 
-          When xBC is a scalar number, the Bloch periodic boundary condition is
-          used with f(n+nx) = f(n)*exp(1i*xBC); in other words, xBC = kx_B*nx*dx =
-          kx_B*p where kx_B is the Bloch wave number and p = nx*dx is the
-          periodicity in x. 
-       n0 (real numeric scalar, optional, defaults to 0):
-          Center of the transverse mode along x with periodic or Bloch periodic
-          boundary condition, u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx), where
-          kx(a) = kx_B + a*(2*pi/nx*dx). The default of n0 = 0 corresponds to x0 =
-          (n-0.5)*dx = -dx/2. 
-       offset (logical scalar; optional, defaults to false):
-          Whether to use the offset transverse function. Due to the staggered properties 
-          of the Yee grid, it should be true for the x-direction for transverse function Ex.
-          It only applies to xBC == "Bloch", since we have already included the offset in 
-          other BCs.
+        === Input Arguments ===
+        nx (positive integer scalar; required):
+            Number of grid points in the transverse direction. 
+        xBC (string or scalar number; required):
+            Boundary condition in the transverse direction. 
+            When xBC is a character vector, available choices are (case-insensitive): 
+                "periodic"              - f(n+nx) = f(n) 
+                "Dirichlet"             - f(0) = f(nx+1,n) = 0 
+                "Neumann"               - f(0) = f(1); f(nx+1) = f(nx) 
+                "DirichletNeumann"      - f(0) = 0; f(nx+1) = f(nx) 
+                "NeumannDirichlet"      - f(0) = f(1); f(nx+1) = 0 
+            When xBC is a scalar number, the Bloch periodic boundary condition is
+            used with f(n+nx) = f(n)*exp(1i*xBC); in other words, xBC = kx_B*nx*dx =
+            kx_B*p where kx_B is the Bloch wave number and p = nx*dx is the
+            periodicity in the transverse direction. 
+        n0 (real numeric scalar, optional, defaults to 0):
+            Center of the transverse mode along x with periodic or Bloch periodic
+            boundary condition, u_{n,a} = exp(i*kx[a]*dx*(n-n0))/sqrt(nx), where
+            kx(a) = kx_B + a*(2*pi/nx*dx).
+        offset (logical scalar; optional, defaults to false):
+            Whether to use the offset transverse function. Due to the staggered properties 
+            of the Yee grid, it should be true for the x-direction for transverse function Ex.
+            It only applies to xBC is a scalar number or xBC == "periodic", since we have 
+            already included the offset in other BCs.
 
-       === Output Arguments ===
-       fun_u_1d (function_handle):
-          A function that, given one element of (kxdx_all) as the input, 
-          returns its normalized transverse field profile as an nx vector;
-          when the input is a vector, it returns a matrix where each column
-          is the respective transverse profile. The transverse modes form a
-          complete and orthonormal set, so the nx-by-nx matrix
-          fun_u_1d(kxdx_all) is unitary for periodic (Bloch), Neumann, 
-          DirichletNeumann, and NeumannDirichlet, but it is not the case for Dirichlet.
-          For Dirichlet, we intend to maintain the trivial solution in this transverse function,
-          since it would give us non-trivial solution in another component when we build up 
-          2D transverse function.
+        === Output Arguments ===
+        fun_u_1d (function):
+            A function that, given one element of kxdx_all as the input, 
+            returns its normalized transverse field profile as an nx vector;
+            when the input is a vector, it returns a matrix where each column
+            is the respective transverse profile. The transverse modes form a
+            complete and orthonormal set, so the nx-by-nx matrix
+            fun_u_1d(kxdx_all) is unitary for periodic (Bloch), Neumann, 
+            DirichletNeumann, and NeumannDirichlet, but it is not the case for Dirichlet.
+            For Dirichlet, we intend to maintain the trivial solution in this transverse function,
+            since it would give us non-trivial solution in another component when we build up 
+            2D transverse function.
+        kxdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet") real row vector):
+            Dimensionless transverse wave number kx*dx for all ny channels,
+            including both propagating and evanescent ones. They are real-valued
+            and are ordered from small to large. 
+
 """
 function build_transverse_function_1d(nx::Int64, xBC::Union{String,Int64,Float64}, n0::Union{Int64,Float64}=0, offset::Bool=false)    
     # Check input parameters        
@@ -118,39 +123,38 @@ function build_transverse_function_1d(nx::Int64, xBC::Union{String,Int64,Float64
     return fun_u_1d, kxdx_all
 end
 """
-    BUILD_HOMOGENEOUS_TRANSVERSE_FUNCTION_1D sets up transverse function and wave number in the homogeneous space.
+    BUILD_HOMOGENEOUS_TRANSVERSE_FUNCTION_1D_DERIVATIVE sets up derivative of a transverse function.
 
-       === Input Arguments ===
-       nx (positive integer scalar; required):
-          Number of grid points in the transverse direction. 
-       xBC (string or scalar number; required):
-          Boundary condition in the transverse direction. 
-          When xBC is a character vector, available choices are (case-insensitive): 
-             "periodic"              - f(n+nx) = f(n) 
-             "Dirichlet"             - f(0) = f(nx+1,n) = 0 
-             "Neumann"               - f(0) = f(1); f(nx+1) = f(nx) 
-             "DirichletNeumann"      - f(0) = 0; f(nx+1) = f(nx) 
-             "NeumannDirichlet"      - f(0) = f(1); f(nx+1) = 0 
-          When xBC is a scalar number, the Bloch periodic boundary condition is
-          used with f(n+nx) = f(n)*exp(1i*xBC); in other words, xBC = kx_B*nx*dx =
-          kx_B*p where kx_B is the Bloch wave number and p = nx*dx is the
-          periodicity in x. 
-       n0 (real numeric scalar, optional, defaults to 0):
-          Center of the transverse mode along x with periodic or Bloch periodic
-          boundary condition, u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx), where
-          kx(a) = kx_B + a*(2*pi/nx*dx). The default of n0 = 0 corresponds to x0 =
-          (n-0.5)*dx = -dx/2. 
-       changegrid (real numeric scalar, optional, defaults to 0):
-          When the derivative tranverse function want to add or subtract,
-          another tranverse function, it may have dimension mismatch.
-          This input primarily handle this scenario. 
-    
-       === Output Arguments ===
-          fun_du_1d (function_handle):
-             A function that, given one element of (kxdx_all) as the input, 
-             returns its normalized derivative transverse field profile as an nx vector;
-             when the input is a vector, it returns a matrix where each column
-             is the respective derivative transverse profile. 
+        === Input Arguments ===
+        nx (positive integer scalar; required):
+            Number of grid points in the transverse direction. 
+        xBC (string or scalar number; required):
+            Boundary condition in the transverse direction. 
+            When xBC is a character vector, available choices are (case-insensitive): 
+                "periodic"              - f(n+nx) = f(n) 
+                "Dirichlet"             - f(0) = f(nx+1,n) = 0 
+                "Neumann"               - f(0) = f(1); f(nx+1) = f(nx) 
+                "DirichletNeumann"      - f(0) = 0; f(nx+1) = f(nx) 
+                "NeumannDirichlet"      - f(0) = f(1); f(nx+1) = 0 
+            When xBC is a scalar number, the Bloch periodic boundary condition is
+            used with f(n+nx) = f(n)*exp(1i*xBC); in other words, xBC = kx_B*nx*dx =
+            kx_B*p where kx_B is the Bloch wave number and p = nx*dx is the
+            periodicity in x. 
+        n0 (real numeric scalar, optional, defaults to 0):
+            Center of the transverse mode along x with periodic or Bloch periodic
+            boundary condition, u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx), where
+            kx(a) = kx_B + a*(2*pi/nx*dx).
+        changegrid (real numeric scalar, optional, defaults to 0):
+            When the derivative tranverse function want to add or subtract,
+            another tranverse function, it may have dimension mismatch.
+            This input primarily handle this scenario. 
+        
+        === Output Arguments ===
+            fun_du_1d (function_handle):
+                A function that, given one element of (kxdx_all) as the input, 
+                returns its normalized derivative transverse field profile as an nx vector;
+                when the input is a vector, it returns a matrix where each column
+                is the respective derivative transverse profile. 
 """
 function build_transverse_function_1d_derivative(nx::Int64, xBC::Union{String,Int64,Float64}, n0::Union{Int64,Float64}=0, changegrid::Union{Int64,Float64}=0)    
     # Check input parameters        

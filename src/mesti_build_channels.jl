@@ -1,18 +1,17 @@
-###### Update on 20231005
-#=
-include("setup_longitudinal.jl")
-include("build_transverse_function_1d.jl")
-include("mesti_main.jl")
-=#
+###### Update on 20231008
 
-export Channels_two_sided
+# Export composite data types
 export Channels_one_sided
+export Channels_two_sided
 
+# Export function mesti_build_channels()
 export mesti_build_channels
 
 abstract type Channels end
 
 mutable struct Channels_two_sided <: Channels
+    # A composite data type to store the info on two sides, transverse functions, and wave vectors
+    # See also: mesti_build_channels    
     u_x_n::Function
     u_y_n::Function
     u_z_n::Function
@@ -29,6 +28,8 @@ mutable struct Channels_two_sided <: Channels
 end
 
 mutable struct Channels_one_sided <: Channels
+    # A composite data type to store the info on one side, transverse functions, and wave vectors
+    # See also: mesti_build_channels        
     u_x_n::Function
     u_y_n::Function
     u_z_n::Function
@@ -52,129 +53,129 @@ end
 
 """
     MESTI_BUILD_CHANNELS Set up properties of channels in the homogeneous space. 
-       MESTI_BUILD_CHANNELS(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, 
-       use_continuous_dispersion, n0, m0) returns a structure containing properties of the propagating and    
-       evanescent channels in a homogeneous space in the transverse direction, boundary
-       condition xBC along x and yBC along y, background relative permittivity epsilon_low, epsilon_high, and
-       dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx. 
+        MESTI_BUILD_CHANNELS(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, 
+        use_continuous_dispersion, n0, m0) returns a structure containing properties of the propagating 
+        and evanescent channels in a homogeneous space in the transverse direction, boundary
+        condition xBC along x and yBC along y, background relative permittivity epsilon_low, epsilon_high, 
+        and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx. 
 
-       MESTI_BUILD_CHANNELS(syst) does the same but with the parameters extracted
-       from structure syst; see ''? mesti2s'' for the fields required for
-       structure "syst".
+        MESTI_BUILD_CHANNELS(syst) does the same but with the parameters extracted
+        from structure syst; see ''? mesti2s'' for the fields required for
+        structure "syst".
 
-       === Input Arguments === 
-       nx_Ex (positive integer scalar; required):
-          Number of grid points in the x-direction for Ex. 
-       nx_Ey (positive integer scalar; required):
-          Number of grid points in the x-direction for Ey. 
-       xBC (string or scalar number; required):
-          Boundary condition in the x-direction. 
-          When xBC is a character vector, available choices are (case-insensitive): 
-             "periodic" - periodic BC on both sides
-             "PEC"      - PEC on both sides
-             "PMC"      - PMC on both sides
-             "PECPMC"   - PEC on low side and PMC on high side
-             "PMCPEC"   - PMC on low side and PEC on high side
-          When xBC is a scalar number, the Bloch periodic boundary condition is
-          used with f(m+ny) = f(m)*exp(1i*xBC); in other words, xBC = kx_B*nx_Ex*dx =
-          kx_B*nx_Ey*dx = kx_B*p where ky_B is the Bloch wave number and p = nx*dx is the
-          periodicity in x. 
-       ny_Ex (positive integer scalar; required):
-          Number of grid points in the y-direction for Ex. 
-       ny_Ey (positive integer scalar; required):
-          Number of grid points in the y-direction for Ey. 
-       yBC (string or scalar number; required):
-          Boundary condition in y-direction, analogous to xBC. 
-       k0dx (numeric scalar, real or complex; required):
-          Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx. 
-       epsilon_low (numeric scalar, real or complex; required):
-          Relative permittivity of the homogeneous space on the low. 
-       epsilon_high (numeric scalar, real or complex, or nothing; optional):
-          Relative permittivity of the homogeneous space on the high. Only the
-          low side will be considered if epsilon_high is not given or is nothing. 
-       use_continuous_dispersion (logical scalar; optional, defaults to false):
-          Whether to use the dispersion equation of the continuous wave equation
-          when building the input/output channels. Defaults to false, in which case
-          the finite-difference dispersion is used. 
-       n0 (real numeric scalar, optional, defaults to 0):
-          Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
-          boundary condition (nx = nx_Ex = nx_Ey), u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx_Ex), 
-          where kx(a) = kx_B + a*(2*pi/nx*dx). The default of n0 = 0 corresponds to x0 = (n-0.5)*dx = -dx/2. 
-       m0 (real numeric scalar, optional, defaults to 0):
-          Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
-          boundary condition, analogous to n0. 
+        === Input Arguments === 
+        nx_Ex (positive integer scalar; required in 3D):
+            Number of grid points in the x-direction for Ex. 
+        nx_Ey (positive integer scalar; required in 3D):
+            Number of grid points in the x-direction for Ey. 
+        xBC (string or scalar number; required in 3D):
+            Boundary condition in the x-direction. 
+            When xBC is a character vector, available choices are (case-insensitive): 
+                "periodic" - periodic BC on both sides
+                "PEC"      - PEC on both sides
+                "PMC"      - PMC on both sides
+                "PECPMC"   - PEC on low side and PMC on high side
+                "PMCPEC"   - PMC on low side and PEC on high side
+            When xBC is a scalar number, the Bloch periodic boundary condition is
+            used with f(m+ny) = f(m)*exp(1i*xBC); in other words, xBC = kx_B*nx_Ex*dx =
+            kx_B*nx_Ey*dx = kx_B*p where ky_B is the Bloch wave number and p = nx*dx is the
+            periodicity in x. 
+        ny_Ex (positive integer scalar; required in 3D):
+            Number of grid points in the y-direction for Ex. 
+        ny_Ey (positive integer scalar; required ):
+            Number of grid points in the y-direction for Ey. 
+        yBC (string or scalar number; required):
+            Boundary condition in y-direction, analogous to xBC. 
+        k0dx (numeric scalar, real or complex; required):
+            Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx. 
+        epsilon_low (numeric scalar, real or complex; required):
+            Relative permittivity of the homogeneous space on the low. 
+        epsilon_high (numeric scalar, real or complex, or nothing; optional):
+            Relative permittivity of the homogeneous space on the high. Only the
+            low side will be considered if epsilon_high is not given or is nothing. 
+        use_continuous_dispersion (logical scalar; optional, defaults to false):
+            Whether to use the dispersion equation of the continuous wave equation
+            when building the input/output channels. Defaults to false, in which case
+            the finite-difference dispersion is used. 
+        n0 (real numeric scalar, optional, defaults to 0):
+            Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
+            boundary condition (nx = nx_Ex = nx_Ey), u_{n,a} = exp(i*kx(a)*dx*(n-n0))/sqrt(nx_Ex), 
+            where kx(a) = kx_B + a*(2*pi/nx*dx).
+        m0 (real numeric scalar, optional, defaults to 0):
+            Center of the 1D transverse mode profile along x-direction with periodic or Bloch periodic
+            boundary condition, analogous to n0. 
 
-       === Output Arguments === 
-       channels (scalar structure):
-          channels.kxdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet") real row vector):
-             Dimensionless transverse wave number kx*dx for all nx channels,
-             including both propagating and evanescent ones. They are real-valued
-             and are ordered from small to large. 
-          channels.kydx_all (1-by-ny_Ey+delat_(yBC,"Dirichlet") real row vector):
-             Dimensionless transverse wave number ky*dx for all ny channels,
-             including both propagating and evanescent ones. They are real-valued
-             and are ordered from small to large. 
-          channels.u_x_n (function_handle):
-             A 1D transverse function along x-direction for Ex 
-          channels.u_y_n (function_handle):
-             A 1D transverse function along x-direction for Ey 
-          channels.u_z_n (function_handle):
-             A 1D transverse function along x-direction for Ez 
-          channels.du_z_n (function_handle):
-             A derivative of 1D transverse function along x-direction for Ez 
-          channels.u_x_m (function_handle):
-             A 1D transverse function along y-direction for Ex 
-          channels.u_y_m (function_handle):
-             A 1D transverse function along y-direction for Ey 
-          channels.u_z_m (function_handle):
-             A 1D transverse function along y-direction for Ez 
-          channels.du_z_m (function_handle):
-             A derivative of 1D transverse function along y-direction for Ez 
-          channels.low (scalar structure):
-             When epsilon_low and epsilon_high are both given (i.e., epsilon_high is given
-             and is not nothing), the properties specific to the low and high sides
-             are returned in channels.low and channels.high; channels.low and channels.high
-             are both scalar structures, and their fields are described below.
-                When only epsilon_low = epsilon_bg is given; there will be no
-             channels.low and channels.high; instead, the fields that would have been
-             assigned to channels.low will be assigned to channels directly. For
-             example, channels.low.N_prop will be channels.N_prop instead.
-          channels.low.N_prop (integer scalar):
-             Number of propagating channels. 
-          channels.low.kzdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet")*ny_Ey+delat_(yBC,"Dirichlet") complex row vector):
-             Dimensionless longitudinal wave number kz*dx for all channels,
-             including both propagating and evanescent ones. Due to the
-             discretization, kzdx is equivalent to kzdx + 2*pi. Whenever kzdx is a
-             solution, -kzdx is also a solution. Here, we choose the sign of kzdx
-             such that:
-             When k0dx is real, we have 
-                - Propagating channels: 0 < Re(kzdx) < pi, Im(kzdx) = 0. 
-                - Evanescent channels: Im(kzdx) >= 0, mod(Re(kzdx),pi) = 0. 
-             When k0dx is complex, we analytically continue the above choice onto
-             the complex-frequency plane. Specifically, we pick the kzdx that is
-             continuously connected to one with real k0dx through a vertical line
-             in the complex-(k0dx^2) plane. 
-          channels.low.ind_prop (1-by-N_prop integer row vector):
-             Indices of the N_prop propagating channels among all channels.low.kzdx_all. 
-          channels.low.kxdx_prop (1-by-N_prop real row vector):
-             Dimensionless longitudinal wave number kx*dx for the N_prop propagating
-             channels, equal to channels.kxdx_all(channels.low.ind_prop). 
-          channels.low.kydx_prop (1-by-N_prop real row vector):
-             Dimensionless transverse wave number ky*dx for the N_prop propagating
-             channels, equal to channels.kydx_all(channels.low.ind_prop). 
-          channels.low.kzdx_prop (1-by-N_prop real row vector):
-             Dimensionless transverse wave number kz*dx for the N_prop propagating
-             channels, equal to channels.low.kzdx_all(channels.low.ind_prop).  
-          channels.low.sqrt_nu_prop (1-by-N_prop row vector):
-             Square root of the normalized longitudinal group velocity of the
-             propagating channels, sqrt_nu_prop = sqrt(sin(kzdx)). The longitudinal
-             group velocity is v_g = (sin(kzdx)/k0dx)*(c/epsilon_low). 
-          channels.low.ind_prop_conj (1-by-N_prop integer row vector; optional):
-             A permutation vector that switches one propagating channel with one
-             having a complex-conjugated transverse profile. It only works for 2D now.
-          channels.high (scalar structure; optional):
-             Structure containing properties specific to the high side,
-             similar to channels.high; only provided when epsilon_high is given. 
+        === Output Arguments === 
+        channels (scalar structure):
+            channels.kxdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet") real row vector):
+                Dimensionless transverse wave number kx*dx for all nx channels,
+                including both propagating and evanescent ones. They are real-valued
+                and are ordered from small to large. 
+            channels.kydx_all (1-by-ny_Ey+delat_(yBC,"Dirichlet") real row vector):
+                Dimensionless transverse wave number ky*dx for all ny channels,
+                including both propagating and evanescent ones. They are real-valued
+                and are ordered from small to large. 
+            channels.u_x_n (function):
+                A 1D transverse function along x-direction for Ex 
+            channels.u_y_n (function):
+                A 1D transverse function along x-direction for Ey 
+            channels.u_z_n (function):
+                A 1D transverse function along x-direction for Ez 
+            channels.du_z_n (function):
+                A derivative of 1D transverse function along x-direction for Ez 
+            channels.u_x_m (function):
+                A 1D transverse function along y-direction for Ex 
+            channels.u_y_m (function):
+                A 1D transverse function along y-direction for Ey 
+            channels.u_z_m (function):
+                A 1D transverse function along y-direction for Ez 
+            channels.du_z_m (function):
+                A derivative of 1D transverse function along y-direction for Ez 
+            channels.low (scalar structure):
+                When epsilon_low and epsilon_high are both given (i.e., epsilon_high is given
+                and is not nothing), the properties specific to the low and high sides
+                are returned in channels.low and channels.high; channels.low and channels.high
+                are both scalar structures, and their fields are described below.
+                    When only epsilon_low = epsilon_bg is given; there will be no
+                channels.low and channels.high; instead, the fields that would have been
+                assigned to channels.low will be assigned to channels directly. For
+                example, channels.low.N_prop will be channels.N_prop instead.
+            channels.low.N_prop (integer scalar):
+                Number of propagating channels. 
+            channels.low.kzdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet")*ny_Ey+delat_(yBC,"Dirichlet") complex row vector):
+                Dimensionless longitudinal wave number kz*dx for all channels,
+                including both propagating and evanescent ones. Due to the
+                discretization, kzdx is equivalent to kzdx + 2*pi. Whenever kzdx is a
+                solution, -kzdx is also a solution. Here, we choose the sign of kzdx
+                such that:
+                When k0dx is real, we have 
+                    - Propagating channels: 0 < Re(kzdx) < pi, Im(kzdx) = 0. 
+                    - Evanescent channels: Im(kzdx) >= 0, mod(Re(kzdx),pi) = 0. 
+                When k0dx is complex, we analytically continue the above choice onto
+                the complex-frequency plane. Specifically, we pick the kzdx that is
+                continuously connected to one with real k0dx through a vertical line
+                in the complex-(k0dx^2) plane. 
+            channels.low.ind_prop (1-by-N_prop integer row vector):
+                Indices of the N_prop propagating channels among all channels.low.kzdx_all. 
+            channels.low.kxdx_prop (1-by-N_prop real row vector):
+                Dimensionless longitudinal wave number kx*dx for the N_prop propagating
+                channels, equal to channels.kxdx_all(channels.low.ind_prop). 
+            channels.low.kydx_prop (1-by-N_prop real row vector):
+                Dimensionless transverse wave number ky*dx for the N_prop propagating
+                channels, equal to channels.kydx_all(channels.low.ind_prop). 
+            channels.low.kzdx_prop (1-by-N_prop real row vector):
+                Dimensionless transverse wave number kz*dx for the N_prop propagating
+                channels, equal to channels.low.kzdx_all(channels.low.ind_prop).  
+            channels.low.sqrt_nu_prop (1-by-N_prop row vector):
+                Square root of the normalized longitudinal group velocity of the
+                propagating channels, sqrt_nu_prop = sqrt(sin(kzdx)). The longitudinal
+                group velocity is v_g = (sin(kzdx)/k0dx)*(c/epsilon_low). 
+            channels.low.ind_prop_conj (1-by-N_prop integer row vector; optional):
+                A permutation vector that switches one propagating channel with one
+                having a complex-conjugated transverse profile. It only works for 2D now.
+            channels.high (scalar structure; optional):
+                Structure containing properties specific to the high side,
+                similar to channels.high; only provided when epsilon_high is given. 
 """
 function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,Nothing}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, ny_Ex::Int64, ny_Ey::Union{Int64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int64,Float64,Nothing}=0, m0::Union{Int64,Float64}=0)
     
@@ -224,7 +225,6 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
 
     # Convert PEC/PMC to Dirichlet/Neumann based on component and direction
     # BC_j_k means boundary condition for Ej (j = x, y, z) component along k-direction (k = x, y)
-    # Add 2D TM case: consider Ex(y,z), so PEC => Dirichlet, PMC => Neumann
     if ~use_2D_TM
         BC_x_x = convert_BC_to_transverse(xBC, "x", "x")
         BC_y_x = convert_BC_to_transverse(xBC, "y", "x")    
@@ -232,6 +232,7 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
         BC_z_x = convert_BC_to_transverse(xBC, "z", "x")
         BC_z_y = convert_BC_to_transverse(yBC, "z", "y")
     end
+    # This line also applies to 2D TM case
     BC_x_y = convert_BC_to_transverse(yBC, "x", "y")
 
     # These are used only for periodic and Bloch periodic boundary conditions; otherwise they stay nothing
@@ -427,10 +428,10 @@ end
 
 """
     MESTI_BUILD_CHANNELS(ny_Ex, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, m0) set up  
-           properties of channels in the homogeneous space for 2D TM fields and returns a structure containing  
-           properties of the propagating and evanescent channels in a homogeneous space with ny pixels in the
-           transverse (y) direction, boundary condition yBC along y, background relative permittivity epsilon_low, 
-           epsilon_high, and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the                      discretization grid size.
+        properties of channels in the homogeneous space for 2D TM fields and returns a structure containing  
+        properties of the propagating and evanescent channels in a homogeneous space with ny pixels in the
+        transverse (y) direction, boundary condition yBC along y, background relative permittivity epsilon_low, 
+        epsilon_high, and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
 """
 function mesti_build_channels(ny_Ex::Int64, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Int64,Float64}=0)
     return mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
