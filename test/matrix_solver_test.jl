@@ -1,7 +1,4 @@
-# Include MESTI module
-#include("MESTI.jl")
-#using .MESTI
-#using LinearAlgebra, SparseArrays, Test
+# This code test the function mesti_matrix_solver!() to solves X in the linear systems AX = B.
 
 # Define the size of matrix and the number of RHS
 N, M = 2000, 20

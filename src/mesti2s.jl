@@ -56,7 +56,7 @@ end
         ---3D field profile---
         (Ex, Ey, Ez, channels, info) = MESTI2S(syst, input) returns the spatial field profiles
         of Ex(x,y,z), Ey(x,y,z), and Ez(x,y,z) satisfying
-            [\nabla \times \nabla \times  - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
+            [(∇ × ∇ ×) - (omega/c)^2*epsilon(x,y,z)]*[Ex(x,y,z); Ey(x,y,z); Ez(x,y,z)] = 
             i*omega*mu_0*[Jx(x,y,z); Jy(x,y,z); Jz(x,y,z)], where 
         The relative permittivity profile epsilon(x,y,z), frequency omega, and boundary conditions 
         are specified by structure "syst". epsilon(x,y,z) must have homogeneous spaces on the low (-z) 
