@@ -1769,7 +1769,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         ind_in_out_low = [ind_in_out_low_dict[ii] for ii in vcat(ind_in_low, channels.low.ind_prop_conj[ind_out_low])]
         ind_in_out_low_dict = nothing
         
-        B_Ex_low = u_prop_low_Ex[:,ind_in_low]
+        B_Ex_low = u_prop_low_Ex[:,ind_low]
         
         if two_sided
             ind_high = sort(unique(vcat(ind_in_high, channels.high.ind_prop_conj[ind_out_high])))
@@ -1777,7 +1777,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             ind_in_out_high = [ind_in_out_high_dict[ii] for ii in vcat(ind_in_high, channels.high.ind_prop_conj[ind_out_high])]
             ind_in_out_high_dict = nothing
             
-            B_Ex_high = u_prop_high_Ex[:,ind_in_high]
+            B_Ex_high = u_prop_high_Ex[:,ind_high]
         end
     else # without opts.symmetrize_K                
         # Build up matrices B_low_sigma_Ej and B_high_sigma_Ej

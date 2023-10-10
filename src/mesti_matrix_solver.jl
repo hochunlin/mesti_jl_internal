@@ -530,12 +530,12 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
         end
     else
         if isdefined(opts, :is_symmetric_A) && ~isa(opts.is_symmetric_A, Nothing)
-            @warn("opts.is_symmetric_A is only used when opts.solver = \"MUMPS\"; will be ignored.")
+            opts.is_symmetric_A = nothing	    
         end
 
-        if isdefined(opts, :use_METIS)
-            @warn("opts.use_METIS is only used when opts.solver = \"MUMPS\"; will be ignored.")
-        end
+        #if isdefined(opts, :use_METIS)
+        #    @warn("opts.use_METIS is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        #end
 
         if isdefined(opts, :use_single_precision_MUMPS)
             @warn("opts.use_single_precision_MUMPS is only used when opts.solver = \"MUMPS\"; will be ignored.")
