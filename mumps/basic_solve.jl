@@ -15,13 +15,24 @@ MPI.Initialized() ? nothing : MPI.Init()
 N, M = 2000, 20
 
 # Test the functionality in a test set
-@testset "Basic solve: " begin
+@testset "Basic solve (double precision): " begin
     for i ∈ 1:100
         A = sparse(I,N,N) + sprand(N,N,1/N) # Generate a sparse matrix
         y = sprand(N,M,1/sqrt(N*M)) # Generate a sparse random matrix for the right-hand side
 
         x = mumps_solve(A,y) # Solve the linear system using MUMPS
 
-        @test norm(A*x-y) ≤ sqrt(eps()) # Test the correctness of the solution
+        @test norm(A*x-y) ≤ sqrt(eps(Float64)) # Test the correctness of the solution
+    end
+end
+
+@testset "Basic solve (single precision): " begin
+    for i ∈ 1:100
+        A = convert(SparseMatrixCSC{Float32, Int64}, sparse(I,N,N) + sprand(N,N,1/N)) # Generate a sparse matrix
+	y = convert(SparseMatrixCSC{Float32, Int64}, sprand(N,M,1/sqrt(N*M))) # Generate a sparse random matrix for the right-hand side
+
+        x = mumps_solve(A,y) # Solve the linear system using MUMPS
+
+        @test norm(A*x-y) ≤ sqrt(eps(Float32)) # Test the correctness of the solution
     end
 end
