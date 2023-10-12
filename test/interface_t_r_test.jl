@@ -12,27 +12,26 @@ syst.dx = 1/resolution # grid size
 
 # Use optimized PML parameters for this resolution to reduce error
 zpml = get_optimal_PML(syst.wavelength/syst.dx)
-zpml.npixels = 20
+zpml.npixels = 30
 syst.zPML = [zpml] 
 k0dx = 2*pi/syst.wavelength*syst.dx # Dimensionless frequency k0*dx
 
 # Specify inputs and output
 input = channel_type()
 output = channel_type()
-# Input from low side
+# Input from the low side
 input.side = "low"
-# Output to high sides
+# Output to the high side
 output.side = "both"
 
 # Test the functionality in a test set
 @testset "1D r and t coefficients:" begin
     for i ∈ 1:10
 	# Make an interface for two materials whose refractive indices are n1 and n2
-        #n1 = 1+1.5*rand() # n1 is a random number between 1 and 2.5
-        #n2 = 1+1.5*rand() # n2 is a random number between 1 and 2.5
-        n1 = 1
-        n2 = 2.5
-	syst.epsilon_low = n1^2 # relative permittivity on the low side
+        n1 = 1+1.5*rand() # n1 is a random number between 1 and 2.5
+        n2 = 1+1.5*rand() # n2 is a random number between 1 and 2.5
+	
+        syst.epsilon_low = n1^2 # relative permittivity on the low side
 	syst.epsilon_high = n2^2 # relative permittivity on the high side
 
         # For 1D system, we only 1 pixel in transverse direction (y) with a periodic boundary, 
@@ -52,7 +51,7 @@ output.side = "both"
         r = (exp(-1im*kzdx_1/2)*exp(1im*kzdx_2)-exp(1im*kzdx_1/2))/(exp(-1im*kzdx_1/2)-exp(1im*kzdx_1/2)*exp(1im*kzdx_2))
 	# Analytic expression for transmission coefficient t of a 1D single interface system
 	t = (sqrt(sin(kzdx_2))/sqrt(sin(kzdx_1)))*(exp(1im*kzdx_1*3/2)-exp(-1im*kzdx_1/2))/(exp(1im*kzdx_2/2)*exp(1im*kzdx_1)-exp(-1im*kzdx_2/2))
-	@test abs(S[1,1]-r)/abs(r) ≤ 1e-2 # Test relative absolute error of r 
-	@test abs(S[2,1]-t)/abs(t) ≤ 1e-2 # Test relative absolute error of t
+	@test abs(S[1,1]-r)/abs(r) ≤ 1e-4 # Test relative absolute error of r 
+	@test abs(S[2,1]-t)/abs(t) ≤ 1e-4 # Test relative absolute error of t
     end
 end
