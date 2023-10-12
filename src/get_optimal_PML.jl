@@ -1,3 +1,6 @@
+###### Update on 20231012
+
+# Export a function get_optimal_PML()
 export get_optimal_PML
 
 function get_optimal_PML(wavelength_over_dx)
