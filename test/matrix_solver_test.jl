@@ -4,7 +4,7 @@
 N, M = 2000, 20
 
 # Test the functionality in a test set
-@testset "matrix_solver: " begin
+@testset "matrix_solver:          " begin
     for i ∈ 1:100
 	matrices = Matrices()
 	matrices.A = sparse(I,N,N) + sprand(N,N,1/N) # Generate a sparse matrix A

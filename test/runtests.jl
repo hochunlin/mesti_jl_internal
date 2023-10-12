@@ -1,4 +1,3 @@
-ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
 # Include MESTI module
 include("MESTI.jl")
 using .MESTI

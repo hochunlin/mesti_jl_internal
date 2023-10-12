@@ -1,12 +1,6 @@
 # This code test the unitarity of scattering matrices S upon random permittivity profiles.
 # We check S'*S ≈ I, an identity matrix.
 
-# Define the size of matrix and the number of RHS
-nx, ny, nz = 10, 10, 10
-nx_Ex = nx; ny_Ex = ny; nz_Ex = nz -1
-nx_Ey = nx; ny_Ey = ny; nz_Ey = nz -1
-nx_Ez = nx; ny_Ez = ny; nz_Ez = nz 
-
 # Specify parameters of the system
 syst = Syst()
 syst.xBC = "periodic"
@@ -17,7 +11,22 @@ syst.epsilon_low = 1
 syst.epsilon_high = 1
 epsilon_max = 4
 epsilon_min = 1
-syst.zPML = [PML(100)] # Use very thick PML to reduce error and show unitarity
+
+# Define the size of the scattering region (1 wavelength by 1 wavelength by 1 wavelength)
+nx, ny, nz = syst.wavelength, syst.wavelength, syst.wavelength
+nx_Ex = nx; ny_Ex = ny; nz_Ex = nz -1
+nx_Ey = nx; ny_Ey = ny; nz_Ey = nz -1
+nx_Ez = nx; ny_Ez = ny; nz_Ez = nz
+
+# Use optimized PML parameters for this resolution to reduce error
+#zpml = PML(10) # 5 PML pixels padded on each side of z-direction
+#zpml.sigma_max_over_omega = 4.664171353771144
+#zpml.power_sigma = 5.568495004043644
+#zpml.kappa_max = 5.260462519440901
+#zpml.power_kappa= 11.973331766657591
+zpml = get_optimal_PML(5)
+zpml.npixels = 10
+syst.zPML = [zpml]
 
 # Specify inputs and output
 input = channel_type()
@@ -30,9 +39,9 @@ output.side = "both"
 output.polarization = "both"
 
 # Test the functionality in a test set
-@testset "unitarity: " begin
-    for i ∈ 1:10
-	# Random permittivity profiles
+@testset "unitarity:              " begin
+    for i ∈ 1:20
+	# Random permittivity profiles, whose value is between 1 and 4
         syst.epsilon_xx = rand(nx_Ex,ny_Ex,nz_Ex)* (epsilon_max-epsilon_min) .+ epsilon_min
         syst.epsilon_yy = rand(nx_Ey,ny_Ey,nz_Ey)* (epsilon_max-epsilon_min) .+ epsilon_min
         syst.epsilon_zz = rand(nx_Ez,ny_Ez,nz_Ez)* (epsilon_max-epsilon_min) .+ epsilon_min

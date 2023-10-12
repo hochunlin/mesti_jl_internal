@@ -1,7 +1,6 @@
 ###### Update on 20231008
 module MESTI
 
-using MAT
 using LinearAlgebra
 using SparseArrays
 using Statistics
