@@ -1,6 +1,7 @@
 ###### Update on 20231008
 module MESTI
 
+using MAT
 using LinearAlgebra
 using SparseArrays
 using Statistics
@@ -13,6 +14,7 @@ if haskey(ENV, "MUMPS_PREFIX")
     using MPI
 end
 
+include("get_optimal_PML.jl")
 include("build_transverse_function_1d.jl")
 include("mesti_build_fdfd_matrix.jl")
 include("mesti_matrix_solver.jl")

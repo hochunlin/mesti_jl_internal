@@ -1,4 +1,4 @@
-###### Update on 20231008
+###### Update on 20231012
 
 # Export composite data types
 export channel_type
@@ -318,9 +318,9 @@ end
                         input.v_low_p, input.v_high_s, or input.v_high_p below.
                         For 2D TM case:
                         input.ind_low (integer vector): Vector containing the indices of
-                            propagating channels incident on the left side.
+                            propagating channels incident on the low side.
                         input.ind_high (integer vector): Vector containing the indices of
-                            propagating channels incident on the right side.
+                            propagating channels incident on the high side.
                     To specify a custom input wavefronts, a superposition of multiple 
                     propagating channels, use ''input = wavefront()'', then it contains the following fields:
                         For 3D systems:
@@ -345,13 +345,13 @@ end
                     computations.
                         For 2D TM case:
                         input.v_low (numeric matrix): Matrix where each column specifies the
-                            coefficients of propagating channels on the left for one input
-                            wavefront from the left, with the superposition coefficients given by that 
+                            coefficients of propagating channels on the low for one input
+                            wavefront from the low, with the superposition coefficients given by that 
                             column of input.v_low. size(input.v_low, 1) must equal N_prop_low, the total 
-                            number of propagating channels on the left; size(input.v_L, 2) is the number
+                            number of propagating channels on the low; size(input.v_L, 2) is the number
                             of input wavefronts.
                         input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
-                            input wavefronts from the right instead.
+                            input wavefronts from the high instead.
         output (channel_type, channel_index, wavefront structure, or nothing; optional):
             The set of output channels or output wavefronts.
                 When out = nothing or when out is omitted, no output projection is used, and 
@@ -398,9 +398,9 @@ end
                     output.v_high_s, or output.v_high_p below.
                         For 2D TM case:
                         output.ind_low (integer vector): Vector containing the indices of
-                            propagating channels incident on the left side.
+                            propagating channels incident on the low side.
                         output.ind_high (integer vector): Vector containing the indices of
-                            propagating channels incident on the right side.
+                            propagating channels incident on the high side.
                     To specify a custom output wavefronts, a superposition of multiple 
                 propagating channels, use ''output = wavefront()'', then it contains the following fields:
                     For 3D systems:
@@ -422,13 +422,13 @@ end
             output.v_high_s, or output.v_high_p.
                     For 2D TM case:
                     input.v_low (numeric matrix): Matrix where each column specifies the
-                    coefficients of propagating channels on the left for one input
-                    wavefront from the left, with the superposition coefficients given by that column of input.v_low.
+                    coefficients of propagating channels on the low for one input
+                    wavefront from the low, with the superposition coefficients given by that column of input.v_low.
                     size(input.v_low, 1) must equal N_prop_low, the total number of
-                    propagating channels on the left; size(input.v_L, 2) is the number
+                    propagating channels on the low; size(input.v_L, 2) is the number
                     of input wavefronts.
                     input.v_high (numeric matrix): Analogous to to input.v_low, but specifying
-                    input wavefronts from the right instead.
+                    input wavefronts from the high instead.
         opts (Opts structure; optional):
             A structure that specifies the options of computation. 
             It can contain the following fields (all optional):
@@ -801,6 +801,12 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
         check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
         check_BC_and_grid("PEC", nz_Ex, nz_Ey, nz_Ez, "z")
+
+        if ((isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) || (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing)) || (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) || (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) || (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) || (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing)))
+            @warn "syst.epsilon_xy, syst.epsilon_xz, syst.epsilon_yx, syst.epsilon_yz, syst.epsilon_zx, and syst.epsilon_zy have not been implemented, yet. They are ignored."
+            syst.epsilon_xy = nothing; syst.epsilon_xz = nothing; syst.epsilon_yx = nothing; syst.epsilon_yz = nothing; syst.epsilon_zx = nothing; syst.epsilon_zy = nothing 
+        end
+
         if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing) && ~(size(syst.epsilon_xy) == (nx_Ez, ny_Ez, nz_Ex)))
             throw(ArgumentError("The size of syst.epsilon_xy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_xx, 3)))."))
         end
@@ -2183,7 +2189,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
         ind_out = ind_in_out_low[M_in_low .+ (1:M_out_low)]
 
         if two_sided
-            # Include channels on the right; note ind_in_out_B and ind_in_out_T are column vectors
+            # Include channels on the high; note ind_in_out_B and ind_in_out_T are column vectors
             ind_in  = [ind_in; length(ind_low) .+ ind_in_out_high[1:M_in_high]]
             ind_out = [ind_out; length(ind_low) .+ ind_in_out_high[M_in_high .+ (1:M_out_high)]]
         end
@@ -2389,7 +2395,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                 # u where the a-th column is the a-th channels; it includes all the propagating and evanescent channels.
                 u_low = [[u_Ex.*reshape(alpha_x_all_low_s,1,:); u_Ey.*reshape(alpha_y_all_low_s,1,:)] [u_Ex.*reshape(alpha_x_all_low_p,1,:)+1im*u_dEz_over_dx*reshape(cos.(channels.low.kzdx_all/2).*alpha_z_all_low_p./sin.(channels.low.kzdx_all),1,:); u_Ey.*reshape(alpha_y_all_low_p,1,:)+1im*u_dEz_over_dy*reshape(cos.(channels.low.kzdx_all/2).*alpha_z_all_low_p./sin.(channels.low.kzdx_all),1,:)]]
      
-                # We use u' to project the field on the left or right surface onto the complete and orthonormal set of transverse modes.            
+                # We use u' to project the field on the low or high surface onto the complete and orthonormal set of transverse modes.            
                 u_low_prime = u_low' 
 
                 if two_sided
@@ -2528,7 +2534,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             if two_sided
                 nz_high_extra = opts.nz_high - 1
                 if nz_high_extra == -1
-                    # Remove the single pixel of syst.epsilon_R on the right
+                    # Remove the single pixel of syst.epsilon_high on the high
                     if ~use_2D_TM
                         Ex = Ex[:, :, 1:(end-1), :]
                         Ey = Ey[:, :, 1:(end-1), :]
@@ -2550,17 +2556,17 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                         exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
                         c_in = zeros(2*nx*ny, 1)
-                        l_high = size(Ex, 3) # index for the inputs/outputs on the right surface
+                        l_high = size(Ex, 3) # index for the inputs/outputs on the high surface
 
                         for ii = 1:M_in_low_s # s-polarized input from low
-                            c_out = u_high_prime*[reshape(Ex[:, :, l_high, ii], :); reshape(Ey[:, :, l_high, ii], :)] # c_out = c because there is no input on the right side
+                            c_out = u_high_prime*[reshape(Ex[:, :, l_high, ii], :); reshape(Ey[:, :, l_high, ii], :)] # c_out = c because there is no input on the high side
                             Ex_high[:,:,:,ii] = reshape([u_Ex.*reshape(alpha_x_all_high_s,1,:) u_Ex.*reshape(alpha_x_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ex,ny_Ex,nz_high_extra)
                             Ey_high[:,:,:,ii] = reshape([u_Ey.*reshape(alpha_y_all_high_s,1,:) u_Ey.*reshape(alpha_y_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ey,ny_Ey,nz_high_extra)
                             Ez_high[:,:,:,ii] = reshape([u_Ez*0 u_Ez.*reshape(alpha_z_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ez,ny_Ez,nz_high_extra)
                         end                            
 
                         for ii = 1:M_in_low_p # p-polarized input from low
-                            c_out = u_high_prime*[reshape(Ex[:, :, l_high, M_in_low_s+ii], :); reshape(Ey[:, :, l_high, M_in_low_s+ii], :)] # c_out = c because there is no input on the right side
+                            c_out = u_high_prime*[reshape(Ex[:, :, l_high, M_in_low_s+ii], :); reshape(Ey[:, :, l_high, M_in_low_s+ii], :)] # c_out = c because there is no input on the high side
                             Ex_high[:,:,:,M_in_low_s+ii] = reshape([u_Ex.*reshape(alpha_x_all_high_s,1,:) u_Ex.*reshape(alpha_x_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ex,ny_Ex,nz_high_extra)
                             Ey_high[:,:,:,M_in_low_s+ii] = reshape([u_Ey.*reshape(alpha_y_all_high_s,1,:) u_Ey.*reshape(alpha_y_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ey,ny_Ey,nz_high_extra)
                             Ez_high[:,:,:,M_in_low_s+ii] = reshape([u_Ez*0 u_Ez.*reshape(alpha_z_all_high_p,1,:)]*(c_out.*exp_pikx),nx_Ez,ny_Ez,nz_high_extra)                                
@@ -2569,7 +2575,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         if M_in_high_s > 0 || M_in_high_p > 0
                             prefactor = reshape(exp((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)                                
                         end
-                        for ii = 1:M_in_high_s # s-polarized input from left
+                        for ii = 1:M_in_high_s # s-polarized input from high
                             c = u_high_prime*[reshape(Ex[:, :, l_high, M_in_low+ii], :); reshape(Ey[:, :, l_high, M_in_low+ii], :)] # c is a 2*nx*ny-by-1 column vector of transverse mode coefficients
                             # c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from z=d
                             c_in[:] .= 0
@@ -2584,7 +2590,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                             Ez_high[:,:,:,M_in_low+ii] = reshape([u_Ez.*0 u_Ez.*reshape(alpha_z_all_high_p,1,:)]*(c_in.*exp_mikz + c_out.*exp_pikz),nx_Ez,ny_Ez,nz_high_extra)
                         end
 
-                        for ii = 1:M_in_high_p # p-polarized input from left
+                        for ii = 1:M_in_high_p # p-polarized input from high
                             c = u_high_prime*[reshape(Ex[:, :, l_high, M_in_low+M_in_high_s+ii], :); reshape(Ey[:, :, l_high, M_in_low+M_in_high_s+ii], :)] # c is a 2*nx*ny-by-1 column vector of transverse mode coefficients
                             # c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from z=d
                             c_in[:] .= 0
@@ -2611,10 +2617,10 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                     exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                     exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
                     c_in = zeros(ny_Ex, 1)
-                    l_high = size(Ex, 2) # index for the inputs/outputs on the right surface
+                    l_high = size(Ex, 2) # index for the inputs/outputs on the high surface
                     
                     for ii = 1:M_in_low # input from low
-                        c_out = u_prime*Ex[:, l_high, ii] # c_out = c because there is no input on the right side
+                        c_out = u_prime*Ex[:, l_high, ii] # c_out = c because there is no input on the high side
                         Ex_high[:,:,ii] = u*(c_out.*exp_pikx)
                    end
                                             
@@ -2622,7 +2628,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         prefactor = reshape(exp((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)       
                    end
                                             
-                   for ii = 1:M_in_high # input from left
+                   for ii = 1:M_in_high # input from high
                         c = u_prime*Ex[:, l_high, M_in_low+ii] # c is a ny_Ex-by-1 column vector of transverse mode coefficients
                         # c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from z=d
                         c_in[:] .= 0

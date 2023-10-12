@@ -811,6 +811,12 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         check_BC_and_grid(xBC, nx_Ex, nx_Ey, nx_Ez, "x")
         check_BC_and_grid(yBC, ny_Ex, ny_Ey, ny_Ez, "y")
         check_BC_and_grid(zBC, nz_Ex, nz_Ey, nz_Ez, "z")
+
+        if ((isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing)) || (isdefined(syst, :epsilon_xz) && ~isa(syst.epsilon_xz, Nothing)) || (isdefined(syst, :epsilon_yx) && ~isa(syst.epsilon_yx, Nothing)) || (isdefined(syst, :epsilon_yz) && ~isa(syst.epsilon_yz, Nothing)) || (isdefined(syst, :epsilon_zx) && ~isa(syst.epsilon_zx, Nothing)) || (isdefined(syst, :epsilon_zy) && ~isa(syst.epsilon_zy, Nothing)))
+            @warn "syst.epsilon_xy, syst.epsilon_xz, syst.epsilon_yx, syst.epsilon_yz, syst.epsilon_zx, and syst.epsilon_zy have not been implemented, yet. They are ignored."
+            syst.epsilon_xy = nothing; syst.epsilon_xz = nothing; syst.epsilon_yx = nothing; syst.epsilon_yz = nothing; syst.epsilon_zx = nothing; syst.epsilon_zy = nothing 
+        end
+
         if (isdefined(syst, :epsilon_xy) && ~isa(syst.epsilon_xy, Nothing) && ~(size(syst.epsilon_xy) == (nx_Ez, ny_Ez, nz_Ex)))
             throw(ArgumentError("The size of syst.epsilon_xy should be should be (size(syst.epsilon_zz, 1), size(syst.epsilon_zz, 2), size(syst.epsilon_xx, 3)) = ($(size(syst.epsilon_zz, 1)), $(size(syst.epsilon_zz, 2)), $(size(syst.epsilon_xx, 3)))."))
         end

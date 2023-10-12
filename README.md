@@ -20,13 +20,10 @@ where (**b**(**r**) or *b*(*y*,*z*)) is the source profile.
 
 Note that the coordinate notation switches between MESTI.m and MESTI.jl: (x, y, z) in MESTI.jl corresponding to (z, y, x) in MESTI.m.
 
-
-
 MESTI.jl is a general-purpose solver with its interface written to provide maximal flexibility. It supports
  - full 3D system supporting both *s* and *p* polarizations.
  - TM polarization for 2D system.
- - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. The imaginary part of  drelative permittivity profile escribes absorption and linear gain.
- - Users can optionally average the  $\bar{\bar{\varepsilon}}(\bf r)$  for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) (which can utilize another code Sbpsm.jl) before calling MESTI.jl.
+ - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. The imaginary part of relative permittivity profile describes absorption and linear gain.
  - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
  - Any material dispersion $\bar{\bar{\varepsilon}}$(*ω*) can be used since this is in frequency domain.
  - Any list of input source profiles (user-specified or automatically built).
@@ -86,28 +83,11 @@ The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.jl
 ## Documentation
 
 Detailed documentation is given in comments at the beginning of the function files:
- - [<code>mesti_main.jl</code>](./src/mesti_main.jl)
- - [<code>mesti2s.jl</code>](./src/mesti2s.jl)
- - [<code>mesti_build_channels.jl</code>](./src/mesti_build_channels.jl)
+ - [<code>mesti_main.jl</code>](./src/mesti_main.jl) for <code>mesti()</code> 
+ - [<code>mesti2s.jl</code>](./src/mesti2s.jl) for <code>mesti2s()</code> 
+ - [<code>mesti_build_channels.jl</code>](./src/mesti_build_channels.jl) for <code>mesti_build_channels()</code> 
 
-For example, typing <code>? mesti</code> in Julia brings up the documentation for <code>mesti()</code>.
-
-## Examples
-
-Examples would be added in a near future. 
-
-Also see the following repositories:
-
-- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): Using MESTI to perform multi-channel inverse design.
-- [Imaging simulations](https://github.com/complexphoton/Imaging-simulations): Using MESTI to perform full-wave simulations of imaging inside scattering media.
-
-## Gallery
-Here are some animations from the examples above:
-
-1. Inverse design of a wide-angle metasurface beamsplitter
-   <img src="https://github.com/complexphoton/APF_inverse_design/blob/main/inverse_design_codes/animated_opt.gif" width="480" height="276">
-2. Numerical experiments of tomographic imaging inside scattering media
-   <img src="https://github.com/complexphoton/Imaging-simulations/blob/main/figs/large_system/reconstructed_images/combined_results.jpg"> 
+For example, typing <code>? mesti2s</code> in Julia brings up the documentation for <code>mesti2s()</code>.
 
 
 ## Reference & Credit

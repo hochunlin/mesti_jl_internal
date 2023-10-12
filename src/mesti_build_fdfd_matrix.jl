@@ -1,4 +1,4 @@
-###### Update on 20231007
+###### Update on 20231012
 #=
 using LinearAlgebra
 using SparseArrays
@@ -6,8 +6,10 @@ using Statistics
 using LazyGrids
 =#
 
+# Export a composite data type PML
 export PML
 
+# Export a function mesti_build_fdfd_matrix()
 export mesti_build_fdfd_matrix
 
 mutable struct PML
@@ -424,6 +426,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         epsilon_diagonal = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
         A = curl_H*curl_E-(k0dx)^2*epsilon_diagonal
 
+        #=
         # Construct the off-diagonal part from the the relative permittivity tensor epsilon_ij, when i does not equal j
         if include_off_diagonal_epsilon
             A_off_diagonal_epsilon = spzeros(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
@@ -455,6 +458,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
             end
             A = A + A_off_diagonal_epsilon
         end
+        =#
         
         if use_UPML
             # sx_Ex = sx_Hz, because Ex and Hz share the same x-coordinate (and sx) inside same Yee-cell.
