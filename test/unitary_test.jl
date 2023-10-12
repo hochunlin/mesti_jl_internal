@@ -19,12 +19,7 @@ nx_Ey = nx; ny_Ey = ny; nz_Ey = nz -1
 nx_Ez = nx; ny_Ez = ny; nz_Ez = nz
 
 # Use optimized PML parameters for this resolution to reduce error
-#zpml = PML(10) # 5 PML pixels padded on each side of z-direction
-#zpml.sigma_max_over_omega = 4.664171353771144
-#zpml.power_sigma = 5.568495004043644
-#zpml.kappa_max = 5.260462519440901
-#zpml.power_kappa= 11.973331766657591
-zpml = get_optimal_PML(5)
+zpml = get_optimal_PML(syst.wavelength/syst.dx)
 zpml.npixels = 10
 syst.zPML = [zpml]
 

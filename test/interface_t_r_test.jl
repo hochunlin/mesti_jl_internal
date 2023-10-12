@@ -11,12 +11,7 @@ syst.wavelength = 1 # vacuum wavelength
 syst.dx = 1/resolution # grid size
 
 # Use optimized PML parameters for this resolution to reduce error
-#zpml = PML(20) # 20 PML pixels padded on each side of z-direction
-#zpml.sigma_max_over_omega = 8.023331683736826
-#zpml.power_sigma = 4.752299476803453
-#zpml.kappa_max = 8.617819639195055
-#zpml.power_kappa= 9.756126105393118
-zpml = get_optimal_PML(10)
+zpml = get_optimal_PML(syst.wavelength/syst.dx)
 zpml.npixels = 20
 syst.zPML = [zpml] 
 k0dx = 2*pi/syst.wavelength*syst.dx # Dimensionless frequency k0*dx
