@@ -1,4 +1,4 @@
-###### Update on 20231015
+###### Update on 20231016
 
 # Export composite data types
 export Source_struct
@@ -1693,9 +1693,8 @@ end
 # The following are mesti functions to take different number of input arguments, but all of them will
 # call the mesti main function.
 
-"""
-When syst and B are specified; return the components of the field profiles.
-"""
+
+# When syst and B are specified; return the components of the field profiles.
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}})
     opts = Opts() 
     
@@ -1715,9 +1714,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
 end
 
-"""
-When syst, B, and opts are specified; return the components of the field profiles.
-"""
+# When syst, B, and opts are specified; return the components of the field profiles.
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, opts::Opts)
     
     (S, info) = mesti(syst, B, nothing, nothing, opts)
@@ -1787,23 +1784,19 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
 end
 
-"""
-When syst, B, and C are specified; return the generalized scattering matrix.
-"""
+# When syst, B, and C are specified; return the generalized scattering matrix.
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String})
     return mesti(syst, B, C, nothing, nothing)
 end
 
-"""
-When syst, B, and C, and opts are specified; return the generalized scattering matrix.
-"""
+
+# When syst, B, and C, and opts are specified; return the generalized scattering matrix.
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, opts::Opts)
     return mesti(syst, B, C, nothing, opts)
 end
 
-"""
-When syst, B, and C, and D are specified; return the generalized scattering matrix.
-"""
+
+# When syst, B, and C, and D are specified; return the generalized scattering matrices
 function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}})
     return mesti(syst, B, C, D, nothing)
 end

@@ -2673,9 +2673,8 @@ end
 # The following are mesti functions to take different number of input arguments, but all of them will
 # call the mesti main function.
 
-"""
-When syst, and input are specified; return the components of the field profiles.
-"""
+
+# When syst, and input are specified; return the components of the field profiles.
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront})
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
@@ -2693,9 +2692,8 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     end
 end
 
-"""
-When syst, input, and opts are specified; return the components of the field profiles.
-"""
+
+# When syst, input, and opts are specified; return the components of the field profiles.
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront}, opts::Union{Opts,Nothing})
     # Check if 2D TM fields are required
     if ndims(syst.epsilon_xx) == 2
@@ -2713,9 +2711,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     end
 end
 
-"""
-When syst, input, and output are specified; return the scattering matrix.
-"""
+# When syst, input, and output are specified; return the scattering matrix.
 function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront}, output::Union{channel_type, channel_index, wavefront,Nothing})
     (S, channels, info) = mesti2s(syst, input, output, nothing)
     return S, channels, info
