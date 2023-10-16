@@ -73,10 +73,12 @@ It helps us to add the Julia interface for MUMPS, [MUMPS3](https://github.com/wr
 
 ## Test MUMPS
 
-Now, open Julia and run the following test scripts:
+Now, open Julia and the following test scripts:
 
 - <code>[basic_solve.jl](basic_solve.jl)</code>
 - <code>[schur_complement.jl](schur_complement.jl)</code>
+
+Please modify the line 6 and set the environment variable <code>ENV["MUMPS_PREFIX"]</code> to the path of MUMPS library on your machine. Then, we can run these two scripts.
 
 If any of them does not run successfully, look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
 
