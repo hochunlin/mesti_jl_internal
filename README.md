@@ -21,7 +21,7 @@ where (**b**(**r**) or *b*(*y*,*z*)) is the source profile.
 Note that the coordinate notation switches between MESTI.m and MESTI.jl: (x, y, z) in MESTI.jl corresponding to (z, y, x) in MESTI.m.
 
 MESTI.jl is a general-purpose solver with its interface written to provide maximal flexibility. It supports
- - full 3D system supporting both *s* and *p* polarizations.
+ - Full 3D system supporting both *s* and *p* polarizations.
  - TM polarization for 2D system.
  - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) before calling MESTI.jl. It can be done by another code SBPSM.jl, which would be released soon.
  - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
