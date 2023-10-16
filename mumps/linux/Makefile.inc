@@ -1,6 +1,6 @@
 #
-#  This file is part of MUMPS 5.6.0, released
-#  on Wed Apr 19 15:50:57 UTC 2023
+#  This file is part of MUMPS 5.6.2, released
+#  on Wed Oct 11 09:36:25 UTC 2023
 #
 ################################################################################
 #
@@ -71,7 +71,7 @@ LPORD    = -L$(LPORDDIR) -lpord
 
 # If METIS has been installed, you can uncomment the following line to specify 
 # the library of METIS.
-LMETIS    = -L$(LMETISDIR) -lmetis
+#LMETIS    = -L$(LMETISDIR) -lmetis
 
 # The following variables will be used in the compilation process.
 # Please note that -Dptscotch and -Dparmetis imply -Dscotch and -Dmetis respectively.
@@ -105,7 +105,7 @@ SONAME = -soname
 # Adapt/uncomment RPATH_OPT to avoid modifying
 # LD_LIBRARY_PATH in case of shared libraries
 # The following is the path of the MUMPS shared libraries on Hsu's group in USC Discovery cluster:
-RPATH_OPT = -Wl,-rpath,/project/cwhsu_38/shared/software/mumps-5.6.0-par/lib/
+RPATH_OPT = -Wl,-rpath,/project/cwhsu_38/shared/software/mumps-5.6.2-par/lib/
 OUTC    = -o 
 OUTF    = -o 
 # RM : remove files

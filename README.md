@@ -10,7 +10,7 @@ $$
 \left[ \nabla\times\left( \nabla\times \right) - \frac{\omega^2}{c^2}\bar{\bar{\varepsilon}}(\bf r) \right] {\bf E}(\bf r) = {\bf b}(\bf r),
 $$
 
-or 2D systems in transverse-magnetic (TM) polarization (*Ex*, *Hy*,*Hz*) with
+or 2D systems in transverse-magnetic (TM) polarization (*Ex*, *Hy*, *Hz*) with
 
 $$
 \left[ -\frac{\partial^2}{\partial y^2} -\frac{\partial^2}{\partial z^2} - \frac{\omega^2}{c^2}\varepsilon_{xx}(y,z) \right] E_x(y,z)= b(y,z),
@@ -23,7 +23,7 @@ Note that the coordinate notation switches between MESTI.m and MESTI.jl: (x, y, 
 MESTI.jl is a general-purpose solver with its interface written to provide maximal flexibility. It supports
  - full 3D system supporting both *s* and *p* polarizations.
  - TM polarization for 2D system.
- - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. The imaginary part of relative permittivity profile describes absorption and linear gain.
+ - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) before calling MESTI.jl. It can be done by another code SBPSM.jl, which would be released soon.
  - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
  - Any material dispersion $\bar{\bar{\varepsilon}}$(*ω*) can be used since this is in frequency domain.
  - Any list of input source profiles (user-specified or automatically built).
@@ -71,8 +71,7 @@ However, to use the APF method, the user needs to install the parallel version o
 
 The function [<code>mesti(syst, B, C, D)</code>](./src/mesti_main.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile **b**(**r**). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
 
-The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where $\bar{\bar{\varepsilon}}(\bf r)$  consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-z*) and right (*+z*), light is incident from the left and/or right, the boundary condition in *z* is outgoing, and the boundary condition in *y* and *x* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation.
-Flux normalization in *z* is applied automatically and exactly, so the full scattering matrix is always unitary when  $\bar{\bar{\varepsilon}}(\bf r)$ is real-valued. 
+The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where $\bar{\bar{\varepsilon}}(\bf r)$  consists of an inhomogeneous scattering region with homogeneous spaces on the low (*-z*) and high (*+z*) sides, light is incident from the low side and/or high side, the boundary condition in *z* is outgoing, and the boundary condition in *y* and *x* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation. Flux normalization in *z* is applied automatically and exactly, so the full scattering matrix is always unitary when  $\bar{\bar{\varepsilon}}(\bf r)=(\bar{\bar{\varepsilon}}(\bf r))^\dagger$ . 
 
 To compute the complete field profiles, simply omit the argument <code>C</code> or <code>out</code>.
 

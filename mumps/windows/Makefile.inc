@@ -1,6 +1,6 @@
 #
-#  This file is part of MUMPS 5.6.0, released
-#  on Wed Apr 19 15:50:57 UTC 2023
+#  This file is part of MUMPS 5.6.2, released
+#  on Wed Oct 11 09:36:25 UTC 2023
 #
 ################################################################################
 #
@@ -71,7 +71,7 @@ LPORD    = -L$(LPORDDIR) -lpord
 
 # If METIS has been installed, you can uncomment the following line to specify 
 # the library of METIS.
-LMETIS    = -L$(LMETISDIR) -lmetis
+#LMETIS    = -L$(LMETISDIR) -lmetis
 
 # The following variables will be used in the compilation process.
 # Please note that -Dptscotch and -Dparmetis imply -Dscotch and -Dmetis respectively.

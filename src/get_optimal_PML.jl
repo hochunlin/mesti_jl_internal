@@ -1,4 +1,4 @@
-###### Update on 20231012
+###### Update on 20231015
 
 # Export a function get_optimal_PML()
 export get_optimal_PML
@@ -8,9 +8,7 @@ function get_optimal_PML(wavelength_over_dx)
     # wavelength_over_dx should be in the range of [5, 500].
 
     if wavelength_over_dx < 5 || wavelength_over_dx > 500
-        error("mesh resolution out of range")
-        throw(ArgumentError("Mesh resolution $(wavelength_over_dx), is out of range between 5 adn 500."))
-
+	@warn "The resolution $(wavelength_over_dx), is beyond the range of 5 to 500. Since we fit our optimal PML parameters within this specified range, the obtained PML parameters may not be optimal."
     end
 
     # Initialize mutable struct PML  

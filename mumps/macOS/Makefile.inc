@@ -1,6 +1,6 @@
 #
-#  This file is part of MUMPS 5.6.0, released
-#  on Thu Apr 14 11:45:33 UTC 2022
+#  This file is part of MUMPS 5.6.2, released
+#  on Wed Oct 11 09:36:25 UTC 2023
 #
 ################################################################################
 #
@@ -9,7 +9,7 @@
 #   This defines some parameters dependent on your platform; you should
 #   look for the approriate file in the directory ./Make.inc/ and copy it
 #   into a file called Makefile.inc. For example, from the MUMPS root
-#   directory, use 
+#   directory, use
 #   "cp Make.inc/Makefile.inc.generic ./Makefile.inc"
 #   (see the main README file for details)
 #
@@ -57,9 +57,10 @@ LPORDDIR = $(topdir)/PORD/lib
 IPORD    = -I$(topdir)/PORD/include
 LPORD    = -L$(LPORDDIR) -lpord
 
-# Uncomment the two lines below if you installed METIS to the default /usr/local folder
-LMETISDIR = /usr/local/lib
-IMETIS    = -I/usr/local/include
+# If METIS has been installed, you can uncomment the following two lines to specify 
+# your own path of METIS.
+#LMETISDIR = /usr/local/lib
+#IMETIS    = -I/usr/local/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -67,15 +68,17 @@ IMETIS    = -I/usr/local/include
 # variable below); for both parallel and sequential analysis choose the second 
 # line (remember to add -Dparmetis in the ORDERINGSF variable below)
 
-LMETIS    = -L$(LMETISDIR) -lmetis
-#LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
+# If METIS has been installed, you can uncomment the following line to specify 
+# the library of METIS.
+#LMETIS    = -L$(LMETISDIR) -lmetis
 
 # The following variables will be used in the compilation process.
 # Please note that -Dptscotch and -Dparmetis imply -Dscotch and -Dmetis respectively.
 # If you want to use Metis 4.X or an older version, you should use -Dmetis4 instead of -Dmetis
 # or in addition with -Dparmetis (if you are using parmetis 3.X or older).
-#ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
-ORDERINGSF  = -Dpord -Dmetis
+
+# Uncomment -Dmetis to the following line if you installed METIS
+ORDERINGSF  = -Dpord #-Dmetis
 ORDERINGSC  = $(ORDERINGSF)
 
 LORDERINGS = $(LMETIS) $(LPORD) $(LSCOTCH)

@@ -3,7 +3,7 @@
 # This script is taken and modified from https://github.com/wrs28/MUMPS3.jl/blob/5.3.3-update/test/basic_solve.jl
 
 # Set the environment variable "MUMPS_PREFIX" to the path of MUMPS library
-ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
+ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.2_par_metis/lib"
 
 # Import necessary packages
 using MUMPS3, MPI, LinearAlgebra, SparseArrays, Test

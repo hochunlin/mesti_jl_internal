@@ -4,7 +4,7 @@
 # specifically focusing on computing the Schur complement, which MESTI would utilize in APF method.
 
 # Set the environment variable "MUMPS_PREFIX" to the path of MUMPS library
-ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.0_par_metis/lib"
+ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.2_par_metis/lib"
 
 # Import necessary packages
 using MUMPS3, MPI, LinearAlgebra, SparseArrays, Statistics, Test

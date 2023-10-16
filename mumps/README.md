@@ -13,10 +13,10 @@ To compile the parallel version of MUMPS, you need compilation tools like <code>
 If you are interested in 3D systems or memory usage in 2D systems is important for you, we highly recommend you install the [METIS](https://github.com/scivision/METIS/tree/743ae96033f31907d89c80e3470c0325e9a97f7b) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). You can find the installation instructions in the operating system folders. After installing METIS, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. In 3D, METIS is strongly recommended, which is much faster than AMD. By default, 2D systems use AMD, while 3D systems use METIS (if it is available).
 
 ## Compile MUMPS
-Suppose you downloaded the 5.6.0 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
+Suppose you downloaded the 5.6.2 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
 ```
-tar zxvf ~/Downloads/MUMPS_5.6.0.tar.gz
-cd MUMPS_5.6.0
+tar zxvf ~/Downloads/MUMPS_5.6.2.tar.gz
+cd MUMPS_5.6.2
 ```
 in terminal.
 
@@ -27,9 +27,9 @@ Read the file <code>INSTALL</code>, copy the closest <code>Makefile.inc</code> f
  - <code>LAPACK</code>: how the Fortran compiler can link to the LAPACK library
  - <code>SCALAP</code>: how the Fortran compiler can link to the ScaLAPACK library
  - <code>LIBBLAS</code>: how the Fortran compiler can link to the BLAS library
- - <code>RPATH_OPT</code>: the path the shared libraries will be built up, such as <code>/home/hclin/MUMPS_5.6.0/lib/</code>
+ - <code>RPATH_OPT</code>: the path the shared libraries will be built up, such as <code>/home/hclin/MUMPS_5.6.2/lib/</code>
 
-Note that from our experience, <code>RPATH_OPT</code> must be specified to successfully install the parallel version of MUMPS.
+Note that from our experience, <code>RPATH_OPT</code> must be specified to successfully install the parallel version of MUMPS on Linux and Windows.
 
 If you installed METIS, you also need to specify
  - <code>LMETISDIR</code>: path to the folder where the METIS library is
