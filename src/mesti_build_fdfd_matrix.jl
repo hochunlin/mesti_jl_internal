@@ -1,4 +1,4 @@
-###### Update on 20231012
+###### Update on 20231015
 
 # Export a composite data type PML
 export PML
@@ -232,6 +232,27 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         if (~isa(epsilon_zy, Nothing) && ~(size(epsilon_zy) == (nx_Ez, ny_Ex, nz_Ex)))
             throw(ArgumentError("The size of epsilon_zy should be should be (size(epsilon_zz, 1), size(epsilon_xx, 2), size(epsilon_xx, 3)) = ($(size(epsilon_zz, 1)), $(size(epsilon_xx, 2)), $(size(epsilon_xx, 3)))."))
         end
+        
+        # Checking the whether the permittivity is lossless or not 
+        if (maximum(imag(epsilon_xx)) >= sqrt(eps()))
+            @warn("syst.epsilon_xx contains imaginary part; the permittivity profile is not lossless.")
+        end
+        if (maximum(imag(epsilon_yy)) >= sqrt(eps()))
+            @warn("syst.epsilon_yy contains imaginary part; the permittivity profile is not lossless.")
+        end
+        if (maximum(imag(epsilon_zz)) >= sqrt(eps()))
+            @warn("syst.epsilon_zz contains imaginary part; the permittivity profile is not lossless.")
+        end        
+        if (~isa(epsilon_xy, Nothing) && ~isa(epsilon_yx, Nothing) && maximum(abs.(epsilon_xy - conj(epsilon_yx))) >= sqrt(eps()))
+            @warn("syst.epsilon_xy != conj(syst.epsilon_yx); the permittivity profile is not lossless.")
+        end
+        if (~isa(epsilon_xz, Nothing) && ~isa(epsilon_zx, Nothing) && maximum(abs.(epsilon_xz - conj(epsilon_zx))) >= sqrt(eps()))
+            @warn("syst.epsilon_xz != conj(syst.epsilon_zx); the permittivity profile is not lossless.")
+        end
+        if (~isa(epsilon_yz, Nothing) && ~isa(epsilon_zy, Nothing) && maximum(abs.(epsilon_yz - conj(epsilon_zy))) >= sqrt(eps()))
+            @warn("syst.epsilon_yz != conj(syst.epsilon_zy); the permittivity profile is not lossless.")
+        end
+        
         # Total number of grid points for Ex, Ey, and Ez    
         nt_Ex = nx_Ex*ny_Ex*nz_Ex
         nt_Ey = nx_Ey*ny_Ey*nz_Ey
@@ -419,12 +440,11 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         # Construct the vectorial Maxwell matrix A
         epsilon_diagonal = spdiagm(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez, vcat(epsilon_xx[:], epsilon_yy[:], epsilon_zz[:]))
         A = curl_H*curl_E-(k0dx)^2*epsilon_diagonal
-
-        #=
+        
         # Construct the off-diagonal part from the the relative permittivity tensor epsilon_ij, when i does not equal j
         if include_off_diagonal_epsilon
-            A_off_diagonal_epsilon = spzeros(nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
-            
+            A_off_diagonal_epsilon = spzeros(ComplexF64, nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
+
             # Following Oskooi et al, Optics Letters 34, 2778 (2009), we average two points of Ey along y, multiply by epsilon_xy to get Ex, and then average two such points along direction x. To summarize: avg_x*epsilon_xy*avg_y*Ey. Similarly for the other terms.
             if ~isa(epsilon_xy, Nothing)
                 matrix_epsilon_xy = spdiagm(nx_Ez*ny_Ez*nz_Ex, nx_Ez*ny_Ez*nz_Ex, epsilon_xy[:])
@@ -452,7 +472,6 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
             end
             A = A + A_off_diagonal_epsilon
         end
-        =#
         
         if use_UPML
             # sx_Ex = sx_Hz, because Ex and Hz share the same x-coordinate (and sx) inside same Yee-cell.

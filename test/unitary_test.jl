@@ -34,12 +34,38 @@ output.side = "both"
 output.polarization = "both"
 
 # Test the functionality in a test set
-@testset "unitarity:              " begin
-    for i ∈ 1:20
+@testset "unitarity(diagonal ε):  " begin
+    for i ∈ 1:10
 	# Random permittivity profiles, whose value is between 1 and 4
+        # The condition for the scattering region to be lossless is the permittivity tensor ε to be hermitian: adjoint(ε) = ε
         syst.epsilon_xx = rand(nx_Ex,ny_Ex,nz_Ex)* (epsilon_max-epsilon_min) .+ epsilon_min
         syst.epsilon_yy = rand(nx_Ey,ny_Ey,nz_Ey)* (epsilon_max-epsilon_min) .+ epsilon_min
         syst.epsilon_zz = rand(nx_Ez,ny_Ez,nz_Ez)* (epsilon_max-epsilon_min) .+ epsilon_min
+
+	opts = Opts()
+        opts.verbal = false # Not print system information and timing to the standard output.
+
+        (S, _, _)= mesti2s(syst, input, output, opts)
+        @test maximum(abs.((S'*S) - I(size(S, 1)))) ≤ 1e-2 # Check the unitarity of the scattering matrix
+    end
+end
+                    
+@testset "unitarity(general ε):   " begin
+    for i ∈ 1:10
+	# Random permittivity profiles, whose value is between 1 and 4
+        # The condition for the scattering region to be lossless is the permittivity tensor ε to be hermitian: adjoint(ε) = ε
+        syst.epsilon_xx = rand(nx_Ex,ny_Ex,nz_Ex)* (epsilon_max-epsilon_min) .+ epsilon_min
+        syst.epsilon_yy = rand(nx_Ey,ny_Ey,nz_Ey)* (epsilon_max-epsilon_min) .+ epsilon_min
+        syst.epsilon_zz = rand(nx_Ez,ny_Ez,nz_Ez)* (epsilon_max-epsilon_min) .+ epsilon_min
+ 
+        syst.epsilon_xy = rand(nx_Ez,ny_Ez,nz_Ex) * (epsilon_max-epsilon_min) .+ epsilon_min + 1im*(rand(nx_Ez,ny_Ez,nz_Ex) * (epsilon_max-epsilon_min) .+ epsilon_min)
+        syst.epsilon_yx = conj(syst.epsilon_xy)
+        
+        syst.epsilon_yz = rand(nx_Ey,ny_Ex,nz_Ex) * (epsilon_max-epsilon_min) .+ epsilon_min + 1im*(rand(nx_Ez,ny_Ez,nz_Ex) * (epsilon_max-epsilon_min) .+ epsilon_min)
+        syst.epsilon_zy = conj(syst.epsilon_yz)
+        
+        syst.epsilon_xz = rand(nx_Ey,ny_Ex,nz_Ey) * (epsilon_max-epsilon_min) .+ epsilon_min + 1im*(rand(nx_Ez,ny_Ez,nz_Ex) * (epsilon_max-epsilon_min) .+ epsilon_min)
+        syst.epsilon_zx = conj(syst.epsilon_xz)
 
 	opts = Opts()
         opts.verbal = false # Not print system information and timing to the standard output.
