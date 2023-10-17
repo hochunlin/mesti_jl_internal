@@ -1,6 +1,5 @@
 # Include MESTI module
-include("MESTI.jl")
-using .MESTI
+using MESTI
 using LinearAlgebra, SparseArrays, Test
 
 include("matrix_solver_test.jl")
