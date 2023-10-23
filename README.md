@@ -73,7 +73,7 @@ or
 
 However, to use the APF method, the user needs to install the parallel version of [MUMPS](https://mumps-solver.org/index.php) and its Julia interface [MUMPS3](https://github.com/wrs28/MUMPS3.jl/tree/5.3.3-update). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
-After installing the parallel version of MUMPS and appending necessary library paths to `LD_PRELOAD`, which we described in the [linux]((./mumps/linux#running-mumps-in-julia))/[windows](./mumps/windows#running-mumps-in-julia) OS, to install MESTI.jl open Julia REPL and set the Julia environment variable <code>MUMPS_PREFIX</code>to the path to your own MUMPS libraries. For example, we can type 
+After installing the parallel version of MUMPS and appending necessary library paths to `LD_PRELOAD`, which we described in the [linux](./mumps/linux#running-mumps-in-julia)/[windows](./mumps/windows#running-mumps-in-julia) OS, to install MESTI.jl open Julia REPL and set the Julia environment variable <code>MUMPS_PREFIX</code>to the path to your own MUMPS libraries. For example, we can type 
 
 <code>ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.2/lib"</code> 
 
