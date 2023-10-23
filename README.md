@@ -61,13 +61,13 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 To install MESTI.jl without parallel version of [MUMPS](https://mumps-solver.org/index.php), simply open Julia REPL and type: 
 
-<code>import Pkg; Pkg.add(PackageSpec(url="http://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
+<code>import Pkg; Pkg.add(PackageSpec(url="https://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
 
 <code>Pkg.add(url="https://github.com/complexphoton/MESTI.jl")</code> 
 
 or 
 
-<code>import Pkg; Pkg.add(PackageSpec(url="http://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
+<code>import Pkg; Pkg.add(PackageSpec(url="https://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
 
 <code>Pkg.add("MESTI")</code> 
 
@@ -77,7 +77,7 @@ After installing the parallel version of MUMPS and appending necessary library p
 
 <code>ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.2/lib"</code> 
 
-<code>import Pkg; Pkg.add(PackageSpec(url="http://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
+<code>import Pkg; Pkg.add(PackageSpec(url="https://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
 
 <code>Pkg.add(url="https://github.com/complexphoton/MESTI.jl")</code> 
 
@@ -85,7 +85,7 @@ or
 
 <code>ENV["MUMPS_PREFIX"] = "/home/hclin/MUMPS_5.6.2/lib"</code> 
 
-<code>import Pkg; Pkg.add(PackageSpec(url="http://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
+<code>import Pkg; Pkg.add(PackageSpec(url="https://github.com/wrs28/MUMPS3.jl", rev="5.3.3-update"))</code>
 
 <code>Pkg.add("MESTI")</code>
 
