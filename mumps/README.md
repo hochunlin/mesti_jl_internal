@@ -102,4 +102,6 @@ julia schur_complement.jl
 
 If any of them does not run successfully, look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
 
-If they all pass, congratulations! You are done. You are ready to install MESTI.jl. Please go back to install [MESTI.jl](../#installation)
+If they all pass, congratulations! You are done. 
+
+You are ready to install MESTI.jl. Please go back to [install MESTI.jl](../#installation).

@@ -115,4 +115,3 @@ For more information on the theory, capability, and benchmarks (*e.g.*, scaling 
 ```
 
 Please cite this paper when you use MESTI.
-
