@@ -1,5 +1,3 @@
-###### Update on 20231016
-
 # Export composite data types
 export Source_struct
 export Syst

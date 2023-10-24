@@ -1,5 +1,3 @@
-###### Update on 20231008
-
 """
     BUILD_TRANSVERSE_FUNCTION_1D sets up 1D transverse function and wave number in the homogeneous space.
 

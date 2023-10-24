@@ -1,5 +1,3 @@
-###### Update on 20231015
-
 # Export composite data types
 export channel_type
 export channel_index
@@ -1120,11 +1118,11 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             end
         else
             # Coefficients of wavefronts, in matrices     
-            v_in_low_s = spzeros(N_prop_low, 0)
-            v_in_low_p = spzeros(N_prop_low, 0)
+            v_in_low_s = spzeros(ComplexF64, N_prop_low, 0)
+            v_in_low_p = spzeros(ComplexF64, N_prop_low, 0)
             if two_sided
-                v_in_high_s = spzeros(N_prop_high, 0)
-                v_in_high_p = spzeros(N_prop_high, 0)
+                v_in_high_s = spzeros(ComplexF64, N_prop_high, 0)
+                v_in_high_p = spzeros(ComplexF64,N_prop_high, 0)
             end        
         end
     else
@@ -1136,9 +1134,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             end
         else
             # Coefficients of wavefronts, in matrices     
-            v_in_low = spzeros(N_prop_low, 0)
+            v_in_low = spzeros(ComplexF64, N_prop_low, 0)
             if two_sided
-                v_in_high = spzeros(N_prop_high, 0)
+                v_in_high = spzeros(ComplexF64, N_prop_high, 0)
             end        
         end
     end
@@ -1370,11 +1368,11 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                 end
             else
                 # Coefficients of wavefronts, in matrices     
-                v_out_low_s = spzeros(N_prop_low, 0)
-                v_out_low_p = spzeros(N_prop_low, 0)
+                v_out_low_s = spzeros(ComplexF64, N_prop_low, 0)
+                v_out_low_p = spzeros(ComplexF64, N_prop_low, 0)
                 if two_sided
-                    v_out_high_s = spzeros(N_prop_high, 0)
-                    v_out_high_p = spzeros(N_prop_high, 0)
+                    v_out_high_s = spzeros(ComplexF64, N_prop_high, 0)
+                    v_out_high_p = spzeros(ComplexF64, N_prop_high, 0)
                 end        
             end
         else
@@ -1386,9 +1384,9 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                 end
             else
                 # Coefficients of wavefronts, in matrices     
-                v_out_low = spzeros(N_prop_low, 0)
+                v_out_low = spzeros(ComplexF64, N_prop_low, 0)
                 if two_sided
-                    v_out_high = spzeros(N_prop_high, 0)
+                    v_out_high = spzeros(ComplexF64, N_prop_high, 0)
                 end        
             end
         end
@@ -2440,11 +2438,11 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                     kz_z = [repeat(reshape(channels.low.kzdx_all, nx*ny, 1), 2, 1)].*reshape(l, 1, :) # kz*z; 2*nx*ny-by-nz_low_extra matrix through implicit expansion
                     exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                     exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
-                    c_in = zeros(2*nx*ny, 1)
+                    c_in = zeros(ComplexF64, 2*nx*ny, 1)
                     l_low = 1 # index for the inputs/outputs on the low surface
 
                     if M_in_low > 0
-                        prefactor = reshape(exp((-1im*dn)*channels.low.kzdx_prop)./channels.low.sqrt_nu_prop, N_prop_low, 1)
+                        prefactor = reshape(exp.((-1im*dn)*channels.low.kzdx_prop)./channels.low.sqrt_nu_prop, N_prop_low, 1)
                     end
                     for ii = 1:M_in_low_s # s-polarized input from low
                         c = u_low_prime*[reshape(Ex[:, :, l_low, ii], :); reshape(Ey[:, :, l_low, ii], :)] # c is a 2*nx*ny-by-1 column vector of transverse mode coefficients
@@ -2467,7 +2465,8 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         if use_ind_in
                             c_in[nx*ny+channels.low.ind_prop[ind_in_low_p[ii]]] = prefactor[ind_in_low_p[ii]]
                         else
-                            c_in[nx*ny.+channels.low.ind_prop] = prefactor.*v_in_low_p[:,ii]                                               end
+                            c_in[nx*ny.+channels.low.ind_prop] = prefactor.*v_in_low_p[:,ii]
+                        end
                         c_out = c - c_in
                         Ex_low[:,:,:,M_in_low_s+ii] = reshape([u_Ex.*reshape(alpha_x_all_low_s,1,:) u_Ex.*reshape(alpha_x_all_low_p,1,:)]*(c_in.*exp_pikz + c_out.*exp_mikz),nx_Ex,ny_Ex,nz_low_extra)
                         Ey_low[:,:,:,M_in_low_s+ii] = reshape([u_Ey.*reshape(alpha_y_all_low_s,1,:) u_Ey.*reshape(alpha_y_all_low_p,1,:)]*(c_in.*exp_pikz + c_out.*exp_mikz),nx_Ey,ny_Ey,nz_low_extra)
@@ -2499,10 +2498,10 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                     kz_z = reshape(channels.low.kzdx_all, ny_Ex, 1).*reshape(l, 1, :) # kz*z; ny_Ex-by-nz_low_extra matrix through implicit expansion
                     exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                     exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
-                    c_in = zeros(ny_Ex, 1)
+                    c_in = zeros(ComplexF64, ny_Ex, 1)
                     l_low = 1 # index for the inputs/outputs on the low surface
                     if M_in_low > 0
-                        prefactor = reshape(exp((-1im*dn)*channels.low.kzdx_prop)./channels.low.sqrt_nu_prop, N_prop_low, 1)
+                        prefactor = reshape(exp.((-1im*dn)*channels.low.kzdx_prop)./channels.low.sqrt_nu_prop, N_prop_low, 1)
                     end
                     for ii = 1:M_in_low # input from low
                         c = u_prime*Ex[:, l_low, ii] # c is a ny_Ex-by-1 column vector of transverse mode coefficients
@@ -2550,7 +2549,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         kz_z = [repeat(reshape(channels.high.kzdx_all, nx*ny, 1),2,1)].*reshape(l, 1, :) # kz*z; 2*nx*ny-by-nz_low_extra matrix through implicit expansion
                         exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                         exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
-                        c_in = zeros(2*nx*ny, 1)
+                        c_in = zeros(ComplexF64, 2*nx*ny, 1)
                         l_high = size(Ex, 3) # index for the inputs/outputs on the high surface
 
                         for ii = 1:M_in_low_s # s-polarized input from low
@@ -2568,7 +2567,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         end
 
                         if M_in_high_s > 0 || M_in_high_p > 0
-                            prefactor = reshape(exp((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)                                
+                            prefactor = reshape(exp.((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)                                
                         end
                         for ii = 1:M_in_high_s # s-polarized input from high
                             c = u_high_prime*[reshape(Ex[:, :, l_high, M_in_low+ii], :); reshape(Ey[:, :, l_high, M_in_low+ii], :)] # c is a 2*nx*ny-by-1 column vector of transverse mode coefficients
@@ -2602,41 +2601,41 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         Ex = cat(Ex, Ex_high, dims=3)
                         Ey = cat(Ey, Ey_high, dims=3)
                         Ez = cat(Ez, Ez_high, dims=3)                
-                    end
-                else
-                    # Add pixels such that we have opts.nz_high pixels of syst.epsilon_high on the high
-                    Ex_high = zeros(ComplexF64, ny_Ex, nz_high_extra, size(Ex,3))
-                    # The n below is l = l - l_high, where l_high is the location of the inputs/outputs on the high surface.
-                    l = 1:nz_high_extra
-                    kz_z = reshape(channels.high.kzdx_all, ny_Ex, 1).*reshape(l, 1, :) # kz*z; ny_Ex-by-nz_low_extra matrix through implicit expansion
-                    exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
-                    exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
-                    c_in = zeros(ny_Ex, 1)
-                    l_high = size(Ex, 2) # index for the inputs/outputs on the high surface
-                    
-                    for ii = 1:M_in_low # input from low
-                        c_out = u_prime*Ex[:, l_high, ii] # c_out = c because there is no input on the high side
-                        Ex_high[:,:,ii] = u*(c_out.*exp_pikx)
-                   end
-                                            
-                   if M_in_high > 0
-                        prefactor = reshape(exp((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)       
-                   end
-                                            
-                   for ii = 1:M_in_high # input from high
-                        c = u_prime*Ex[:, l_high, M_in_low+ii] # c is a ny_Ex-by-1 column vector of transverse mode coefficients
-                        # c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from z=d
-                        c_in[:] .= 0
-                        if use_ind_in
-                            c_in[channels.high.ind_prop[ind_in_high[ii]]] = prefactor[ind_in_high[ii]]
-                        else
-                            c_in[channels.high.ind_prop] = prefactor.*v_in_high[:,ii]
+                    else
+                        # Add pixels such that we have opts.nz_high pixels of syst.epsilon_high on the high
+                        Ex_high = zeros(ComplexF64, ny_Ex, nz_high_extra, size(Ex,3))
+                        # The n below is l = l - l_high, where l_high is the location of the inputs/outputs on the high surface.
+                        l = 1:nz_high_extra
+                        kz_z = reshape(channels.high.kzdx_all, ny_Ex, 1).*reshape(l, 1, :) # kz*z; ny_Ex-by-nz_low_extra matrix through implicit expansion
+                        exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
+                        exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
+                        c_in = zeros(ComplexF64, ny_Ex, 1)
+                        l_high = size(Ex, 2) # index for the inputs/outputs on the high surface
+                        
+                        for ii = 1:M_in_low # input from low
+                            c_out = u_prime*Ex[:, l_high, ii] # c_out = c because there is no input on the high side
+                            Ex_high[:,:,ii] = u*(c_out.*exp_pikz)
                         end
-                        c_out = c - c_in
-                        Ex_high[:,:,M_in_low+ii] = u*(c_in.*exp_mikz + c_out.*exp_pikz)
-                   end
-                   Ex = cat(Ex, Ex_high, dims=2)
-               end
+                                                
+                        if M_in_high > 0
+                                prefactor = reshape(exp.((-1im*dn)*channels.high.kzdx_prop)./channels.high.sqrt_nu_prop, N_prop_high, 1)       
+                        end
+                                                
+                        for ii = 1:M_in_high # input from high
+                            c = u_prime*Ex[:, l_high, M_in_low+ii] # c is a ny_Ex-by-1 column vector of transverse mode coefficients
+                            # c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from z=d
+                            c_in[:] .= 0
+                            if use_ind_in
+                                c_in[channels.high.ind_prop[ind_in_high[ii]]] = prefactor[ind_in_high[ii]]
+                            else
+                                c_in[channels.high.ind_prop] = prefactor.*v_in_high[:,ii]
+                            end
+                            c_out = c - c_in
+                            Ex_high[:,:,M_in_low+ii] = u*(c_in.*exp_mikz + c_out.*exp_pikz)
+                        end
+                        Ex = cat(Ex, Ex_high, dims=2)
+                    end
+                end
             elseif opts.nz_high > 0 # one-sided
                # Add nz_high slices of zero on the high
                if ~use_2D_TM

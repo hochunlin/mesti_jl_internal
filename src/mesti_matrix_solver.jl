@@ -1,5 +1,3 @@
-###### Update on 20231008
-
 # Export composite data types
 export Matrices
 export Opts
@@ -7,7 +5,6 @@ export Info
 
 # Export a function mesti_matrix_solver!()
 export mesti_matrix_solver!
-
 
 mutable struct Matrices
     # A composite data type to store the matrices, A, B, and C

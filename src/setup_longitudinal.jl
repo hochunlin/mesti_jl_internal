@@ -1,5 +1,3 @@
-###### Update on 20231008
-
 # Export a composite data type
 export Side
 

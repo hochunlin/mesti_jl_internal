@@ -1,5 +1,3 @@
-###### Update on 20231015
-
 # Export a function get_optimal_PML()
 export get_optimal_PML
 

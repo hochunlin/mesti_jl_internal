@@ -1,5 +1,3 @@
-###### Update on 20231008
-
 # Export composite data types
 export Channels_one_sided
 export Channels_two_sided

@@ -1,4 +1,3 @@
-###### Update on 20231012
 module MESTI
 
 using LinearAlgebra
