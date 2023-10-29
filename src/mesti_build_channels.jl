@@ -341,7 +341,7 @@ function mesti_build_channels(syst::Syst)
     if ndims(syst.epsilon_xx) == 2
         # 2D TM case
         use_2D_TM = true
-        if ~((isdefined(syst, :epsilon_yy) && syst.epsilon_yy == nothing) && (isdefined(syst, :epsilon_zz) && syst.epsilon_zz == nothing))
+        if ((isdefined(syst, :epsilon_yy) && syst.epsilon_yy != nothing) || (isdefined(syst, :epsilon_zz) && syst.epsilon_zz != nothing))
             @warn "Only syst.epsilon_xx is required for 2D TM fields Ex(y,z). Other components will be ignored."
         end
     else
@@ -420,7 +420,7 @@ function mesti_build_channels(syst::Syst)
     m0 = 0
 
     if ~use_2D_TM
-        channels = mesti_build_channels(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, n0, m0)
+    	channels = mesti_build_channels(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, n0, m0)
     else
         channels = mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
     end
