@@ -105,11 +105,11 @@ end
 
         === Output Arguments === 
         channels (scalar structure):
-            channels.kxdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet") real row vector):
+            channels.kxdx_all (1-by-nx_Ex+delta_(xBC,"Dirichlet") real row vector):
                 Dimensionless transverse wave number kx*dx for all nx channels,
                 including both propagating and evanescent ones. They are real-valued
                 and are ordered from small to large. 
-            channels.kydx_all (1-by-ny_Ey+delat_(yBC,"Dirichlet") real row vector):
+            channels.kydx_all (1-by-ny_Ey+delta_(yBC,"Dirichlet") real row vector):
                 Dimensionless transverse wave number ky*dx for all ny channels,
                 including both propagating and evanescent ones. They are real-valued
                 and are ordered from small to large. 
@@ -140,7 +140,7 @@ end
                 example, channels.low.N_prop will be channels.N_prop instead.
             channels.low.N_prop (integer scalar):
                 Number of propagating channels. 
-            channels.low.kzdx_all (1-by-nx_Ex+delat_(xBC,"Dirichlet")*ny_Ey+delat_(yBC,"Dirichlet") complex row vector):
+            channels.low.kzdx_all (1-by-nx_Ex+delta_(xBC,"Dirichlet")*ny_Ey+delta_(yBC,"Dirichlet") complex row vector):
                 Dimensionless longitudinal wave number kz*dx for all channels,
                 including both propagating and evanescent ones. Due to the
                 discretization, kzdx is equivalent to kzdx + 2*pi. Whenever kzdx is a
@@ -420,7 +420,7 @@ function mesti_build_channels(syst::Syst)
     m0 = 0
 
     if ~use_2D_TM
-    	channels = mesti_build_channels(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, n0, m0)
+        channels = mesti_build_channels(nx_Ex, nx_Ey, xBC, ny_Ex, ny_Ey, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, n0, m0)
     else
         channels = mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
     end
