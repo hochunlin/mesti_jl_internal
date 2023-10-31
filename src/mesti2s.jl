@@ -378,7 +378,7 @@ end
                         By default, output.polarization = "both";                  
                     To specify a subset of the propagating channels use ''output = channel_index()'',
                     then it contains the following fields:
-                        For 3D systems:
+                        For 3D systems:z
                         output.ind_low_s (integer vector): Vector containing the indices of
                             propagating channels incident on the low side with s-polarization
                         output.ind_low_p (integer vector): Vector containing the indices of
@@ -2170,7 +2170,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
 
     t1 = time()
                     
-    ## Part 4: wrap up
+    ## x
                         
     # Recover the original list of input and output channels if we symmetrized K = [A,B;C,0]
     if use_transpose_B # when opts.symmetrize_K = true
