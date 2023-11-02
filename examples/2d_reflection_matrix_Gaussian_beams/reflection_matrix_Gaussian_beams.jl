@@ -244,10 +244,16 @@ circ_y = sin.(theta)
 
 # Loop through Gaussian beams focused at different locations.
 anim = @animate for ii ∈ 1:M_in
-    plt1 = heatmap(collect(z_interior), collect(y_interior), real(field_profiles[:, :, ii]), xlims=(z_interior[1], z_interior[end]), aspect_ratio=:equal, c = :balance, xticks = false, yticks = false, colorbar = false)
-    plot!(plt1, z_0.+r_0*circ_x, y_0.+r_0*circ_y, lw=1, color=:black, xlims=(z_interior[1], z_interior[end]), ylims=(y_interior[1], y_interior[end]), legend=false)
+    plt1 = heatmap(collect(z_interior), collect(y_interior), real(field_profiles[:, :, ii]), 
+                   xlims=(z_interior[1], z_interior[end]), aspect_ratio=:equal, 
+                   c = :balance, xticks = false, yticks = false, colorbar = false)
+    plot!(plt1, z_0.+r_0*circ_x, y_0.+r_0*circ_y, lw=1, color=:black, 
+          xlims=(z_interior[1], z_interior[end]), ylims=(y_interior[1], y_interior[end]), legend=false)
 
-    plt2 = heatmap(collect(y_f), collect(y_f), abs.(r).^2, aspect_ratio=:equal, xlims=(6,14),  xticks = false, yticks = false, colorbar = false, xlabel = "Input position", ylabel = "Output position", c =cgrad(:grayC, rev=true), grid=true)
+    plt2 = heatmap(collect(y_f), collect(y_f), abs.(r).^2, 
+                   xlims=(6,14), aspect_ratio=:equal, 
+                   xlabel = "Input position", ylabel = "Output position",
+                   c =cgrad(:grayC, rev=true), xticks = false, yticks = false, colorbar = false)
     plot!(plt2, [y_f[ii]], seriestype = :vline, linecolor=:blue, legend=false)    
     display(plot(plt1, plt2, layout = (1, 2)))    
 end
