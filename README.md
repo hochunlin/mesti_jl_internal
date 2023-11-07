@@ -90,9 +90,9 @@ Detailed documentation is given in comments at the beginning of the function fil
 
 For example, typing <code>? mesti2s</code> in Julia brings up the documentation for <code>mesti2s()</code>.
 
-## Acknowledgement
+## Acknowledgment
 
-We thank [William Sweeney](https://github.com/wrs28) for granting us permission to temporarily integrate his MUMPS-julia interface, [MUMPS3.jl](https://github.com/wrs28/MUMPS3.jl/tree/5.3.3-update), into our package. The files bearing the mumps3 prefix in the [src](./src) directory have been adopted from the MUMPS3.jl.
+We thank [William Sweeney](https://github.com/wrs28) for granting us permission to integrate his MUMPS-julia interface, [MUMPS3.jl](https://github.com/wrs28/MUMPS3.jl/tree/5.3.3-update), into thia package. The files bearing the mumps3 prefix in the [src](./src) directory have been adopted from the MUMPS3.jl.
 
 ## Reference & Credit
 
