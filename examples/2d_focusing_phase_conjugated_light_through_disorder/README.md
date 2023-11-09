@@ -65,7 +65,7 @@ pml.direction = "z"
 syst.PML = [pml]
 
 # field profile: input from a point source
-Ex_field, _ = mesti(syst, [Bx], opts)
+Ex_field, _ = mesti(syst, [Bx])
 ```
 ```text:Output
 ===System size===
