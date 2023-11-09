@@ -179,7 +179,7 @@ gif(anim_pw, "plane_wave_input.gif.gif", fps = 10)
 
 ```julia
 # animate the field profile of the phase-conjugated focusing
-anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
+anim_phase_congjuation = @animate for ii ∈ 0:(nframes_per_period-1)
     plt1 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
             xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal))
     theta = range(0, stop=2π, length=100)
@@ -197,7 +197,7 @@ anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
 
     display(plot(plt1))    
 end
-gif(anim_open_ch, "phase_conjugated_focusing.gif", fps = 10)
+gif(anim_phase_congjuation, "phase_conjugated_focusing.gif", fps = 10)
 ```
 
 ![phase_conjugated_focusing](phase_conjugated_focusing.gif)
