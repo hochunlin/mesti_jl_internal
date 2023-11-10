@@ -43,7 +43,7 @@ heatmap(z, y, epsilon,
        c = cgrad(:grayC, rev=true))
 ```
 
-<img src="reflection_matrix_Gaussian_beams_permittivity_profile.png" width="560" height="420"> 
+<img src="reflection_matrix_Gaussian_beams_permittivity_profile.png"> 
 
 # Build the input sources
 
@@ -132,7 +132,7 @@ heatmap(1:M_in, collect(y), abs.(B_L),
         title="|Bₗ|", c =cgrad(:grayC, rev=true))
 ```
 
-<img src="reflection_matrix_Gaussian_beams_abs_B_L.png" width="560" height="420"> 
+<img src="reflection_matrix_Gaussian_beams_abs_B_L.png"> 
 
 # Build the output projections
 
