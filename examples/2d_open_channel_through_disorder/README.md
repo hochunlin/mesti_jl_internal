@@ -4,7 +4,7 @@ In this example, we show how to use mesti2s() to compute the transmission matrix
 
 ```julia
 # Call necessary packages
-using MESTI, Arpack, Plots
+using MESTI, Arpack, Printf, Plots
 
 # Include the function to build epsilon_xx for the disordered
 include("build_epsilon_disorder_wo_subpixel_smoothing.jl")
@@ -98,12 +98,12 @@ T_avg = sum(abs.(t).^2)/N_prop_low # average over all channels
 T_PW  = sum(abs.(t[:,ind_normal]).^2) # normal-incident plane-wave
 T_open = sigma_max[1].^2 # open channel
 
-println(" T_avg  = $(T_avg) \n T_PW   = $(T_PW)\n T_open = $(T_open)")
+println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f", T_PW), "\n T_open  = ", @sprintf("%.2f", T_open))
 ```
 ```text:Output
- T_avg  = 0.218411154023471
- T_PW   = 0.2531119578143213
- T_open = 1.0025583103325186
+ T_avg  = 0.22
+ T_PW   = 0.25
+ T_open = 1.00
 ```
 
 ```julia
