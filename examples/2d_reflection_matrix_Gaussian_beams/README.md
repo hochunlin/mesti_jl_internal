@@ -15,13 +15,13 @@ In this example, we consider a test system of a dielectric cylindrical scatterer
 syst = Syst()
 syst.length_unit = "µm"
 syst.wavelength = 1.0 # wavelength (µm)
-syst.dx = syst.wavelength/20 # discretization grid size (µm)
+syst.dx = syst.wavelength/15 # discretization grid size (µm)
 nPML = 20    # number of PML pixels
 W = 20       # width of simulation domain (including PML) (µm)
 L = 10       # length of simulation domain (including PML) (µm)
-r_0 = 0.5    # cylinder radius (µm)
+r_0 = 0.75   # cylinder radius (µm)
 n_bg   = 1.0 # refractive index of the background
-n_scat = 1.5 # refractive index of the cylinder
+n_scat = 1.2 # refractive index of the cylinder
 
 # Build the relative permittivity profile
 ny = Int(round(W/syst.dx))
@@ -173,7 +173,7 @@ println("max(|C_L-transpose(B_L)|) = $(maximum(abs.(C_L - transpose(B_L))))")
 ```
 
 ```text:Output
-max(|C_L-transpose(B_L)|) = 6.206335383118183e-17
+max(|C_L-transpose(B_L)|) = 8.777083671441753e-17
 ```
 
 ```julia
@@ -201,15 +201,15 @@ D, _ = mesti(syst, [Bx], C, opts)
 
 ```text:Output
 ===System size===
-ny_Ex = 400; nz_Ex = 41 for Ex(y,z)
+ny_Ex = 300; nz_Ex = 41 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.521 secs
-Building A  ... elapsed time:   2.149 secs
+Building B,C... elapsed time:   0.511 secs
+Building A  ... elapsed time:   2.304 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.474 secs
-Analyzing   ... elapsed time:   0.018 secs
-Factorizing ... elapsed time:   0.052 secs
-          Total elapsed time:   4.834 secs
+Building K  ... elapsed time:   0.555 secs
+Analyzing   ... elapsed time:   0.048 secs
+Factorizing ... elapsed time:   0.043 secs
+          Total elapsed time:   5.243 secs
 ```
 
 ```julia
@@ -220,15 +220,15 @@ r, _ = mesti(syst, [Bx], C, D, opts)
 
 ```text:Output
 ===System size===
-ny_Ex = 400; nz_Ex = 200 for Ex(y,z)
+ny_Ex = 300; nz_Ex = 150 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
 Building B,C... elapsed time:   0.000 secs
-Building A  ... elapsed time:   0.221 secs
+Building A  ... elapsed time:   0.148 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.178 secs
-Analyzing   ... elapsed time:   0.025 secs
-Factorizing ... elapsed time:   0.209 secs
-          Total elapsed time:   1.127 secs
+Building K  ... elapsed time:   0.123 secs
+Analyzing   ... elapsed time:   0.015 secs
+Factorizing ... elapsed time:   0.225 secs
+          Total elapsed time:   1.019 secs
 ```
 
 # Compute the full field profile
@@ -246,15 +246,15 @@ field_profiles, _ = mesti(syst, [Bx], opts)
 
 ```text:Output
 ===System size===
-ny_Ex = 400; nz_Ex = 200 for Ex(y,z)
+ny_Ex = 300; nz_Ex = 150 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
 Building B,C... elapsed time:   0.000 secs
-Building A  ... elapsed time:   0.190 secs
+Building A  ... elapsed time:   0.203 secs
 < Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   0.018 secs
-Factorizing ... elapsed time:   0.241 secs
-Solving     ... elapsed time:   0.423 secs
-          Total elapsed time:   0.894 secs
+Analyzing   ... elapsed time:   0.019 secs
+Factorizing ... elapsed time:   0.239 secs
+Solving     ... elapsed time:   0.465 secs
+          Total elapsed time:   0.946 secs
 ```
 
 # Animate the field profiles

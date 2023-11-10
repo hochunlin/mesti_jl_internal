@@ -17,13 +17,13 @@ using MESTI, Plots
 syst = Syst()
 syst.length_unit = "µm"
 syst.wavelength = 1.0 # wavelength (µm)
-syst.dx = syst.wavelength/20 # discretization grid size (µm)
+syst.dx = syst.wavelength/15 # discretization grid size (µm)
 nPML = 20    # number of PML pixels
 W = 20       # width of simulation domain (including PML) (µm)
 L = 10       # length of simulation domain (including PML) (µm)
-r_0 = 0.5    # cylinder radius (µm)
+r_0 = 0.75   # cylinder radius (µm)
 n_bg   = 1.0 # refractive index of the background
-n_scat = 1.5 # refractive index of the cylinder
+n_scat = 1.2 # refractive index of the cylinder
 
 # Build the relative permittivity profile
 ny = Int(round(W/syst.dx))
