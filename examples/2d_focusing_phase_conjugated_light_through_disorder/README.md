@@ -154,7 +154,7 @@ Solving     ... elapsed time:   4.582 secs
           Total elapsed time: 103.675 secs
 ```
 
-# Animate the field profiles and show the intensity profiles
+# Animate the field profiles and compare the intensity profiles
 
 ```julia
 # normalize the field amplitude with respect to the phase-conjugated-input profile
