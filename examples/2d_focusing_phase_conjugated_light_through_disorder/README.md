@@ -177,26 +177,12 @@ gif(anim_regular_focusing, "regular_focusing.gif", fps = 10)
 
 ![regular_focusing.gif](regular_focusing.gif)
 ```julia
-# plot the zoom-in intensity profile of the regular focusing input
-y_Ex_ind_plot_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
-z_Ex_ind_plot_range = searchsortedfirst(z_Ex, 40)-1:searchsortedfirst(z_Ex, 50)
-
-plt2 = (heatmap(z_Ex[z_Ex_ind_plot_range],y_Ex[y_Ex_ind_plot_range],
-                abs.(Ex[y_Ex_ind_plot_range,z_Ex_ind_plot_range,1]).^2,
-                xlabel = "z", ylabel = "y", c =cgrad(:lajolla, rev=true), clims=(0, 1), 
-                aspect_ratio=:equal, dpi = 600))
-
-display(plot(plt2))
-```
-![regular_focusing.png](regular_focusing.png)
-
-```julia
 # animate the field profile of the phase-conjugated focusing input
 anim_phase_congjuation = @animate for ii ∈ 0:(nframes_per_period-1)
-    plt3 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
+    plt2 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
             xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600))
 
-    display(plot(plt3))    
+    display(plot(plt2))    
 end
 gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
 ```
@@ -204,15 +190,26 @@ gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
 ![phase_conjugated_focusing.gif](phase_conjugated_focusing.gif)
 
 ```julia
-# plot the zoom-in intensity profile of the phase-conjugated focusing input
-plt4 = (heatmap(z_Ex[z_Ex_ind_plot_range],y_Ex[y_Ex_ind_plot_range],
-                abs.(Ex[y_Ex_ind_plot_range,z_Ex_ind_plot_range,2]).^2,
-                xlabel = "z", ylabel = "y", c =cgrad(:lajolla, rev=true), clims=(0, 1), 
-                aspect_ratio=:equal, dpi = 600))
+# plot the intensity profiles and compare them
 
-display(plot(plt4))
+# limit the plotting to the small region around the center of the focusing region between y ∈ [175, 185] and z ∈ [40, 50]
+y_Ex_ind_plot_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
+z_Ex_ind_plot_range = searchsortedfirst(z_Ex, 40)-1:searchsortedfirst(z_Ex, 50)
+
+plt3 = heatmap(z_Ex[z_Ex_ind_focusing_range], y_Ex[y_Ex_ind_focusing_range], 
+               abs.(Ex[y_Ex_ind_focusing_range, z_Ex_ind_focusing_range, 1]).^2,
+               xlabel="z", ylabel="y", title="Regular focusing", 
+               c=cgrad(:copper, rev=false), clims=(0, 1), aspect_ratio=:equal, dpi=600)
+
+plt4 = (heatmap(z_Ex[z_Ex_ind_focusing_range], y_Ex[y_Ex_ind_focusing_range], 
+                abs.(Ex[y_Ex_ind_focusing_range, z_Ex_ind_focusing_range, 2]).^2,
+                xlabel="z", ylabel="y", title="Phase conjugated focusing", 
+                c=cgrad(:copper, rev=false), clims=(0, 1), aspect_ratio=:equal, dpi=600)
+
+intensity_plot = plot(heatmap1, heatmap2, layout = @layout([a b]), size=(800, 400))
+display(intensity_plot)
 ```
-![phase_conjugated_focusing.png](phase_conjugated_focusing.png)
+![intensity_comparison.png](intensity_comparison.png)
 
 ```julia
 # compare the ratio of intensity on the focus point
