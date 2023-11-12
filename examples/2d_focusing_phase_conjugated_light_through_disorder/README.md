@@ -47,7 +47,7 @@ build_epsilon_disorder_wo_subpixel_smoothing(W, L, r_min, r_max, min_sep,
 
 ```julia
 syst = Syst()
-pml_npixels = 10
+pml_npixels = 15
 syst.length_unit  = "lambda_0"
 syst.wavelength = 1
 syst.dx = dx
@@ -73,7 +73,7 @@ Ex_field, _ = mesti(syst, [Bx])
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1372 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1382 for Ex(y,z)
 UPML on -z +z sides; ; yBC = periodic; zBC = PEC
 Building B,C... elapsed time:   0.184 secs
 Building A  ... elapsed time:   7.882 secs
@@ -140,7 +140,7 @@ Ex, _, _ = mesti2s(syst, input, opts)
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1350 => 1372 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1350 => 1382 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
 Building B,C... elapsed time:   0.957 secs
@@ -167,9 +167,10 @@ z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high
 
 # animate the field profile with the regular focusing input
 anim_regular_focusing = @animate for ii ∈ 0:(nframes_per_period-1)
-    plt1 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600))
-
+    plt1 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 750))
+    scatter!(plt1, z0_list, y0_list, markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 750)
+    
     display(plot(plt1))    
 end
 gif(anim_regular_focusing, "regular_focusing.gif", fps = 10)
@@ -179,9 +180,10 @@ gif(anim_regular_focusing, "regular_focusing.gif", fps = 10)
 ```julia
 # animate the field profile of the phase-conjugated focusing input
 anim_phase_congjuation = @animate for ii ∈ 0:(nframes_per_period-1)
-    plt2 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600))
-
+    plt2 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 750))
+    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 750)
+    
     display(plot(plt2))    
 end
 gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
@@ -193,8 +195,8 @@ gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
 # plot the intensity profiles and compare them
 
 # limit the plotting to the small region around the center of the focusing region between y ∈ [175, 185] and z ∈ [40, 50]
-y_Ex_ind_plot_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
-z_Ex_ind_plot_range = searchsortedfirst(z_Ex, 40)-1:searchsortedfirst(z_Ex, 50)
+y_Ex_ind_focusing_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
+z_Ex_ind_focusing_range  = searchsortedfirst(z_Ex, 40)-1:searchsortedfirst(z_Ex, 50)
 
 plt3 = heatmap(z_Ex[z_Ex_ind_focusing_range], y_Ex[y_Ex_ind_focusing_range], 
                abs.(Ex[y_Ex_ind_focusing_range, z_Ex_ind_focusing_range, 1]).^2,

@@ -62,7 +62,7 @@ output.side = "high"
 
 # put PML along z-direction
 pml = get_optimal_PML(syst.wavelength/syst.dx)
-pml.npixels = 10
+pml.npixels = 15
 syst.zPML = [pml]
 
 # transmission matrix: input from the low side, output to the high side
@@ -70,7 +70,7 @@ t, channels, _ = mesti2s(syst, input, output)
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1350 => 1372 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1350 => 1382 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
 Building B,C... elapsed time:   3.562 secs
@@ -101,8 +101,8 @@ T_open = sigma_max[1].^2 # open channel
 println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f", T_PW), "\n T_open  = ", @sprintf("%.2f", T_open))
 ```
 ```text:Output
- T_avg  = 0.22
- T_PW   = 0.25
+ T_avg  = 0.21
+ T_PW   = 0.22
  T_open = 1.00
 ```
 
@@ -126,7 +126,7 @@ Ex, _, _ = mesti2s(syst, input, opts)
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1350 => 1372 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1350 => 1382 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
 Building B,C... elapsed time:   0.552 secs
@@ -155,6 +155,7 @@ z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high
 anim_pw = @animate for ii ∈ 0:(nframes_per_period-1)
     plt1 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
             xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 550))
+    scatter!(plt1, z0_list, y0_list,markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 550)
 
     display(plot(plt1))    
 end
@@ -168,6 +169,7 @@ gif(anim_pw, "disorder_PW_input.gif", fps = 10)
 anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
     plt2 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
             xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 550))
+    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 550)
 
     display(plot(plt2))    
 end
