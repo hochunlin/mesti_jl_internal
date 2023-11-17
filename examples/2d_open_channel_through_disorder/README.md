@@ -17,7 +17,7 @@ include("build_epsilon_disorder_wo_subpixel_smoothing.jl")
 dx      = 1/20  # discretization grid size
 W       = 360   # width of the scattering region
 L       = 90    # thickness of the scattering region
-L_tot   = 120   # full length of the system for plotting
+L_tot   = 150   # full length of the system for plotting
 r_min   = 0.2   # minimal radius of the cylindrical scatterers
 r_max   = 0.4   # maximal radius of the cylindrical scatterers
 min_sep = 0.05  # minimal separation between cylinders
@@ -102,7 +102,7 @@ println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f"
 ```
 ```text:Output
  T_avg  = 0.21
- T_PW   = 0.22
+ T_PW   = 0.23
  T_open = 1.00
 ```
 
