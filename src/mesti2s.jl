@@ -2675,7 +2675,6 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
                         exp_pikz = exp.( 1im*kz_z) # exp(+i*kz*z)
                         kz_z_prop = reshape(channels.high.kzdx_prop, channels.high.N_prop, 1).*reshape(l, 1, :) # kz*z; channels.high.N_prop-by-nz_high_extra matrix through implicit expansion
                         exp_mikz_prop = exp.(-1im*kz_z_prop) # exp(-i*kz*z)
-                        exp_mikz = exp.(-1im*kz_z) # exp(-i*kz*z)
                         c_in = zeros(ComplexF64, ny_Ex, 1)
                         c_in_prop = zeros(ComplexF64, channels.high.N_prop, 1)
                         l_high = size(Ex, 2) # index for the inputs/outputs on the high surface
