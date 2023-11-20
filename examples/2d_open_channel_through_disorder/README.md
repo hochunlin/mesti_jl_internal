@@ -14,7 +14,7 @@ include("build_epsilon_disorder_wo_subpixel_smoothing.jl")
 
 ```julia
 # dimensions of the system, in units of the wavelength lambda_0
-dx      = 1/20  # discretization grid size
+dx      = 1/15  # discretization grid size
 W       = 360   # width of the scattering region
 L       = 90    # thickness of the scattering region
 L_tot   = 150   # full length of the system for plotting
