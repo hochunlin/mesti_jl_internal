@@ -8,7 +8,7 @@ Pkg.add("Statistics")
 Pkg.add("TensorCast")
 Pkg.add("Printf")
 Pkg.add("Random")
-
 Pkg.add("PyPlot")
 Pkg.add("Arpack")
 Pkg.add("Interpolations")
+Pkg.add("GeometryPrimitives")
