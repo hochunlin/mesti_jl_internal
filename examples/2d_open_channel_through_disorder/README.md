@@ -70,18 +70,18 @@ syst.zPML = [pml]
 t, channels, _ = mesti2s(syst, input, output)
 ```
 ```text:Output
-===System size=== 
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z) 
+===System size===
+ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   5.989 secs
-            ... elapsed time:   2.735 secs
-Building A  ... elapsed time:   8.653 secs
+Building B,C... elapsed time:   4.179 secs
+            ... elapsed time:   2.163 secs
+Building A  ... elapsed time:  11.130 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   6.507 secs
-Analyzing   ... elapsed time:   7.240 secs
-Factorizing ... elapsed time:  79.593 secs
-          Total elapsed time: 121.924 secs
+Building K  ... elapsed time:   6.310 secs
+Analyzing   ... elapsed time:   3.781 secs
+Factorizing ... elapsed time: 122.678 secs
+          Total elapsed time: 160.125 secs
 ```
 
 # Compare an open channel and a plane-wave input
@@ -126,19 +126,19 @@ opts.nz_high = opts.nz_low
 Ex, _, _ = mesti2s(syst, input, opts)
 ```
 ```text:Output
-===System size=== 
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z) 
+===System size===
+ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   1.018 secs
-            ... elapsed time:   0.840 secs
-Building A  ... elapsed time:   5.451 secs
+Building B,C... elapsed time:   0.549 secs
+            ... elapsed time:   0.343 secs
+Building A  ... elapsed time:   6.142 secs
 < Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   6.460 secs
-Factorizing ... elapsed time:  93.189 secs
-Solving     ... elapsed time:   6.120 secs
-            ... elapsed time:  56.935 secs
-          Total elapsed time: 174.110 secs
+Analyzing   ... elapsed time:   3.341 secs
+Factorizing ... elapsed time: 103.652 secs
+Solving     ... elapsed time:   7.809 secs
+            ... elapsed time:  22.006 secs
+          Total elapsed time: 147.811 secs
 ```
 
 # Animate the field profiles

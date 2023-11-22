@@ -175,7 +175,7 @@ println("max(|C_low-transpose(B_low)|) = $(maximum(abs.(C_low - transpose(B_low)
 ```
 
 ```text:Output
-max(|C_low-transpose(B_low)|) = 1.1631705747361534e-16
+max(|C_low-transpose(B_low)|) = 1.1188630228279524e-16
 ```
 
 ```julia
@@ -202,16 +202,16 @@ D, _ = mesti(syst, [Bx], C, opts)
 ```
 
 ```text:Output
-===System size=== 
-ny_Ex = 299; nz_Ex = 41 for Ex(y,z) 
+===System size===
+ny_Ex = 299; nz_Ex = 41 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.796 secs
-Building A  ... elapsed time:   3.315 secs
+Building B,C... elapsed time:   0.575 secs
+Building A  ... elapsed time:   2.422 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.942 secs
-Analyzing   ... elapsed time:   0.058 secs
-Factorizing ... elapsed time:   0.032 secs
-          Total elapsed time:   8.145 secs
+Building K  ... elapsed time:   0.485 secs
+Analyzing   ... elapsed time:   0.046 secs
+Factorizing ... elapsed time:   0.048 secs
+          Total elapsed time:   5.444 secs
 ```
 
 ```julia
@@ -221,16 +221,16 @@ r, _ = mesti(syst, [Bx], C, D, opts)
 ```
 
 ```text:Output
-===System size=== 
-ny_Ex = 299; nz_Ex = 149 for Ex(y,z) 
+===System size===
+ny_Ex = 299; nz_Ex = 149 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.001 secs
-Building A  ... elapsed time:   0.515 secs
+Building B,C... elapsed time:   0.000 secs
+Building A  ... elapsed time:   0.159 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.466 secs
-Analyzing   ... elapsed time:   0.022 secs
-Factorizing ... elapsed time:   0.081 secs
-          Total elapsed time:   2.163 secs
+Building K  ... elapsed time:   0.136 secs
+Analyzing   ... elapsed time:   0.017 secs
+Factorizing ... elapsed time:   0.145 secs
+          Total elapsed time:   0.992 secs
 ```
 
 # Compute the full field profile
@@ -247,16 +247,16 @@ field_profiles, _ = mesti(syst, [Bx], opts)
 ```
 
 ```text:Output
-===System size=== 
-ny_Ex = 299; nz_Ex = 149 for Ex(y,z) 
+===System size===
+ny_Ex = 299; nz_Ex = 149 for Ex(y,z)
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.001 secs
-Building A  ... elapsed time:   0.488 secs
+Building B,C... elapsed time:   0.000 secs
+Building A  ... elapsed time:   0.157 secs
 < Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   0.020 secs
-Factorizing ... elapsed time:   0.084 secs
-Solving     ... elapsed time:   0.348 secs
-          Total elapsed time:   0.655 secs
+Analyzing   ... elapsed time:   0.014 secs
+Factorizing ... elapsed time:   0.170 secs
+Solving     ... elapsed time:   0.495 secs
+          Total elapsed time:   0.913 secs
 ```
 
 # Animate the field profiles
