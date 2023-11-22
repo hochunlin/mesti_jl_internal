@@ -4,7 +4,7 @@ In this example, we compute the reflection matrix of an open system with the inp
 
 ```julia
 # Call necessary packages
-using MESTI, Plots
+using MESTI, GeometryPrimitives, Plots
 ```
 
 # Build the system
@@ -22,21 +22,23 @@ L = 10       # length of simulation domain (including PML) (µm)
 r_0 = 0.75   # cylinder radius (µm)
 n_bg   = 1.0 # refractive index of the background
 n_scat = 1.2 # refractive index of the cylinder
+y_0 = W/2    # location of the cylinder
+z_0 = L/2    # location of the cylinder
 
-# Build the relative permittivity profile
-ny = Int(round(W/syst.dx))
-nz = Int(round(L/syst.dx))
-y = (0.5:ny)*syst.dx
-z = (0.5:nz)*syst.dx
-y_0 = W/2  # location of the cylinder
-z_0 = L/2  # location of the cylinder
-Y = repeat(y, 1, length(z))
-Z = repeat(z', length(y))
-epsilon = n_bg^2*ones(ny, nz)
-epsilon[(Z .- z_0).^2 .+ (Y .- y_0).^2 .< r_0^2] .= n_scat^2
+# Build the relative permittivity profile from subpixel smoothing
+domain = Cuboid([W/2,L/2], [W,L]) # domain for subpixel smoothing cetering at (W/2, L/2) and with witdth W and thickness L
+domain_epsilon = n_bg^2 # epsilon of the domain for subpixel smoothing
+object = [Ball([y_0, z_0], r_0)] # object for subpixel smoothing: cylinder locate at (W/2, L/2) with radius r_0
+object_epsilon = [n_scat^2] # epsilon of the object for subpixel smoothing
+yBC = "PEC"; zBC = "PEC" # boundary conditions
+epsilon_xx = mesti_subpixel_smoothing(syst.dx, domain, domain_epsilon, object, object_epsilon, yBC, zBC) # obtaining epsilon_xx from mesti_subpixel_smoothing()
+
+ny_Ex, nz_Ex = size(epsilon_xx)
+y = syst.dx:syst.dx:(W-syst.dx/2)
+z = syst.dx:syst.dx:(L-syst.dx/2)
 
 # Plot the relative permittivity profile
-heatmap(z, y, epsilon, 
+heatmap(z, y, epsilon_xx, 
        aspect_ratio=:equal, 
        xlabel = "z (µm)", ylabel = "y (µm)", 
        xlims=(0,10), title="εᵣ(y,z)",   
@@ -71,8 +73,8 @@ M_in = length(y_f) # number of inputs
 
 # Step 1: Generate the list of E^in(z=z_f, y).
 # Here, y is an ny_Ex-by-1 column vector, and y_f is a M_in-by-1 column vector.
-# So, y .- transpose(y_f) is an ny-by-M_in matrix by implicit expansion.
-# Then, E_f is an ny-by-M_in matrix whose m-th column is the cross section
+# So, y .- transpose(y_f) is an ny_Ex-by-M_in matrix by implicit expansion.
+# Then, E_f is an ny_Ex-by-M_in matrix whose m-th column is the cross section
 # of the m-th Gaussian beam at z = z_f.
 E_f = exp.(-(y .- transpose(y_f)).^2/(w_0^2)) # size(E_f) = [ny_Ex, M_in]
 
@@ -81,7 +83,7 @@ E_f = exp.(-(y .- transpose(y_f)).^2/(w_0^2)) # size(E_f) = [ny_Ex, M_in]
 # boundary condition in mesti() is PEC for TM waves, but the choice has
 # little effect since E^in should be exponentially small at the boundary of
 # the simulation domain.
-channels = mesti_build_channels(ny, "PEC", (2*pi/syst.wavelength)*syst.dx, n_bg^2)
+channels = mesti_build_channels(ny_Ex, "PEC", (2*pi/syst.wavelength)*syst.dx, n_bg^2)
 
 # Transverse profiles of the propagating channels. Each column of u is
 # one transverse profile. Different columns are orthonormal.
@@ -104,7 +106,7 @@ E_s_prop = exp.(1im*kz*(z_source-z_f)).*E_f_prop # size(E_s_prop) = [N_prop, M_i
 # accurate since E^in(y,z=z_source) decays exponentially in y.
 # Note we use implicit expansion here.
 nu = reshape(channels.sqrt_nu_prop, :, 1).^2 # nu = sin(kz*dx)
-B_L = u*(nu.*E_s_prop) # size(B_L) = [ny, M_in]
+B_low = u*(nu.*E_s_prop) # size(B_low) = [ny_Ex, M_in]
 
 # We take the -2i prefactor out, to be multiplied at the end. The reason
 # will be clear when we handle C below.
@@ -115,24 +117,24 @@ opts.prefactor = -2im
 # block source, where (m1, l1) is the index of the smaller-(y,z) corner,
 # and (w, h) is the width and height of the block. Here, we put line
 # sources (w=1) at l1 = l_source that spans the whole width of the
-# simulation domain (m1=1, h=ny).
+# simulation domain (m1=1, h=ny_Ex).
 Bx = Source_struct()
-Bx.pos = [[1, n_source, ny, 1]]
+Bx.pos = [[1, n_source, ny_Ex, 1]]
 
 # Bx.data specifies the source profiles inside such block, with
 # Bx.data[1][:, a] being the a-th source profile.
-Bx.data = [B_L]
+Bx.data = [B_low]
 
 # We check that the input sources are sufficiently localized with little 
 # penetration into the PML; otherwise the Gaussian beams will not be
 # accurately generated.
-heatmap(1:M_in, collect(y), abs.(B_L), 
+heatmap(1:M_in, collect(y), abs.(B_low), 
         aspect_ratio=:equal, 
         xlabel = "Input index", ylabel = "y (µm)", 
-        title="|Bₗ|", c =cgrad(:grayC, rev=true))
+        title="|B_low|", c =cgrad(:grayC, rev=true))
 ```
 
-<img src="reflection_matrix_Gaussian_beams_abs_B_L.png"> 
+<img src="reflection_matrix_Gaussian_beams_abs_B_low.png"> 
 
 # Build the output projections
 
@@ -150,11 +152,11 @@ Cx = Source_struct()
 Cx.pos = Bx.pos
 
 # Step 1: Project E_x^tot(y, z_source) onto the propagating channels.
-# The projection will be C_L*E_x^tot(:,l_source)
-C_L = u' # size(C_L) = [N_prop, ny]
+# The projection will be C_low*E_x^tot(:,l_source)
+C_low = u' # size(C_low) = [N_prop, ny_Ex]
 
 # Step 2: Back propagate from z = z_source to z = z_f
-C_L = exp.(-1im*kz*(z_f-z_source)).*C_L # size(C_L) = [N_prop, ny]
+C_low = exp.(-1im*kz*(z_f-z_source)).*C_low # size(C_low) = [N_prop, ny_Ex]
 
 # Step 3: Project Gaussian beams at the focal plane onto the propagating
 # channels. No need to repeat since this was already done earlier.
@@ -164,16 +166,16 @@ C_L = exp.(-1im*kz*(z_f-z_source)).*C_L # size(C_L) = [N_prop, ny]
 # The longitudinal flux of a propagating channels is proportional to nu, so
 # we weight the inner product with nu to account for flux dependence.
 # Note we use implicit expansion here.
-C_L = (E_f_prop') * (nu.*C_L) # size(C_L) = [M_in, ny]
+C_low = (E_f_prop') * (nu.*C_low) # size(C_low) = [M_in, ny_Ex]
 
 # Normally, the next step would be
-# C_struct.data = C_L.';
-# However, we can see that C_L equals transpose(B_L)
-println("max(|C_L-transpose(B_L)|) = $(maximum(abs.(C_L - transpose(B_L))))")
+# C_struct.data = C_low.';
+# However, we can see that C_low equals transpose(B_low)
+println("max(|C_low-transpose(B_low)|) = $(maximum(abs.(C_low - transpose(B_low))))")
 ```
 
 ```text:Output
-max(|C_L-transpose(B_L)|) = 8.777083671441753e-17
+max(|C_low-transpose(B_low)|) = 1.1631705747361534e-16
 ```
 
 ```julia
@@ -182,7 +184,7 @@ max(|C_L-transpose(B_L)|) = 8.777083671441753e-17
 # This is expected by reciprocity -- when the set of inputs equals the set
 # of outputs, we typically have C = transpose(B) or its permutation.
 C_x = nothing
-C = "transpose(B)"
+C = "transpose(B)";
 ```
 
 # Compute reflection matrix in Gaussian-beam basis
@@ -193,23 +195,23 @@ The scattering matrix is given by S = C\*inv(A)\*B - D, with D = C\*inv(A<sub>0<
 syst.PML = [PML(nPML)] # Put PML on all four sides
 
 # For a homogeneous space, the length of the simulation domain doesn't
-# matter, so we choose a minimal thickness of nz_temp = n_source + nPML
+# matter, so we choose a minimal thickness of nz_Ex_temp = n_source + nPML
 # where n_source = nPML + 1 is the index of the source plane.
-syst.epsilon_xx = n_bg^2*ones(ny, n_source + nPML)
+syst.epsilon_xx = n_bg^2*ones(ny_Ex, n_source + nPML)
 D, _ = mesti(syst, [Bx], C, opts)
 ```
 
 ```text:Output
-===System size===
-ny_Ex = 300; nz_Ex = 41 for Ex(y,z)
+===System size=== 
+ny_Ex = 299; nz_Ex = 41 for Ex(y,z) 
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.511 secs
-Building A  ... elapsed time:   2.304 secs
+Building B,C... elapsed time:   0.796 secs
+Building A  ... elapsed time:   3.315 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.555 secs
-Analyzing   ... elapsed time:   0.048 secs
-Factorizing ... elapsed time:   0.043 secs
-          Total elapsed time:   5.243 secs
+Building K  ... elapsed time:   0.942 secs
+Analyzing   ... elapsed time:   0.058 secs
+Factorizing ... elapsed time:   0.032 secs
+          Total elapsed time:   8.145 secs
 ```
 
 ```julia
@@ -219,16 +221,16 @@ r, _ = mesti(syst, [Bx], C, D, opts)
 ```
 
 ```text:Output
-===System size===
-ny_Ex = 300; nz_Ex = 150 for Ex(y,z)
+===System size=== 
+ny_Ex = 299; nz_Ex = 149 for Ex(y,z) 
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.000 secs
-Building A  ... elapsed time:   0.148 secs
+Building B,C... elapsed time:   0.001 secs
+Building A  ... elapsed time:   0.515 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   0.123 secs
-Analyzing   ... elapsed time:   0.015 secs
-Factorizing ... elapsed time:   0.225 secs
-          Total elapsed time:   1.019 secs
+Building K  ... elapsed time:   0.466 secs
+Analyzing   ... elapsed time:   0.022 secs
+Factorizing ... elapsed time:   0.081 secs
+          Total elapsed time:   2.163 secs
 ```
 
 # Compute the full field profile
@@ -238,23 +240,23 @@ For most applications, it is not necessary to compute the full field profile, si
 ```julia
 # Exclude the PML pixels from the returned field profiles
 opts.exclude_PML_in_field_profiles = true
-y_interior = y[(nPML+1):(ny-nPML)]
-z_interior = z[(nPML+1):(nz-nPML)]
+y_interior = y[(nPML+1):(ny_Ex-nPML)]
+z_interior = z[(nPML+1):(nz_Ex-nPML)]
 
 field_profiles, _ = mesti(syst, [Bx], opts)
 ```
 
 ```text:Output
-===System size===
-ny_Ex = 300; nz_Ex = 150 for Ex(y,z)
+===System size=== 
+ny_Ex = 299; nz_Ex = 149 for Ex(y,z) 
 UPML on -y +y -z +z sides; ; yBC = PEC; zBC = PEC
-Building B,C... elapsed time:   0.000 secs
-Building A  ... elapsed time:   0.203 secs
+Building B,C... elapsed time:   0.001 secs
+Building A  ... elapsed time:   0.488 secs
 < Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   0.019 secs
-Factorizing ... elapsed time:   0.239 secs
-Solving     ... elapsed time:   0.465 secs
-          Total elapsed time:   0.946 secs
+Analyzing   ... elapsed time:   0.020 secs
+Factorizing ... elapsed time:   0.084 secs
+Solving     ... elapsed time:   0.348 secs
+          Total elapsed time:   0.655 secs
 ```
 
 # Animate the field profiles
@@ -277,7 +279,7 @@ anim = @animate for ii ∈ 1:M_in
                    xlabel = "Input position", ylabel = "Output position",
                    c =cgrad(:grayC, rev=true), xticks = false, yticks = false, colorbar = false)
     plot!(plt2, [y_f[ii]], seriestype = :vline, linecolor=:blue, legend=false)    
-    display(plot(plt1, plt2, layout = (1, 2)))    
+    plot(plt1, plt2, layout = (1, 2))
 end
 gif(anim, "reflection_matrix_Gaussian_beams.gif", fps = 10)
 ```
