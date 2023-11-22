@@ -4,10 +4,10 @@ In this example, we show how to use mesti2s() to compute the transmission matrix
 
 ```julia
 # Call necessary packages
-using MESTI, Arpack, Printf, Plots
+using MESTI, GeometryPrimitives, Arpack, Printf
 
 # Include the function to build epsilon_xx for the disordered
-include("build_epsilon_disorder_wo_subpixel_smoothing.jl")
+include("build_epsilon_disorder.jl")
 ```
 
 # System parameters
@@ -35,16 +35,17 @@ yBC = "periodic" # boundary condition in y
 # generate a random collection of non-overlapping cylinders
 # note: subpixel smoothing is not applied for simplicity
 build_TM = true
-build_epsilon_disorder_wo_subpixel_smoothing(W, L, r_min, r_max, min_sep,  
-                                             number_density, rng_seed, dx,
-                                             epsilon_scat, epsilon_bg, build_TM)
+(epsilon_xx, y0_list, z0_list, r0_list, y_Ex, z_Ex) = 
+build_epsilon_disorder(W, L, r_min, r_max, min_sep,  
+                       number_density, rng_seed, dx,
+                       epsilon_scat, epsilon_bg, build_TM)
 ```
 
 # Compute the transmission matrix 
 
 ```julia
 syst = Syst()
-syst.epsilon_xx = epsilon
+syst.epsilon_xx = epsilon_xx
 syst.epsilon_low = epsilon_low
 syst.epsilon_high = epsilon_high
 syst.length_unit  = "lambda_0"
@@ -69,18 +70,18 @@ syst.zPML = [pml]
 t, channels, _ = mesti2s(syst, input, output)
 ```
 ```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1350 => 1382 for Ex(y,z)
+===System size=== 
+ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z) 
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   3.562 secs
-            ... elapsed time:   1.610 secs
-Building A  ... elapsed time:   7.537 secs
+Building B,C... elapsed time:   5.989 secs
+            ... elapsed time:   2.735 secs
+Building A  ... elapsed time:   8.653 secs
 < Method: APF using MUMPS in single precision with AMD ordering (symmetric K) >
-Building K  ... elapsed time:   5.483 secs
-Analyzing   ... elapsed time:   3.393 secs
-Factorizing ... elapsed time:  56.094 secs
-          Total elapsed time:  85.454 secs
+Building K  ... elapsed time:   6.507 secs
+Analyzing   ... elapsed time:   7.240 secs
+Factorizing ... elapsed time:  79.593 secs
+          Total elapsed time: 121.924 secs
 ```
 
 # Compare an open channel and a plane-wave input
@@ -101,9 +102,9 @@ T_open = sigma_max[1].^2 # open channel
 println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f", T_PW), "\n T_open  = ", @sprintf("%.2f", T_open))
 ```
 ```text:Output
- T_avg  = 0.21
- T_PW   = 0.23
- T_open = 1.00
+ T_avg   = 0.22
+ T_PW    = 0.24
+ T_open  = 1.00
 ```
 
 ```julia
@@ -125,24 +126,25 @@ opts.nz_high = opts.nz_low
 Ex, _, _ = mesti2s(syst, input, opts)
 ```
 ```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1350 => 1382 for Ex(y,z)
+===System size=== 
+ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z) 
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   0.552 secs
-            ... elapsed time:   0.278 secs
-Building A  ... elapsed time:   6.365 secs
+Building B,C... elapsed time:   1.018 secs
+            ... elapsed time:   0.840 secs
+Building A  ... elapsed time:   5.451 secs
 < Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   3.183 secs
-Factorizing ... elapsed time:  64.289 secs
-Solving     ... elapsed time:   4.631 secs
-            ... elapsed time:   6.505 secs
-          Total elapsed time:  89.080 secs
+Analyzing   ... elapsed time:   6.460 secs
+Factorizing ... elapsed time:  93.189 secs
+Solving     ... elapsed time:   6.120 secs
+            ... elapsed time:  56.935 secs
+          Total elapsed time: 174.110 secs
 ```
 
 # Animate the field profiles
 
 ```julia
+using Plots
 # normalize the field amplitude with respect to the plane-wave-input profile
 Ex = Ex/maximum(abs.(Ex[:,:,1]))
 
@@ -154,10 +156,10 @@ z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high
 # animate the field profile with plane-wave input
 anim_pw = @animate for ii ∈ 0:(nframes_per_period-1)
     plt1 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 550))
-    scatter!(plt1, z0_list, y0_list,markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 550)
-
-    display(plot(plt1))    
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 450,
+            xlimits=(-25,115), ylimits=(0,360)))
+    scatter!(plt1, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
+             color=:black, legend=false, dpi = 450)
 end
 gif(anim_pw, "disorder_PW_input.gif", fps = 10)
 ```
@@ -168,10 +170,10 @@ gif(anim_pw, "disorder_PW_input.gif", fps = 10)
 # animate the field profile of the open channel
 anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
     plt2 = (heatmap(z_Ex,collect(y_Ex),real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 550))
-    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.1, color=:black, legend=false, dpi = 550)
-
-    display(plot(plt2))    
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 450,
+            xlimits=(-25,115), ylimits=(0,360)))
+    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
+             color=:black, legend=false, dpi = 450)
 end
 gif(anim_open_ch, "disorder_open_channel.gif", fps = 10)
 ```
