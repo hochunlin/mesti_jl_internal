@@ -1,18 +1,18 @@
-# Focusing Phase Conjugated Light Through Disorder
+## Focusing Phase Conjugated Light Through Disorder
 
-In this example, we show how to use mesti() to compute the field profile of a point source in a scattering disordered medium, do phase conjugation to determine an incident wavefront that can focus on the the disorder, and then use mesti2s() again to compute the field profile to show its focus.
+# In this example, we show how to use mesti() to compute the field profile of 
+# a point source in a scattering disordered medium, do phase conjugation to 
+# determine an incident wavefront that can focus on the the disorder, and then 
+# use mesti2s() again to compute the field profile to show its focus.
 
-```julia
 # Call necessary packages
-using MESTI, GeometryPrimitives, LinearAlgebra, Statistics, printf
+using MESTI, GeometryPrimitives, LinearAlgebra, Statistics, Printf
 
 # Include the function to build epsilon_xx for the disordered
 include("build_epsilon_disorder.jl")
-```
 
-# System parameters
+## System parameters
 
-```julia
 # dimensions of the system, in units of the wavelength lambda_0
 dx      = 1/15  # discretization grid size
 W       = 360   # width of the scattering region
@@ -41,11 +41,8 @@ build_epsilon_disorder(W, L, r_min, r_max, min_sep,
                        number_density, rng_seed, dx,
                        epsilon_scat, epsilon_bg, build_TM; 
                        no_scatterer_center = true)
-```
 
-# Compute the field profile of a point source 
-
-```julia
+## Compute the field profile of a point source 
 syst = Syst()
 pml_npixels = 15
 syst.length_unit  = "lambda_0"
@@ -70,23 +67,8 @@ syst.PML = [pml]
 
 # field profile: input from a point source
 Ex_field, _ = mesti(syst, [Bx])
-```
-```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1381 for Ex(y,z)
-UPML on -z +z sides; ; yBC = periodic; zBC = PEC
-Building B,C... elapsed time:   0.230 secs
-Building A  ... elapsed time:   9.228 secs
-< Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   3.977 secs
-Factorizing ... elapsed time:  64.983 secs
-Solving     ... elapsed time:   4.065 secs
-          Total elapsed time:  76.477 secs
-```
 
-# Compute the regular focusing and phase-conjugated focusing profile
-
-```julia
+## Compute the regular focusing and phase-conjugated focusing profile
 # Specify the system for mesti2s() and mesti_build_channels()
 syst = Syst()
 syst.epsilon_xx = epsilon
@@ -113,7 +95,7 @@ wf_reg_focus = exp.(-1im*channels_ave_epsilon.kydx_prop*(m0_focus)) .* exp.(-1im
 
 # build projection matrix C on the low side
 C_low = channels_low.sqrt_nu_prop.*exp.((-1im*dn)*channels_low.kzdx_prop).*convert(Matrix, adjoint(channels_low.u_x_m(channels_low.kydx_prop)))
-proj_coefficient = conj(C_low*Ex_field[:,pml_npixels+1])
+proj_coefficient = C_low*Ex_field[:,pml_npixels+1]
 
 # specify two input incident wavefronts:
 # (1) regular focusing wavefront
@@ -126,7 +108,7 @@ input.v_low[:, 1] = wf_reg_focus[Int((N_prop_ave_epsilon-N_prop_low)/2+1):Int(en
 # conj(coefficient*u) = conj(coefficient)*conj(u) = conj(coefficient)*conj(u) =  conj(coefficient)*perm(u(ky)) = perm(conj(coefficient))*u(ky)
 # perm() means permute a vector that switches one propagating channel with one
 # having a complex-conjugated transverse profile
-# for periodic boundary, this flips the sign of ky. 
+# for the periodic boundary, this flips the sign of ky. 
 input.v_low[:, 2] = conj(proj_coefficient)[channels_low.ind_prop_conj]/norm(proj_coefficient)
 
 
@@ -138,26 +120,8 @@ opts.nz_high = opts.nz_low
 
 # for field-profile computations
 Ex, _, _ = mesti2s(syst, input, opts)
-```
-```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
-[N_prop_low, N_prop_high] = [725, 725] per polarization
-yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   0.801 secs
-            ... elapsed time:   0.807 secs
-Building A  ... elapsed time:   5.320 secs
-< Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   3.084 secs
-Factorizing ... elapsed time:  75.164 secs
-Solving     ... elapsed time:   7.529 secs
-            ... elapsed time:  25.039 secs
-          Total elapsed time: 122.167 secs
-```
 
-# Animate the field profiles and compare the intensity profiles
-
-```julia
+## Animate the field profiles and compare the intensity profiles
 using Plots
 # normalize the field amplitude with respect to the phase-conjugated-input profile
 Ex = Ex/maximum(abs.(Ex[:,:,2]))
@@ -170,30 +134,23 @@ z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high
 # animate the field profile with the regular focusing input
 anim_regular_focusing = @animate for ii ∈ 0:(nframes_per_period-1)
     plt1 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600,
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 450,
             xlimits=(-25,115), ylimits=(0,360)))
     scatter!(plt1, z0_list, y0_list, markersize=r0_list, alpha=0.3, 
-             color=:black, legend=false, dpi = 600)
+             color=:black, legend=false, dpi = 450)
 end
 gif(anim_regular_focusing, "regular_focusing.gif", fps = 10)
-```
 
-![regular_focusing.gif](regular_focusing.gif)
-```julia
 # animate the field profile of the phase-conjugated focusing input
 anim_phase_congjuation = @animate for ii ∈ 0:(nframes_per_period-1)
     plt2 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600,
+            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 450,
             xlimits=(-25,115), ylimits=(0,360)))
     scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
-             color=:black, legend=false, dpi = 600)   
+             color=:black, legend=false, dpi = 450)   
 end
 gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
-```
 
-![phase_conjugated_focusing.gif](phase_conjugated_focusing.gif)
-
-```julia
 # plot the intensity profiles and compare them
 # limit the plotting to the small region around the center of the focusing region between y ∈ [175, 185] and z ∈ [40, 50]
 y_Ex_ind_focusing_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
@@ -243,13 +200,6 @@ end
 
 intensity_plot = plot(plt3, plt4, layout = @layout([a b]), size=(800, 400))
 display(intensity_plot)
-```
-![intensity_comparison.png](intensity_comparison.png)
 
-```julia
 # compare the ratio of intensity on the focus point
 println("I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = ", @sprintf("%d", round(abs.(Ex[m0_focus,opts.nz_low+l0_focus,2]).^2/abs.(Ex[m0_focus,opts.nz_low+l0_focus,1]).^2, digits=-2)))
-```
-```text:Output
-I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = 1800
-```
