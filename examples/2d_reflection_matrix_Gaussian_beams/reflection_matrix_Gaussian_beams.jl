@@ -222,7 +222,7 @@ syst.epsilon_xx = n_bg^2*ones(ny_Ex, n_source + nPML)
 D, _ = mesti(syst, [Bx], C, opts)
 
 # Compute the reflection matrix
-syst.epsilon_xx = epsilon
+syst.epsilon_xx = epsilon_xx
 r, _ = mesti(syst, [Bx], C, D, opts)
 
 ## Compute the full field profile
