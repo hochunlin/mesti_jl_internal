@@ -119,7 +119,7 @@ function build_epsilon_disorder_wo_subpixel_smoothing(W, L, r_min, r_max, min_se
         cell_size = 2 * r_max + min_sep
         nz_cell = ceil(Int, (z2 - z1) / cell_size)
         ny_cell = ceil(Int, (y2 - y1) / cell_size)
-        ind_scatterers = zeros(Int, ny_cell, nz_cell)
+        ind_scatterers = Array{Any}(nothing, ny_cell, nz_cell)
     else
         use_cell = false
     end
@@ -167,7 +167,10 @@ function build_epsilon_disorder_wo_subpixel_smoothing(W, L, r_min, r_max, min_se
                     m2 = min(ny_cell, round(Int, 0.5 + (y0 - y1 + dist_check) / cell_size))
 
                     # indices of cylinders we need to check for overlap
-                    ind_check = ind_scatterers[m1:m2, l1:l2][ind_scatterers[m1:m2, l1:l2] .!= 0]
+                    ind_check = ind_scatterers[m1:m2, l1:l2][ind_scatterers[m1:m2, l1:l2] .!= nothing]
+                    if ~isempty(ind_check)
+		    	ind_check = reduce(vcat, ind_check)
+	            end
 
                     # check those cylinders for overlap
                     if isempty(ind_check) || minimum((z0_list[ind_check] .- z0).^2 .+ (y0_list[ind_check] .- y0).^2 .- (r0_list[ind_check] .+ (r0 + min_sep)).^2) > 0
@@ -190,7 +193,11 @@ function build_epsilon_disorder_wo_subpixel_smoothing(W, L, r_min, r_max, min_se
             # store the index of this cylinder by its approximate location
             m0 = min(ny_cell, max(1, round(Int, 0.5 + (y0 - y1) / cell_size)))
             l0 = min(nz_cell, max(1, round(Int, 0.5 + (z0 - z1) / cell_size)))
-            ind_scatterers[m0, l0] = ii
+            if isa(ind_scatterers[m0, l0], Nothing)
+		ind_scatterers[m0, l0] = [ii]
+	    else
+	        push!(ind_scatterers[m0, l0], ii)
+	    end
         end
 
         # set the relative permittivity of the cylinder
