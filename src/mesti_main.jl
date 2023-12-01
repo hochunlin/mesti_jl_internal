@@ -1293,9 +1293,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                         end
                         if use_iv_pairs
                             # convert to linear indices
-                            n_list = repeat((n1:n2), 1, pos(5), pos(6))
-                            m_list = repeat(transpose(m1:m2), pos(4), 1, pos(6))
-                            l_list = repeat(reshape((l1:l2),1,1,:), pos(4), pos(5), 1)
+                            n_list = reshape(repeat((n1:n2), 1, pos[5], pos[6]),:)
+                            m_list = reshape(repeat(transpose(m1:m2), pos[4], 1, pos[6]),:)
+                            l_list = reshape(repeat(reshape((l1:l2),1,1,:), pos[4], pos[5], 1),:)
                             #ind = LinearIndices((nx_list[ii], ny_list[ii], nz_list[ii]))[CartesianIndex.(n_list, m_list, l_list)]
                             ind = Base._sub2ind((nx_list[ii], ny_list[ii], nz_list[ii]), n_list, m_list, l_list)
                         end
@@ -1511,9 +1511,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                         end
                         if use_iv_pairs
                             # convert to linear indices
-                            n_list = repeat((n1:n2), 1, pos[5], pos[6])
-                            m_list = repeat(transpose(m1:m2), pos[4], 1, pos[6])
-                            l_list = repeat(reshape((l1:l2),1,1,:), pos[4], pos[5], 1)
+                            n_list = reshape(repeat((n1:n2), 1, pos[5], pos[6]),:)
+                            m_list = reshape(repeat(transpose(m1:m2), pos[4], 1, pos[6]),:)
+                            l_list = reshape(repeat(reshape((l1:l2),1,1,:), pos[4], pos[5], 1),:)
                             #ind = LinearIndices((nx_list[ii], ny_list[ii], nz_list[ii]))[CartesianIndex.(n_list, m_list, l_list)]
                             ind = Base._sub2ind((nx_list[ii], ny_list[ii], nz_list[ii]), n_list, m_list, l_list)
                         end
