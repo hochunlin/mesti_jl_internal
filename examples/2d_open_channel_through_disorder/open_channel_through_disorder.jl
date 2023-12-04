@@ -7,7 +7,7 @@
 # of a typical plane-wave input.
 
 # Call necessary packages
-using MESTI, GeometryPrimitives, Statistics, Arpack, Printf
+using MESTI, GeometryPrimitives, Arpack, Printf
 
 # Include the function to build epsilon_xx for the disordered
 include("build_epsilon_disorder.jl")
