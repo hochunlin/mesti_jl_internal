@@ -416,7 +416,7 @@ export mesti_subpixel_smoothing
         end
         
         if (~use_2D_TM && ~use_2D_TE)
-            throw(ArgumentError("In 2D case, use_2D_TM and/or use_2D_TE should be true"));
+            throw(ArgumentError("In 2D case, use_2D_TM and/or use_2D_TE should be true"))
         end
     
         # If the domain does not start from (0,0,0), translate the coordinates of the domain and obejcts.
@@ -553,7 +553,8 @@ export mesti_subpixel_smoothing
                 object = object_list[obj_ind]
                 # looping over the range of the object in Eo grids.            
                 # Note that adding eps() can help avoid non-ideal situations where the last pixel might not be properly counted due to floating-point precision issues.        
-                for kk = max((Int(div(bounds(object)[1][2]+delta_x/2-eps(), delta_x)) + 1),1):min((Int(div(bounds(object)[2][2]+delta_x/2+eps(), delta_x)) + 1),Nz), jj = max((Int(div(bounds(object)[1][1]+delta_x/2-eps(), delta_x)) + 1),1):min((Int(div(bounds(object)[2][1]+delta_x/2+eps(), delta_x)) + 1),Ny)                           iz = Ey_z_coord[kk]; iy = Ez_y_coord[jj]
+                for kk = max((Int(div(bounds(object)[1][2]+delta_x/2-eps(), delta_x)) + 1),1):min((Int(div(bounds(object)[2][2]+delta_x/2+eps(), delta_x)) + 1),Nz), jj = max((Int(div(bounds(object)[1][1]+delta_x/2-eps(), delta_x)) + 1),1):min((Int(div(bounds(object)[2][1]+delta_x/2+eps(), delta_x)) + 1),Ny)
+                    iz = Ey_z_coord[kk]; iy = Ez_y_coord[jj]
                     if without_sb
                         if [iy,iz] ∈ object
                             inv_epsilon_Eo_site[jj,kk,:,:] = ((object_epsilon_list[obj_ind]^(-1)) * Matrix(I,3,3))
@@ -687,7 +688,7 @@ export mesti_subpixel_smoothing
             #epsilon_xx = epsilon_xx[1:end-1,:,:]; epsilon_xy = epsilon_xy[:,:,:]; epsilon_xz = epsilon_xz[:,:,:]
             #epsilon_yx = epsilon_yx[:,:,:]; epsilon_yy = epsilon_yy[:,:,:]; epsilon_yz = epsilon_yz[:,:,:]
             #epsilon_zx = epsilon_zx[:,:,:]; epsilon_zy = epsilon_zy[:,:,:]; epsilon_zz = epsilon_zz[:,:,:]       
-            epsilon_xx = epsilon_xx[1:end-1,:,:];         
+            epsilon_xx = epsilon_xx[1:end-1,:,:]    
         elseif xBC == "PECPMC"
             epsilon_xx = epsilon_xx[1,end-1,:]; epsilon_xy = epsilon_xy[2:end,:,:]; epsilon_xz = epsilon_xz[2:end,:,:]
             epsilon_yx = epsilon_yx[2:end,:,:]; epsilon_yy = epsilon_yy[2:end,:,:]; epsilon_yz = epsilon_yz[2:end,:,:]        
@@ -706,7 +707,7 @@ export mesti_subpixel_smoothing
             #epsilon_xx = epsilon_xx[:,:,:]; epsilon_xy = epsilon_xy[:,:,:]; epsilon_xz = epsilon_xz[:,:,:]
             #epsilon_yx = epsilon_yx[:,:,:]; epsilon_yy = epsilon_yy[:,1:end-1,:]; epsilon_yz = epsilon_yz[:,:,:]
             #epsilon_zx = epsilon_zx[:,:,:]; epsilon_zy = epsilon_zy[:,:,:]; epsilon_zz = epsilon_zz[:,:,:] 
-            epsilon_yy = epsilon_yy[:,1:end-1,:];
+            epsilon_yy = epsilon_yy[:,1:end-1,:]
         elseif yBC == "PECPMC"
             epsilon_xx = epsilon_xx[:,2:end,:]; epsilon_xy = epsilon_xy[:,2:end,:]; epsilon_xz = epsilon_xz[:,2:end,:]
             epsilon_yx = epsilon_yx[:,2:end,:]; epsilon_yy = epsilon_yy[:,1:end-1,:]; epsilon_yz = epsilon_yz[:,2:end,:] 
@@ -725,7 +726,7 @@ export mesti_subpixel_smoothing
             #epsilon_xx = epsilon_xx[:,:,:]; epsilon_xy = epsilon_xy[:,:,:]; epsilon_xz = epsilon_xz[:,:,:]
             #epsilon_yx = epsilon_yx[:,:,:]; epsilon_yy = epsilon_yy[:,:,:]; epsilon_yz = epsilon_yz[:,:,:]
             #epsilon_zx = epsilon_zx[:,:,:]; epsilon_zy = epsilon_zy[:,:,:]; epsilon_zz = epsilon_zz[:,:,1:end-1] 
-            epsilon_zz = epsilon_zz[:,:,1:end-1];
+            epsilon_zz = epsilon_zz[:,:,1:end-1]
         elseif zBC == "PECPMC"
             epsilon_xx = epsilon_xx[:,:,2:end]; epsilon_xy = epsilon_xy[:,:,2:end]; epsilon_xz = epsilon_xz[:,:,2:end]
             epsilon_yx = epsilon_yx[:,:,2:end]; epsilon_yy = epsilon_yy[:,:,2:end]; epsilon_yz = epsilon_yz[:,:,2:end] 
@@ -773,7 +774,7 @@ export mesti_subpixel_smoothing
         inv_epsilon_yz = inv_epsilon_Eo_site[:,:,2,3]
     
         if yBC == "PEC"
-            inv_epsilon_yy = inv_epsilon_yy[:,:]; 
+            inv_epsilon_yy = inv_epsilon_yy[:,:]
             inv_epsilon_yz = inv_epsilon_yz[2:end,:] 
             inv_epsilon_zz = inv_epsilon_zz[2:end,:]
         elseif yBC == "PMC"

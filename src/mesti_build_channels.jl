@@ -270,7 +270,7 @@ function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,No
         yBC = "Bloch"
     end
 
-    # f = [f(1), ..., f(nx)].'; 
+    # f = [f(1), ..., f(nx)].'
     # For periodic and Bloch periodic boundary, we order channels.kxdx_all (channels.kydx_all) such that it increases monotonically from negative to positive
     # For other boundary conditions, kx >= 0 (ky >= 0), and we order channels.kxdx_all (channels.kydx_all) such that it increases monotonically from smallest to largest
     if two_sided
@@ -357,12 +357,12 @@ function mesti_build_channels(syst::Syst)
     end
 
     if ~isdefined(syst, :epsilon_low); throw(ArgumentError("Input argument syst must have field \"epsilon_low\".")); end
-    epsilon_low = syst.epsilon_low;
+    epsilon_low = syst.epsilon_low
 
     if ~isdefined(syst, :wavelength); throw(ArgumentError("Input argument syst must have field \"wavelength\".")); end
     if ~isdefined(syst, :dx); throw(ArgumentError("Input argument syst must have field \"dx\".")); end
     if ~(syst.dx > 0); throw(ArgumentError("syst.dx must be a positive scalar.")); end
-    k0dx = (2*pi/syst.wavelength)*(syst.dx);
+    k0dx = (2*pi/syst.wavelength)*(syst.dx)
 
    # Check boundary condition in x    
     if ~use_2D_TM

@@ -66,7 +66,7 @@ function build_transverse_function_1d(nx::Int64, xBC::Union{String,Int64,Float64
         xBC = "Bloch"
     end
 
-    # f = [f(1), ..., f(nx)].'; 
+    # f = [f(1), ..., f(nx)].'
     # For periodic and Bloch periodic boundary, we order kxdx_all such that it increases monotonically from negative to positive
     # For other boundary conditions, kx >= 0, and we order kxdx_all such that it increases monotonically from smallest to largest
     # Transverse modes in x (form a complete basis in x)
