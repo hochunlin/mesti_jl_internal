@@ -1667,12 +1667,12 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
             end
         end
     else
-        @cast u_prop_low_Ex[m,N_prop_low] := channels.u_x_m(channels.low.kydx_prop)[m,N_prop_low]
+        u_prop_low_Ex = channels.u_x_m(channels.low.kydx_prop)
         if two_sided
             if (syst.epsilon_high == syst.epsilon_low)
                 u_prop_high_Ex = u_prop_low_Ex
             else
-                @cast u_prop_high_Ex[m,N_prop_high] := channels.u_x_m(channels.high.kydx_prop)[m,N_prop_high]
+                u_prop_high_Ex = channels.u_x_m(channels.high.kydx_prop)
             end
         end
     end
