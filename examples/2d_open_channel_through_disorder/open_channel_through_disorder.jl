@@ -59,7 +59,7 @@ input.side = "low"
 output.side = "high"
 
 # put PML along z-direction
-pml = get_optimal_PML(syst.wavelength/syst.dx)
+pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
 pml_npixels = 15
 pml.npixels = pml_npixels
 syst.zPML = [pml]
@@ -120,7 +120,7 @@ syst.dx = dx
 syst.yBC = yBC 
 
 # put PML along z-direction
-pml = get_optimal_PML(syst.wavelength/syst.dx)
+pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
 pml.npixels = pml_npixels
 pml.direction = "z" # put
 syst.PML = [pml]
