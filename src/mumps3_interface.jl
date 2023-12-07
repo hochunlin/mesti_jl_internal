@@ -4,6 +4,7 @@
 # None of these functions change the JOB parameter.
 
 export invoke_mumps!,
+set_keep!, set_cntl!,
 set_icntl!, set_job!,
 provide_matrix!,
 provide_rhs!,
@@ -77,6 +78,21 @@ function check_finalized(mumps::Mumps)
     if mumps._finalized
         throw(ErrorException("Mumps object already finalized"))
     end
+end
+
+
+"""
+    set_keep!(mumps,i,val; [displaylevel=0])
+
+Set the keep parameters according to KEEP[i]=val
+
+See also: [`display_keep`](@ref)
+"""
+function set_keep!(mumps::Mumps,i::Int,val::Int; displaylevel=0)
+    keep = mumps.keep
+    mumps.keep = (keep[1:i-1]...,convert(MUMPS_INT,val),keep[i+1:end]...)
+    #displaylevel>0 ? display_keep(stdout,mumps.keep,i,val) : nothing
+    return nothing
 end
 
 
