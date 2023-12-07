@@ -61,7 +61,7 @@ Bx.pos = [[m0_focus,l0_focus+pml_npixels+1,1,1]]
 Bx.data = [ones(1,1)]
 
 # put PML along z-direction
-pml = get_optimal_PML(syst.wavelength/syst.dx)
+pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
 pml.npixels = pml_npixels
 pml.direction = "z"
 syst.PML = [pml]

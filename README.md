@@ -1,267 +1,138 @@
-# Focusing Inside Disorder With Phase Conjugation
+# MESTI.jl
 
-In this example, we show how to use mesti() to project field generated from a point source inside disorder onto propagating channels through APF method, do phase conjugation to determine an incident wavefront that can focus inside the disorder, and then use mesti2s() again to compute the field profile to show its focus.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
-```julia
-# Call necessary packages
-using MESTI, GeometryPrimitives, LinearAlgebra, Statistics, printf
+MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://doi.org/10.1038/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
-# Include the function to build epsilon_xx for the disordered
-include("build_epsilon_disorder.jl")
-```
+Compared to [MESTI.m](https://github.com/complexphoton/MESTI.m) which is a 2D MATLAB version of MESTI, MESTI.jl here uses Julia with single-precision or double-precision arithmetic and considers either full 3D systems 
 
-# System parameters
+$$
+\left[ \nabla\times\left( \nabla\times \right) - \frac{\omega^2}{c^2}\bar{\bar{\varepsilon}}(\bf r) \right] {\bf E}(\bf r) = {\bf b}(\bf r),
+$$
 
-```julia
-# dimensions of the system, in units of the wavelength lambda_0
-dx      = 1/15  # discretization grid size
-W       = 360   # width of the scattering region
-L       = 90    # thickness of the scattering region
-L_tot   = 150   # full length of the system for plotting
-r_min   = 0.2   # minimal radius of the cylindrical scatterers
-r_max   = 0.4   # maximal radius of the cylindrical scatterers
-min_sep = 0.05  # minimal separation between cylinders
-number_density = 1.3  # number density, in units of 1/lambda_0^2
-rng_seed = 0   # random number generator seed
+or 2D systems in transverse-magnetic (TM) polarization (*Ex*, *Hy*, *Hz*) with
 
-# relative permittivity, unitless
-epsilon_scat = 1.2^2  # cylindrical scatterers
-epsilon_bg   = 1.0^2  # background in the scattering region
-epsilon_low  = 1.0^2  # frees space on the low side
-epsilon_high = 1.0^2  # frees space on the high side
+$$
+\left[ -\frac{\partial^2}{\partial y^2} -\frac{\partial^2}{\partial z^2} - \frac{\omega^2}{c^2}\varepsilon_{xx}(y,z) \right] E_x(y,z)= b(y,z),
+$$
 
-yBC = "periodic" # boundary condition in y
+where (**b**(**r**) or *b*(*y*,*z*)) is the source profile.
 
-# generate a random collection of non-overlapping cylinders
-# note: subpixel smoothing is not applied for simplicity
-build_TM = true
-no_scatterered_center = true
-(epsilon, y0_list, z0_list, r0_list, y_Ex, z_Ex) =
-build_epsilon_disorder(W, L, r_min, r_max, min_sep,  
-                       number_density, rng_seed, dx,
-                       epsilon_scat, epsilon_bg, build_TM; 
-                       no_scatterer_center = true)
-```
+Note that the coordinate notation switches between MESTI.m and MESTI.jl: (x, y, z) in MESTI.jl corresponding to (z, y, x) in MESTI.m.
 
-# Projecting field generated from a point source onto propagating channels through APF
+MESTI.jl is a general-purpose solver with its interface written to provide maximal flexibility. It supports
+ - Full 3D system supporting both *s* and *p* polarizations.
+ - TM polarization for 2D system.
+ - Any relative permittivity profile $\bar{\bar{\varepsilon}}(\bf r)$ (or *ε*<sub>*xx*</sub>(*y*,*z*)), real-valued or complex-valued. Users can optionally also average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) through mesti_subpixel_smoothing().
+ - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
+ - Any material dispersion $\bar{\bar{\varepsilon}}$(*ω*) can be used since this is in frequency domain.
+ - Any list of input source profiles (user-specified or automatically built).
+ - Any list of output projection profiles (or no projection, in which case the complete field profiles are returned).
+ - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
+ - Real-valued or complex-valued frequency *ω*.
+ - Automatic or manual choice between APF, conventional direct solver (*e.g.*, to compute the full field profile) as the solution method.
+ - Linear solver using MUMPS (requires installation) or the built-in routines in Julia (which uses UMFPACK).
+ - Shared memory parallelism (with multithreaded BLAS and with OpenMP in MUMPS) and distributed memory parallelism (with MPI in MUMPS).
+ - Single-precision and double-precision arithmetic.
 
-```julia
-syst = Syst()
-pml_npixels = 15
-syst.length_unit  = "lambda_0"
-syst.wavelength = 1
-syst.dx = dx
-syst.yBC = yBC
-# specify the permittivity profile of the simulation domain including the low side, scattering region and the high side.
-syst.epsilon_xx = cat(epsilon_low*ones(size(epsilon,1),pml_npixels+1), epsilon, epsilon_high*ones(size(epsilon,1),pml_npixels+1), dims=2)
+## When to use MESTI.jl?
 
-# specify the input (point source in the middle of the disordered)
-m0_focus = Int((W/dx)/2)
-l0_focus = Int((L/dx)/2)
-Bx = Source_struct()
-Bx.pos = [[m0_focus,l0_focus+pml_npixels+1,1,1]]
-Bx.data = [ones(1,1)]
+MESTI.jl can perform most linear-response computations for arbitrary structures, such as
 
-# put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
-pml.npixels = pml_npixels
-pml.direction = "z"
-syst.PML = [pml]
+- Scattering problems: transmission, reflection transport through complex media, waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
+- Thermal emission.
+- Local density of states.
+- [Inverse design](https://github.com/complexphoton/APF_inverse_design) based on the above quantities.
 
-# build channels for the low side (air)
-channels_low = mesti_build_channels(Int(W/dx), yBC, 2*pi*syst.wavelength*dx, epsilon_low)
-N_prop_low = channels_low.N_prop # number of propagating channels on the low side 
+Since MESTI.jl can use the APF method to handle a large number of input states simultaneously, the computational advantage of MESTI.jl is the most pronounced in multi-input systems.
 
-# build projection profiles C on the low side
-Cx = Source_struct()
-ny_Ex = Int(W/dx)
-Cx.pos = [[1,pml_npixels+1,ny_Ex,1]]
-# sqrt(nu)*conj(u_Ex(m)) serves as a projection profile for a propagating channel, where nu = sin(kzdx)
-# here we project the result onto all propagating channels as a output basis 
-C_low = (conj(channels_low.u_x_m(channels_low.kydx_prop))).*reshape(channels_low.sqrt_nu_prop,1,:).*reshape(exp.((-1im*0.5)*channels_low.kzdx_prop),1,:) # 0.5 pixel backpropagation indicates that the projection(detect) region is half a pixel away from z = 0
-Cx.data = [C_low]
+There are use cases that MESTI.jl can handle but is not necessarily the most efficient, such as
+- Broadband response problems involving many frequencies but only a few input states. Time-domain methods like FDTD may be preferred as they can compute a broadband response without looping over frequencies.
+- Problems like plasmonics that require more than an order of magnitude difference in the discretization grid size at different regions of the structure. Finite-element methods may be preferred as they can handle varying spatial resolutions. (Finite-element methods can also adopt APF, but MESTI.jl uses finite difference with a fixed grid size.)
+- Homogeneous structures with a small surface-to-volume ratio. Boundary element methods may be preferred as they only discretize the surface.
 
-# Calculate projection coefficients for the propagating channels from the point source through APF
-proj_coefficient, _ = mesti(syst, [Bx], [Cx])
+Problems that MESTI.jl currently does not handle:
+- Nonlinear systems (*e.g.*, *χ*<sup>(2)</sup>, *χ*<sup>(3)</sup>, gain media).
+- Magnetic systems (*e.g.*, spatially varying permeability *μ*)
 
-# We can also compute the field profile Ex_field and project the field on the detect region onto the projection profiles. 
-# It would generate the same projection coefficients
-# Ex_field, _ = mesti(syst, [Bx])
-# C = transpose(C_low)
-# proj_coefficient = C_low*Ex_field[:,pml_npixels+1]
-```
-```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1381 for Ex(y,z)
-UPML on -z +z sides; ; yBC = periodic; zBC = PEC
-Building B,C... elapsed time:   1.664 secs
-Building A  ... elapsed time:   8.106 secs
-< Method: APF using MUMPS in single precision with AMD ordering >
-Building K  ... elapsed time:   2.822 secs
-false
-Analyzing   ... elapsed time:   5.076 secs
-Factorizing ... elapsed time:  76.478 secs
-          Total elapsed time:  99.805 secs
-```
+For eigenmode computation, such as waveguide mode solver and photonic band structure computation, one can use [<code>mesti_build_fdfd_matrix.jl</code>](./src/mesti_build_fdfd_matrix.jl) to build the matrix and then compute its eigenmodes. However, we don't currently provide a dedicated function to do so.
 
-# Compute the regular focusing and phase-conjugated focusing profiles
+## Installation
+
+To use the APF method, before installing MESTI.jl, the user needs to install the parallel version of [MUMPS](https://mumps-solver.org/index.php). Without MUMPS, MESTI.jl will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+
+To install MESTI.jl, open Julia REPL and type:  
 
 ```julia
-# Specify the system for mesti2s() and mesti_build_channels()
-syst = Syst()
-syst.epsilon_xx = epsilon
-syst.length_unit  = "lambda_0"
-syst.wavelength = 1
-syst.dx = dx
-syst.yBC = yBC
-syst.epsilon_low = epsilon_low
-syst.epsilon_high = epsilon_high
-syst.zPML = [pml]
-
-# equivalent average epsilon for this disordered system
-epsilon_ave = mean(epsilon)
-
-# build channels for the equivalent average epsilon
-channels_ave_epsilon = mesti_build_channels(Int(W/dx), yBC, 2*pi*syst.wavelength*dx, epsilon_ave)
-N_prop_ave_epsilon = channels_ave_epsilon.N_prop # number of propagating channels on the equivalent average epsilon 
-
-# regular focus wavefront
-wf_reg_focus = exp.(-1im*channels_ave_epsilon.kydx_prop*(m0_focus)) .* exp.(-1im*channels_ave_epsilon.kzdx_prop*(l0_focus-0.5)) # 0.5 pixel indicates that the source is half a pixel away from z = 0
-
-# specify two input incident wavefronts:
-# (1) regular focusing wavefront
-# (2) phase-conjugated focusing wavefront
-input = wavefront()
-input.v_low = zeros(ComplexF64, N_prop_low, 2)
-input.v_low[:, 1] = wf_reg_focus[Int((N_prop_ave_epsilon-N_prop_low)/2+1):Int(end-(N_prop_ave_epsilon-N_prop_low)/2)]/norm(wf_reg_focus[Int((N_prop_ave_epsilon-N_prop_low)/2+1):Int(end-(N_prop_ave_epsilon-N_prop_low)/2)])
-
-# for the phased conjugated input: 
-# conj(coefficient*u) = conj(coefficient)*conj(u) = conj(coefficient)*perm(u(ky)) = perm(conj(coefficient))*u(ky)
-# perm() means permute a vector that switches one propagating channel with one
-# having a complex-conjugated transverse profile
-# for the periodic boundary, this flips the sign of ky. 
-input.v_low[:, 2] = conj(proj_coefficient)[channels_low.ind_prop_conj]/norm(proj_coefficient)
-
-# we will also get the field profile in the free spaces on the two sides, for
-# plotting purpose.
-opts = Opts()
-opts.nz_low = round((L_tot-L)/2/dx)
-opts.nz_high = opts.nz_low
-
-# for field-profile computations
-Ex, _, _ = mesti2s(syst, input, opts)
-```
-```text:Output
-===System size===
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
-[N_prop_low, N_prop_high] = [725, 725] per polarization
-yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   0.801 secs
-            ... elapsed time:   0.807 secs
-Building A  ... elapsed time:   5.320 secs
-< Method: factorize_and_solve using MUMPS in single precision with AMD ordering >
-Analyzing   ... elapsed time:   3.084 secs
-Factorizing ... elapsed time:  75.164 secs
-Solving     ... elapsed time:   7.529 secs
-            ... elapsed time:  25.039 secs
-          Total elapsed time: 122.167 secs
+import Pkg; Pkg.add("MESTI")
 ```
 
-# Animate the field profiles and compare the intensity profiles
+After installing MESTI.jl, you may also install other necessary packages which you will utilize in tests/examples by running <code>[install_packages.jl](./mumps/install_packages.jl)</code>
 
-```julia
-using Plots
-# normalize the field amplitude with respect to the phase-conjugated-input profile
-Ex = Ex/maximum(abs.(Ex[:,:,2]))
+## Usage Summary 
 
-nframes_per_period = 20
+The function [<code>mesti(syst, B, C, D)</code>](./src/mesti_main.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* *y*, and *z*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile **b**(**r**). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
 
-# extend the x coordinate to include free spaces on the two sides
-z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high)*dx)
+The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where $\bar{\bar{\varepsilon}}(\bf r)$  consists of an inhomogeneous scattering region with homogeneous spaces on the low (*-z*) and high (*+z*) sides, light is incident from the low side and/or high side, the boundary condition in *z* is outgoing, and the boundary condition in *y* and *x* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation. Flux normalization in *z* is applied automatically and exactly, so the full scattering matrix is always unitary when  $\bar{\bar{\varepsilon}}(\bf r)=(\bar{\bar{\varepsilon}}(\bf r))^\dagger$ . 
 
-# animate the field profile with the regular focusing input
-anim_regular_focusing = @animate for ii ∈ 0:(nframes_per_period-1)
-    plt1 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,1]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600,
-            xlimits=(-25,115), ylimits=(0,360)))
-    scatter!(plt1, z0_list, y0_list, markersize=r0_list, alpha=0.3, 
-             color=:black, legend=false, dpi = 600)
-end
-gif(anim_regular_focusing, "regular_focusing.gif", fps = 10)
+To compute the complete field profiles, simply omit the argument <code>C</code> or <code>out</code>.
+
+The solution method, the linear solver to use, and other options can be specified with a structure <code>opts</code> as an optional input argument to <code>mesti()</code> or <code>mesti2s()</code>; see documentation for details. They are chosen automatically when not explicitly specified.
+
+The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.jl) can be used to build the input and/or output matrices when using <code>mesti()</code>, or to determine which channels are of interest when using <code>mesti2s()</code>.
+
+The function [<code>mesti_subpixel_smoothing()</code>](./src/mesti_subpixel_smoothing.jl) can be used to build the permittivity profile with subpixel smoothing.
+
+## Documentation
+
+Detailed documentation is given in comments at the beginning of the function files:
+ - [<code>mesti_main.jl</code>](./src/mesti_main.jl) for <code>mesti()</code> 
+ - [<code>mesti2s.jl</code>](./src/mesti2s.jl) for <code>mesti2s()</code> 
+ - [<code>mesti_build_channels.jl</code>](./src/mesti_build_channels.jl) for <code>mesti_build_channels()</code> 
+ - [<code>mesti_subpixel_smoothing</code>](./src/mesti_subpixel_smoothing.jl) for <code>mesti_subpixel_smoothing()</code> 
+
+For example, typing <code>? mesti2s</code> in Julia brings up the documentation for <code>mesti2s()</code>.
+
+## Examples
+
+Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI. Each example has its own folder, with its <code>.jl</code> and <code>.ipynb</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
+
+- [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
+- [Phase-conjugated focusing in disordered system](./examples/2d_focusing_phase_conjugated_light_through_disorder): 2D, using <code>mesti()</code> and <code>mesti2s()</code>, customized source & field profile with customized wavefronts.
+- [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
+
+## Gallery
+
+Here are some animations from the examples above:
+
+1. Open channel propagating through disorder
+   <img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="540" height="360"> 
+2. Focusing phase-conjugated light through disorder<img src="./examples/2d_focusing_phase_conjugated_light_through_disorder/phase_conjugated_focusing.gif" width="540" height="360"> 
+3. Reflection matrix of a scatterer in Gaussian-beam basis:
+   <img src="./examples/2d_reflection_matrix_Gaussian_beams/reflection_matrix_Gaussian_beams.gif" width="540" height="360">  
+
+## Acknowledgment
+
+We thank [William Sweeney](https://github.com/wrs28) for granting us permission to integrate his MUMPS-julia interface, [MUMPS3.jl](https://github.com/wrs28/MUMPS3.jl/tree/5.3.3-update), into this package. The files bearing the mumps3 prefix in the [src](./src) directory have been adopted from the MUMPS3.jl.
+
+## Reference & Credit
+
+For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
+
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu. [Fast multi-source nanophotonic simulations using augmented partial factorization](https://doi.org/10.1038/s43588-022-00370-6). *Nature Computational Science* **2**, 815–822 (2022).
+
+```bibtex
+@article{2022_Lin_NCS,
+  title = {Fast multi-source nanophotonic simulations using augmented partial factorization},
+  author = {Lin, Ho-Chun and Wang, Zeyu and Hsu, Chia Wei},
+  journal = {Nat. Comput. Sci.},
+  volume = {2},
+  issue = {12},
+  pages = {815--822},
+  year = {2022},
+  month = {Dec},
+  doi = {10.1038/s43588-022-00370-6}
+}
 ```
 
-![regular_focusing.gif](regular_focusing.gif)
-```julia
-# animate the field profile of the phase-conjugated focusing input
-anim_phase_congjuation = @animate for ii ∈ 0:(nframes_per_period-1)
-    plt2 = (heatmap(z_Ex, collect(y_Ex), real.(Ex[:,:,2]*exp(-1im*2*π*ii/nframes_per_period)),
-            xlabel = "z", ylabel = "y", c = :balance, clims=(-1, 1), aspect_ratio=:equal, dpi = 600,
-            xlimits=(-25,115), ylimits=(0,360)))
-    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
-             color=:black, legend=false, dpi = 600)   
-end
-gif(anim_phase_congjuation_focusing, "phase_conjugated_focusing.gif", fps = 10)
-```
-
-![phase_conjugated_focusing.gif](phase_conjugated_focusing.gif)
-
-```julia
-# plot the intensity profiles and compare them
-# limit the plotting to the small region around the center of the focusing region between y ∈ [175, 185] and z ∈ [40, 50]
-y_Ex_ind_focusing_range = searchsortedfirst(y_Ex, 175)-1:searchsortedfirst(y_Ex, 185)
-z_Ex_ind_focusing_range  = searchsortedfirst(z_Ex, 40)-1:searchsortedfirst(z_Ex, 50)
-
-# find the index for the scatters within the plotting range
-scatterer_ind_focusing_range = (y0_list .+ r0_list) .>= 175 .&& (y0_list .- r0_list) .<= 185 .&& (z0_list .+ r0_list) .>= 40 .&& (z0_list .- r0_list) .<= 50
-y0_list_focusing_range = y0_list[scatterer_ind_focusing_range]
-z0_list_focusing_range = z0_list[scatterer_ind_focusing_range]
-r0_list_focusing_range = r0_list[scatterer_ind_focusing_range]
-
-theta = range(0, stop=2π, length=100)
-
-plt3 = heatmap(z_Ex[z_Ex_ind_focusing_range], y_Ex[y_Ex_ind_focusing_range], 
-               abs.(Ex[y_Ex_ind_focusing_range, z_Ex_ind_focusing_range, 1]).^2,
-               xlabel="z", ylabel="y", title="Regular focusing", 
-               c=cgrad(:copper, rev=false), clims=(0, 1), aspect_ratio=:equal, dpi=600)
-
-               for i in 1:length(r0_list_focusing_range)
-    y0 = y0_list_focusing_range[i]
-    z0 = z0_list_focusing_range[i]
-    r0 = r0_list_focusing_range[i]
-
-    z0_circle = z0 .+ r0 * cos.(theta)
-    y0_circle = y0 .+ r0 * sin.(theta)
-
-    plot!(plt3, z0_circle, y0_circle, lw=0.5, color=:white, legend=false, 
-          xlims=(40, 50), ylims=(175, 185))
-end
-            
-plt4 = heatmap(z_Ex[z_Ex_ind_focusing_range], y_Ex[y_Ex_ind_focusing_range], 
-                 abs.(Ex[y_Ex_ind_focusing_range, z_Ex_ind_focusing_range, 2]).^2,
-                 xlabel="z", ylabel="y", title="Phase conjugated focusing", 
-                 c=cgrad(:copper, rev=false), clims=(0, 1), aspect_ratio=:equal, dpi=600)
-
-for i in 1:length(r0_list_focusing_range)
-    y0 = y0_list_focusing_range[i]
-    z0 = z0_list_focusing_range[i]
-    r0 = r0_list_focusing_range[i]
-
-    z0_circle = z0 .+ r0 * cos.(theta)
-    y0_circle = y0 .+ r0 * sin.(theta)
-
-    plot!(plt4, z0_circle, y0_circle, lw=0.5, color=:white, legend=false, 
-          xlims=(40, 50), ylims=(175, 185))
-end
-
-intensity_plot = plot(plt3, plt4, layout = @layout([a b]), size=(800, 400))
-display(intensity_plot)
-```
-![intensity_comparison.png](intensity_comparison.png)
-
-```julia
-# compare the ratio of intensity on the focus point
-println("I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = ", @sprintf("%d", round(abs.(Ex[m0_focus,opts.nz_low+l0_focus,2]).^2/abs.(Ex[m0_focus,opts.nz_low+l0_focus,1]).^2, digits=-2)))
-```
-```text:Output
-I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = 1800
-```
+Please cite this paper when you use MESTI.
