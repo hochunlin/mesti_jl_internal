@@ -18,7 +18,7 @@ include("mumps3_convenience_wrappers.jl")
 include("mumps3_icntl_alibis.jl")
 include("mumps3_printing.jl")
 
-include("mesti_get_optimal_PML.jl")
+include("mesti_optimal_pml_params.jl")
 include("mesti_build_transverse_function_1d.jl")
 include("mesti_subpixel_smoothing.jl")
 include("mesti_build_fdfd_matrix.jl")

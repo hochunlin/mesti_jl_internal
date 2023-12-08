@@ -529,7 +529,7 @@ end
             opts.nthreads_OMP (positive integer scalar; optional):
                 Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
                 environment variable.
-            opts.parallel_dependency_graph (logical scalar; optional):
+            opts.parallel_dependency_graph (logical scalar; optional, defaults to false):
                 If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
                 This typically improve the time performance, but marginally increase 
                 the memory usage.
