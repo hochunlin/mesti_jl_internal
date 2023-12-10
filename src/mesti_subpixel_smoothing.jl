@@ -673,7 +673,7 @@ export mesti_subpixel_smoothing
         end
     end
 
-    function pick_epsilon_3d(epsilon_Eo::Array{ComplexF64}, epsilon_Ex::Array{ComplexF64}, epsilon_Ey::Array{ComplexF64}, epsilon_Ez::Array{ComplexF64}, xBC::String, yBC::String, zBC::String)
+    function pick_epsilon_3d(epsilon_Eo::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, epsilon_Ex::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, epsilon_Ey::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, epsilon_Ez::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, xBC::String, yBC::String, zBC::String)
         # Pick the right site of components of epsilon based on Yee cell and boundary condition
     
         epsilon_xx = epsilon_Ex[:,:,:,1,1]; epsilon_xy = epsilon_Eo[:,:,:,1,2]; epsilon_xz = epsilon_Eo[:,:,:,1,3]
@@ -740,7 +740,7 @@ export mesti_subpixel_smoothing
     end
 
 
-    function pick_epsilon_2d_TM(epsilon_xx::Union{Array{Int64},Array{Float64},Array{ComplexF64}}, yBC::String, zBC::String)        
+    function pick_epsilon_2d_TM(epsilon_xx::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, yBC::String, zBC::String)        
         # Pick the right site of components of epsilon based on Yee cell and boundary condition
         
         if yBC == "PEC"
@@ -766,7 +766,7 @@ export mesti_subpixel_smoothing
     end
 
 
-    function pick_inv_epsilon_2d_TE(inv_epsilon_Ey_site::Union{Array{Int64},Array{Float64},Array{ComplexF64}}, inv_epsilon_Ez_site::Union{Array{Int64},Array{Float64},Array{ComplexF64}}, inv_epsilon_Eo_site::Union{Array{Int64},Array{Float64},Array{ComplexF64}}, yBC::String, zBC::String)
+    function pick_inv_epsilon_2d_TE(inv_epsilon_Ey_site::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, inv_epsilon_Ez_site::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, inv_epsilon_Eo_site::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, yBC::String, zBC::String)
         # Pick the right site of components of epsilon based on Yee cell and boundary condition
 
         inv_epsilon_yy = inv_epsilon_Ey_site[:,:,2,2]
@@ -811,7 +811,7 @@ export mesti_subpixel_smoothing
         return inv_epsilon_yy, inv_epsilon_zz, inv_epsilon_yz
     end
 
-    function Kottke_smoothing(vol_frac::Float64, n0::SVector{3, Float64}, epsilon_object::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, epsilon_voxel::Union{Array{<:Real},Array{<:Complex}})
+    function Kottke_smoothing(vol_frac::Float64, n0::SVector{3, Float64}, epsilon_object::Union{Array{<:Int},Array{<:Real},Array{<:Complex}}, epsilon_voxel::Union{Array{<:Int},Array{<:Real},Array{<:Complex}})
         Scomp = @SMatrix rand(3,3-1)  # directions complementary to n12; works even for K = 1
         Stemp = [n0 Scomp]  # SMatrix{K,K}
         S = qr(Stemp).Q  # nonallocating; 1st column is normalized n12
