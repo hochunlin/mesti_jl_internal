@@ -79,14 +79,14 @@ Cx.pos = [[1,pml_npixels+1,ny_Ex,1]]
 C_low = (conj(channels_low.u_x_m(channels_low.kydx_prop))).*reshape(channels_low.sqrt_nu_prop,1,:).*reshape(exp.((-1im*0.5)*channels_low.kzdx_prop),1,:) # 0.5 pixel backpropagation indicates that the projection(detect) region is half a pixel away from z = 0
 Cx.data = [C_low]
 
-# Calculate output coefficients for the propagating channels from the point source through APF
-output_coefficient, _ = mesti(syst, [Bx], [Cx])
+# Calculate output channel amplitude coefficients (w) for the propagating channels from the point source through APF
+w, _ = mesti(syst, [Bx], [Cx])
 
 # We can also compute the field profile Ex_field and project the field on the detect region onto the projection profiles. 
-# It would generate the same projection coefficients
+# It would generate the same output channel amplitude coefficients
 # Ex_field, _ = mesti(syst, [Bx])
 # C = transpose(C_low)
-# output_coefficient = C_low*Ex_field[:,pml_npixels+1]
+# w = C_low*Ex_field[:,pml_npixels+1]
 
 ## Compute the regular focusing and phase-conjugated focusing profiles
 # Specify the system for mesti2s() and mesti_build_channels()
@@ -122,7 +122,7 @@ input.v_low[:, 1] = wf_reg_focus[Int((N_prop_ave_epsilon-N_prop_low)/2+1):Int(en
 # perm() means permute a vector that switches one propagating channel with one
 # having a complex-conjugated transverse profile
 # for the periodic boundary, this flips the sign of ky. 
-input.v_low[:, 2] = conj(output_coefficient)[channels_low.ind_prop_conj]/norm(output_coefficient)
+input.v_low[:, 2] = conj(w)[channels_low.ind_prop_conj]/norm(w)
 
 # we will also get the field profile in the free spaces on the two sides, for
 # plotting purpose.

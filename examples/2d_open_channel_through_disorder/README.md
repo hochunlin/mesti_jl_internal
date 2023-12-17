@@ -90,7 +90,7 @@ Factorizing ... elapsed time: 122.678 secs
 ```julia
 # The most-open channels is the singular vector of the transmission matrix with 
 # the largest singular value.
-(_, sigma_max, v_max), _, _, _, _ = svds(t, nsv=1)
+(_, sigma_max, v_open), _, _, _, _ = svds(t, nsv=1)
 
 N_prop_low = channels.low.N_prop # number of propagating channels on the low side
 ind_normal = Int(round((N_prop_low+1)/2)) # index of the normal-incident plane-wave
@@ -115,7 +115,7 @@ println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f"
 input = wavefront()
 input.v_low = zeros(ComplexF64, N_prop_low, 2)
 input.v_low[ind_normal, 1] = 1
-input.v_low[:, 2] = v_max
+input.v_low[:, 2] = v_open
 
 # we will also get the field profile in the free spaces on the two sides, for
 # plotting purpose.
