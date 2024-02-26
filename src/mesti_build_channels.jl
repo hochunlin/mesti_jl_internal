@@ -175,7 +175,7 @@ end
                 Structure containing properties specific to the high side,
                 similar to channels.high; only provided when epsilon_high is given. 
 """
-function mesti_build_channels(nx_Ex::Union{Integer,Nothing}, nx_Ey::Union{Integer,Nothing}, xBC::Union{String,Real,Complex,Nothing}, ny_Ex::Integer, ny_Ey::Union{Integer,Nothing}, yBC::Union{String,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Real,Complex}, epsilon_high::Union{Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Real,Nothing}=0, m0::Union{Real}=0)
+function mesti_build_channels(nx_Ex::Union{Int,Nothing}, nx_Ey::Union{Int,Nothing}, xBC::Union{String,Real,Complex,Nothing}, ny_Ex::Int, ny_Ey::Union{Int,Nothing}, yBC::Union{String,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Real,Complex}, epsilon_high::Union{Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Real,Nothing}=0, m0::Union{Real}=0)
     
     # Check whehter 2D TM case or not
     if nx_Ex == nothing && nx_Ey == nothing && ny_Ex != nothing && ny_Ey == nothing
@@ -436,7 +436,7 @@ end
         transverse (y) direction, boundary condition yBC along y, background relative permittivity epsilon_low, 
         epsilon_high, and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
 """
-function mesti_build_channels(ny_Ex::Integer, yBC::Union{String,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Real,Complex}, epsilon_high::Union{Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Real}=0)
+function mesti_build_channels(ny_Ex::Int, yBC::Union{String,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Real,Complex}, epsilon_high::Union{Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Real}=0)
     return mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
 end
 

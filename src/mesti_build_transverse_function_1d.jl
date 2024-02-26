@@ -44,7 +44,7 @@
             and are ordered from small to large. 
 
 """
-function mesti_build_transverse_function_1d(nx::Integer, xBC::Union{String,Real}, n0::Real=0, offset::Bool=false)    
+function mesti_build_transverse_function_1d(nx::Int, xBC::Union{String,Real}, n0::Real=0, offset::Bool=false)    
     # Check input parameters        
     if ~(nx>=0)
         throw(ArgumentError("Input argument nx must be a natural number."))
@@ -154,7 +154,7 @@ end
                 when the input is a vector, it returns a matrix where each column
                 is the respective derivative transverse profile. 
 """
-function mesti_build_transverse_function_1d_derivative(nx::Integer, xBC::Union{String,Real}, n0::Real=0, changegrid::Real=0)    
+function mesti_build_transverse_function_1d_derivative(nx::Int, xBC::Union{String,Real}, n0::Real=0, changegrid::Real=0)    
     # Check input parameters        
     if ~(nx>=0)
         error("Input argument nx must be a natural number.")
