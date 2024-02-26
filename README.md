@@ -70,13 +70,15 @@ import Pkg; Pkg.add("MESTI")
 
 ## Test
 
-After installing MESTI.jl, you may also install other packages used in the tests and examples by running <code>[install_packages.jl](./test/install_packages.jl)</code>:
+After installing MESTI.jl, we should also install other packages used in the tests and examples by running <code>[install_packages.jl](./test/install_packages.jl)</code>:
 
-Now, we can run the test script in the [test](./test) folder :
+Now, we can run the test script <code>[runtests.jl](./test/runtests.jl)</code> in the [test](./test) folder, which runs
 
-- `runtests.jl`
+- `matrix_solver_test.jl`
+- `interface_t_r_test.jl`
+- `unitary_test.jl`
 
-If all tests run successfully, you are done with the installation.
+If all tests pass successfully, we are done with the tests.
 
 ## Usage Summary 
 
@@ -116,9 +118,9 @@ Multithreading is used during the factorization and solving stages within MUMPS,
 
 ## MPI
 
-Since MESTI.jl uses the parallel version of MUMPS, MESTI can also utilize MPI for distributed memory parallelization within MUMPS, making it a viable option with a cluster for computing large systems, where memory usage is a bottleneck. To use MPI, one should prepare the script to construct the system on the main processor and call worker processors when needed. For practical purposes, one would typically use hybrid MPI, which combines multithreading with MPI. This approach allows for the utilization of all threads in a node through multithreading and the parallelization of multiple nodes through MPI.
+Since MESTI.jl uses the parallel version of MUMPS, MESTI can also utilize MPI for distributed memory parallelization within MUMPS, making it a viable option with a cluster for computing large systems, where memory usage is a bottleneck. To use MPI, one should prepare the script to construct the system on the main processor and call worker processors when needed. For practical purposes, one would typically use hybrid MPI, which combines multithreading with MPI. This approach allows for the utilization of all threads in a single node through multithreading and the parallelization of multiple nodes through MPI.
 
-Hybrid MPI example script and its corresponding submission script for a cluster (USC Discovery cluster) are provided in the [MPI](./MPI) folder to illustrate its usage. 
+The hybrid MPI example script and its corresponding submission script for a cluster (USC Discovery cluster) are provided in the [MPI](./MPI) folder to illustrate its usage. 
 
 To check the actual number of threads and MPI used in MUMPS, set <code>opts.verbal_solver = true</code> in the input argument and look at the standard output from MUMPS. For example, the following output
 
