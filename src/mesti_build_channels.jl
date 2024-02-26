@@ -18,8 +18,8 @@ mutable struct Channels_two_sided <: Channels
     u_y_m::Function
     u_z_m::Function
     du_z_m::Function
-    kxdx_all::Union{Vector{Float64},Nothing}
-    kydx_all::Vector{Float64}
+    kxdx_all::Union{Vector{Real},Nothing}
+    kydx_all::Vector{Real}
     low::Side
     high::Side
     Channels_two_sided()=new()
@@ -36,16 +36,16 @@ mutable struct Channels_one_sided <: Channels
     u_y_m::Function
     u_z_m::Function
     du_z_m::Function    
-    kxdx_all::Union{Vector{Float64},Nothing}
-    kydx_all::Vector{Float64}
+    kxdx_all::Union{Vector{Real},Nothing}
+    kydx_all::Vector{Real}
     N_prop::Integer
-    kzdx_all::Vector{ComplexF64}
-    ind_prop::Vector{Int64}
-    kxdx_prop::Union{Vector{Float64},Nothing}
-    kydx_prop::Vector{Float64}
-    kzdx_prop::Vector{Float64}
-    sqrt_nu_prop::Vector{Float64}
-    ind_prop_conj::Vector{Int64}
+    kzdx_all::Vector{Complex}
+    ind_prop::Vector{Int}
+    kxdx_prop::Union{Vector{Real},Nothing}
+    kydx_prop::Vector{Real}
+    kzdx_prop::Vector{Real}
+    sqrt_nu_prop::Vector{Real}
+    ind_prop_conj::Vector{Int}
     Channels_one_sided()=new()
 end 
 
@@ -175,7 +175,7 @@ end
                 Structure containing properties specific to the high side,
                 similar to channels.high; only provided when epsilon_high is given. 
 """
-function mesti_build_channels(nx_Ex::Union{Int64,Nothing}, nx_Ey::Union{Int64,Nothing}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, ny_Ex::Int64, ny_Ey::Union{Int64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int64,Float64,Nothing}=0, m0::Union{Int64,Float64}=0)
+function mesti_build_channels(nx_Ex::Union{Int,Nothing}, nx_Ey::Union{Int,Nothing}, xBC::Union{String,Int,Real,Complex,Nothing}, ny_Ex::Int, ny_Ey::Union{Int,Nothing}, yBC::Union{String,Int,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Int,Real,Complex}, epsilon_high::Union{Int,Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, n0::Union{Int,Real,Nothing}=0, m0::Union{Int,Real}=0)
     
     # Check whehter 2D TM case or not
     if nx_Ex == nothing && nx_Ey == nothing && ny_Ex != nothing && ny_Ey == nothing
@@ -436,7 +436,7 @@ end
         transverse (y) direction, boundary condition yBC along y, background relative permittivity epsilon_low, 
         epsilon_high, and dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
 """
-function mesti_build_channels(ny_Ex::Int64, yBC::Union{String,Int64,Float64,ComplexF64}, k0dx::Union{Float64,ComplexF64}, epsilon_low::Union{Int64,Float64,ComplexF64}, epsilon_high::Union{Int64,Float64,ComplexF64, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Int64,Float64}=0)
+function mesti_build_channels(ny_Ex::Int, yBC::Union{String,Int,Real,Complex}, k0dx::Union{Real,Complex}, epsilon_low::Union{Int,Real,Complex}, epsilon_high::Union{Int,Real,Complex, Nothing}=nothing, use_continuous_dispersion::Bool=false, m0::Union{Int,Real}=0)
     return mesti_build_channels(nothing, nothing, nothing, ny_Ex, nothing, yBC, k0dx, epsilon_low, epsilon_high, use_continuous_dispersion, nothing, m0)
 end
 
@@ -444,7 +444,7 @@ end
 """ 
     CONVERT_BC_TO_TRANSVERSE is a helper function to convert PEC, PMC, and etc. to Dirichlet, Neumann, and etc. according to the component and direction
 """
-function convert_BC_to_transverse(BC::Union{String,Int64,Float64,ComplexF64},component::String,direction::String)
+function convert_BC_to_transverse(BC::Union{String,Int,Real,Complex},component::String,direction::String)
     if isa(BC, Number)
         return BC
     elseif BC == "PEC"

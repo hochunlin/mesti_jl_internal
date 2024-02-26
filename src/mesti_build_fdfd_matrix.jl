@@ -5,20 +5,20 @@ export PML
 export mesti_build_fdfd_matrix
 
 mutable struct PML
-    npixels::Integer
+    npixels::Int
     sigma_max_over_omega::Real
-    power_sigma::Float64       
-    alpha_max_over_omega::Float64 
-    power_alpha::Float64
-    kappa_max::Float64
-    power_kappa::Float64 
+    power_sigma::Real       
+    alpha_max_over_omega::Real 
+    power_alpha::Real
+    kappa_max::Real
+    power_kappa::Real 
     
     # Below are only used in mesti() and mesti2s() 
     direction::String
     side::String
     
     # Below is only used in mesti2s() 
-    npixels_spacer::Union{Integer,Nothing}
+    npixels_spacer::Union{Int,Nothing}
     
     # Construct default parameters from Table 7.1 of Taflove & Hagness's 2005 FDTD book
     # Without specifying pml.npixels
@@ -157,7 +157,7 @@ end
        zPML (two-element vector):
           PML parameters used on the low and high sides of z direction, if any.
 """
-function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_xy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_xz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_yz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing},     epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Matrix{Int},Matrix{Real},Matrix{Complex}}, epsilon_xy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_xz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_yx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_yy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_yz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_zx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_zy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing},     epsilon_zz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, k0dx::Union{Real,Complex}, xBC::Union{String,Int,Real,Complex,Nothing}, yBC::Union{String,Int,Real,Complex}, zBC::Union{String,Int,Real,Complex}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)    
     # Make deepcopy of them to avoid mutating input argument 
     xPML = deepcopy(xPML); yPML = deepcopy(yPML); zPML = deepcopy(zPML)
     
@@ -447,7 +447,7 @@ function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,
         
         # Construct the off-diagonal part from the the relative permittivity tensor epsilon_ij, when i does not equal j
         if include_off_diagonal_epsilon
-            A_off_diagonal_epsilon = spzeros(ComplexF64, nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
+            A_off_diagonal_epsilon = spzeros(Complex, nt_Ex+nt_Ey+nt_Ez, nt_Ex+nt_Ey+nt_Ez)
 
             # Following Oskooi et al, Optics Letters 34, 2778 (2009), we average two points of Ey along y, multiply by epsilon_xy to get Ex, and then average two such points along direction x. To summarize: avg_x*epsilon_xy*avg_y*Ey. Similarly for the other terms.
             if ~isa(epsilon_xy, Nothing)
@@ -611,20 +611,20 @@ end
        zPML (two-element vector):
           PML parameters used on the low and high sides of z direction, if any.
 """
-function mesti_build_fdfd_matrix(epsilon_xx::Union{Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, k0dx::Union{Float64,ComplexF64}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Matrix{Int},Matrix{Real},Matrix{Complex}}, k0dx::Union{Real,Complex}, yBC::Union{String,Int,Real,Complex}, zBC::Union{String,Int,Real,Complex}, yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
     return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, k0dx, nothing, yBC, zBC, nothing, yPML, zPML, use_UPML)
 end
 
 
 # When only the diagonal terms of epsilon (i.e. epsilon_xx, epsilon_yy, epsilon_zz) are specified in the 3D case.
-function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64}}, epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}, k0dx::Union{Float64,ComplexF64}, xBC::Union{String,Int64,Float64,ComplexF64,Nothing}, yBC::Union{String,Int64,Float64,ComplexF64}, zBC::Union{String,Int64,Float64,ComplexF64}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
+function mesti_build_fdfd_matrix(epsilon_xx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Matrix{Int},Matrix{Real},Matrix{Complex}}, epsilon_yy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, epsilon_zz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}, k0dx::Union{Real,Complex}, xBC::Union{String,Int,Real,Complex,Nothing}, yBC::Union{String,Int,Real,Complex}, zBC::Union{String,Int,Real,Complex}, xPML::Union{Vector{PML},Nothing} = [PML(0), PML(0)], yPML::Vector{PML} = [PML(0), PML(0)], zPML::Vector{PML} = [PML(0), PML(0)], use_UPML::Bool=true)
     return mesti_build_fdfd_matrix(epsilon_xx, nothing, nothing, nothing, epsilon_yy, nothing, nothing, nothing, epsilon_zz, k0dx, xBC, yBC, zBC, xPML, yPML, zPML, use_UPML)
 end
 
 """
     CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, n_Ez, direction) is a helper function and checks the consistency of boundary condition and number of grids in n_Ex, n_Ey, and n_Ez. 
 """
-function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int64, n_Ey::Int64, n_Ez::Int64, direction::String)
+function check_BC_and_grid(BC::Union{String,Int,Real,Complex}, n_Ex::Int, n_Ey::Int, n_Ez::Int, direction::String)
     if isa(BC, Number)
         if (n_Ex != n_Ez || n_Ex != n_Ey)
             throw(ArgumentError("Number of grids along $(direction) provided by epsilon_xx, epsilon_yy, and epsilon_zz should be the same for Bloch periodic boundary condition in $(direction)-direction."))
@@ -648,7 +648,7 @@ end
 """
     CHECK_BC_AND_GRID(BC, n_Ex, n_Ey, direction) is a helper function and checks the consistency of boundary condition and number of grids in n_Ex, and n_Ey. 
 """
-function check_BC_and_grid(BC::Union{String,Int64,Float64,ComplexF64}, n_Ex::Int64, n_Ey::Int64, direction::String)
+function check_BC_and_grid(BC::Union{String,Int,Real,Complex}, n_Ex::Int, n_Ey::Int, direction::String)
     if isa(BC, Number)
         if (n_Ex != n_Ey)
             throw(ArgumentError("Number of grids along $(direction) provided by epsilon_xx, epsilon_yy, should be the same for Bloch periodic boundary condition in $(direction)-direction."))
@@ -669,7 +669,7 @@ end
 """
     CONVERT_BC is a helper function to handles the case of string in BC
 """
-function convert_BC(BC::Union{String,Int64,Float64,ComplexF64},direction::String)
+function convert_BC(BC::Union{String,Int,Real,Complex},direction::String)
     if isa(BC, Number)
         return BC
     elseif lowercase(BC) == "pec"
@@ -699,7 +699,7 @@ end
         n_E: number of sites in x for Ey or Ez
         ind_PML_E: a vector containing indices of the PML pixels for Ey or Ez (on integer sites)
 """
-function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml::Vector{PML}, direction::String)
+function build_ddx_E(n_E::Int, BC::Union{String,Int,Real,Complex}, pml::Vector{PML}, direction::String)
     
     # Handle periodic and Bloch periodic boundary (adding the feature later) conditions
     if isa(BC, Number)
@@ -754,8 +754,8 @@ function build_ddx_E(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, pml
     n_H = size(ddx,1) # number of sites for df/dx (ie, Hy or Hz)
 
     # Coordinate-stretching factor: s(x) = kappa(x) + sigma(x)/(alpha(u) - i*omega)
-    s_E = ones(ComplexF64, n_E) # s-factor for Ey or Ez (on integer sites)
-    s_H = ones(ComplexF64, n_H) # s-factor for Hy or Hz (on half-integer sites)
+    s_E = ones(Complex, n_E) # s-factor for Ey or Ez (on integer sites)
+    s_H = ones(Complex, n_H) # s-factor for Hy or Hz (on half-integer sites)
 
     # no coordinate stretching if no PML is specified   
     if (length(pml) == 2 && pml[1].npixels == 0 && pml[2].npixels == 0)
@@ -853,7 +853,7 @@ end
     BUIlD_AVE_X_EX builds the average matrix that acts on Ex along the x-direction and can be analogous to other direction.
         avg: average matrix (acting on Ex along x-direction)
 """
-function build_ave_x_Ex(n_E::Int64, BC::Union{String,Int64,Float64,ComplexF64}, direction::String)
+function build_ave_x_Ex(n_E::Int, BC::Union{String,Int,Real,Complex}, direction::String)
     
     # Handle periodic and Bloch periodic boundary (adding the feature later) conditions
     if isa(BC, Number)
@@ -903,7 +903,7 @@ end
 """
     SET_PML_PARAMS sets default values for PML parameters
 """
-function set_PML_params(pml::Vector{PML}, k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Vector{Int64},Vector{Float64}}, direction::String)
+function set_PML_params(pml::Vector{PML}, k0dx::Union{Real,Complex}, epsilon_bg::Union{Vector{Int},Vector{Real}}, direction::String)
     
     if ~(length(pml) == 2)
         throw(ArgumentError("$(direction)PML must be a vector of PML containing two elements."))

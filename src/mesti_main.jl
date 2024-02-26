@@ -8,12 +8,12 @@ export mesti
 mutable struct Source_struct
     # A composite data type to specfiy source
     # See also: mesti and mesti2s   
-   pos::Vector{Vector{Int64}}
-   data::Union{Vector{Array{Int64,2}},Vector{Array{Float64,2}},Vector{Array{ComplexF64,2}},
-               Vector{Array{Int64,3}},Vector{Array{Float64,3}},Vector{Array{ComplexF64,3}},
-               Vector{Array{Int64,4}},Vector{Array{Float64,4}},Vector{Array{ComplexF64,4}}} 
-   ind::Vector{Vector{Int64}}
-   isempty::Integer
+   pos::Vector{Vector{Int}}
+   data::Union{Vector{Array{Int,2}},Vector{Array{Real,2}},Vector{Array{Complex,2}},
+               Vector{Array{Int,3}},Vector{Array{Real,3}},Vector{Array{Complex,3}},
+               Vector{Array{Int,4}},Vector{Array{Real,4}},Vector{Array{Complex,4}}} 
+   ind::Vector{Vector{Int}}
+   isempty::Int
     
    Source_struct() = new()
 end
@@ -23,17 +23,17 @@ mutable struct Syst
     # See also: mesti and mesti2s   
 
     # Below are used in both mesti() and mesti2s()
-    epsilon_xx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64},Nothing}
-    epsilon_xy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
-    epsilon_xz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_xx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Matrix{Int},Matrix{Real},Matrix{Complex},Nothing}
+    epsilon_xy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
+    epsilon_xz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
 
-    epsilon_yx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
-    epsilon_yy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
-    epsilon_yz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_yx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
+    epsilon_yy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
+    epsilon_yz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
  
-    epsilon_zx::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
-    epsilon_zy::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}    
-    epsilon_zz::Union{Array{Int64,3},Array{Float64,3},Array{ComplexF64,3},Nothing}
+    epsilon_zx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
+    epsilon_zy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}    
+    epsilon_zz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
 
     length_unit::String
     wavelength::Number
@@ -657,7 +657,7 @@ end
     
        See also: mesti_build_fdfd_matrix, mesti_matrix_solver!, mesti2s
 """
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String,Nothing}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Array{Int32,2},Array{Float32,2},Array{ComplexF32,2},Nothing}, opts::Union{Opts,Nothing})
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2}, Vector{Source_struct},String,Nothing}, D::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2},Array{Int32,2},Array{Float32,2},Array{ComplexF32,2},Nothing}, opts::Union{Opts,Nothing})
     
     if ~(stacktrace()[2].func == :mesti2s)
         # Make deepcopy of them to avoid mutating input argument 
@@ -1714,7 +1714,7 @@ end
 
 
 # When syst and B are specified; return the components of the field profiles.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}})
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2},Vector{Source_struct}})
     opts = Opts() 
     
     # Check if 2D TM fields are required
@@ -1734,7 +1734,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
 end
 
 # When syst, B, and opts are specified; return the components of the field profiles.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Vector{Source_struct}}, opts::Opts)
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2},Vector{Source_struct}}, opts::Opts)
     
     (S, info) = mesti(syst, B, nothing, nothing, opts)
     
@@ -1804,18 +1804,18 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
 end
 
 # When syst, B, and C are specified; return the generalized scattering matrix.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String})
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2}, Vector{Source_struct},String})
     return mesti(syst, B, C, nothing, nothing)
 end
 
 
 # When syst, B, and C, and opts are specified; return the generalized scattering matrix.
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, opts::Opts)
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2}, Vector{Source_struct},String}, opts::Opts)
     return mesti(syst, B, C, nothing, opts)
 end
 
 
 # When syst, B, and C, and D are specified; return the generalized scattering matrices
-function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2}, Vector{Source_struct},String}, D::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64,Int64},Array{Int64,2},Array{Float64,2},Array{ComplexF64,2},Array{Int32,2},Array{Float32,2},Array{ComplexF32,2}})
+function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex, 2},Vector{Source_struct}}, C::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2}, Vector{Source_struct},String}, D::Union{SparseMatrixCSC{Int,Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex,Int},Array{Int,2},Array{Real,2},Array{Complex,2},Array{Int32,2},Array{Float32,2},Array{ComplexF32,2}})
     return mesti(syst, B, C, D, nothing)
 end
