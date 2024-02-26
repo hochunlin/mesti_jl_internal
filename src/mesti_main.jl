@@ -9,7 +9,7 @@ mutable struct Source_struct
     # A composite data type to specfiy source
     # See also: mesti and mesti2s   
    pos::Vector{Vector{Int}}
-   data::Union{Vector{Array{Int,2}},Vector{Array{Real,2}},Vector{Array{,2}},
+   data::Union{Vector{Array{Int,2}},Vector{Array{Real,2}},Vector{Array{Complex,2}},
                Vector{Array{Int,3}},Vector{Array{Real,3}},Vector{Array{Complex,3}},
                Vector{Array{Int,4}},Vector{Array{Real,4}},Vector{Array{Complex,4}}} 
    ind::Vector{Vector{Int}}

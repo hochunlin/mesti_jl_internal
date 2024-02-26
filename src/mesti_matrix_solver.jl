@@ -989,7 +989,7 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     # Specify where the Schur block is
     # We should allow ind_schur to be an empty vector (for which the Schur complement is an empty matrix).
     if ~isa(ind_schur, Nothing)
-        if ~(all(x-> (isa(x, Integer) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
+        if ~(all(x-> (isa(x, Int) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
             throw(ArgumentError("ind_schur must be a row vector of positive integers not exceeding size(A,1) = $(N)."))
         end
         # This line should be changed in the future to use the distributed by columns.
