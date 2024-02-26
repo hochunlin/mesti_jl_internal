@@ -23,7 +23,7 @@ mutable struct Syst
     # See also: mesti and mesti2s   
 
     # Below are used in both mesti() and mesti2s()
-    epsilon_xx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Matrix{Int},Matrix{Real},Matrix{Complex},Nothing}
+    epsilon_xx::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Matrix{Int64},Matrix{Float64},Matrix{ComplexF64},Nothing}
     epsilon_xy::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
     epsilon_xz::Union{Array{Int,3},Array{Real,3},Array{Complex,3},Nothing}
 
