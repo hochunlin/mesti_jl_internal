@@ -18,7 +18,7 @@ mutable struct PML
     side::String
     
     # Below is only used in mesti2s() 
-    npixels_spacer::Union{Int,Nothing}
+    npixels_spacer::Union{Int64,Nothing}
     
     # Construct default parameters from Table 7.1 of Taflove & Hagness's 2005 FDTD book
     # Without specifying pml.npixels
