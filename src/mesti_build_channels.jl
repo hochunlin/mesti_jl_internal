@@ -38,7 +38,7 @@ mutable struct Channels_one_sided <: Channels
     du_z_m::Function    
     kxdx_all::Union{Vector{Real},Nothing}
     kydx_all::Vector{Real}
-    N_prop::Integer
+    N_prop::Int
     kzdx_all::Vector{Complex}
     ind_prop::Vector{Int}
     kxdx_prop::Union{Vector{Real},Nothing}

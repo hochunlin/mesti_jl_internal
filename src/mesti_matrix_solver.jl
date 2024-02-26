@@ -10,52 +10,52 @@ mutable struct Matrices
     # A composite data type to store the matrices, A, B, and C
     # After construct matrix K, we will set them nothing to reduce memory usage
     # See also: mesti_matrix_solver!
-    A::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Complex{Int}, Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex, Int},Nothing}
-    B::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Complex{Int}, Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex, Int},Array{Int, 2},Array{Real, 2},Array{Complex, 2},Nothing}
-    C::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Complex{Int}, Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex, Int},Array{Int, 2},Array{Real, 2},Array{Complex, 2},Nothing,String}
+    A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Nothing}
+    B::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing}
+    C::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64},Array{Int64, 2},Array{Float64, 2},Array{ComplexF64, 2},Nothing,String}
     Matrices() = new()
 end
 
 mutable struct Opts
     # A composite data type to store options
     # See also: mesti_matrix_solver!, mesti2s, and mesti 
-    is_symmetric_A::Union{Int, Nothing}
-    verbal::Int    
+    is_symmetric_A::Union{Integer, Nothing}
+    verbal::Integer    
     prefactor::Union{Number, Nothing}
     solver::Union{String, Nothing}     
     method::Union{String, Nothing}
-    clear_BC::Int
-    clear_syst::Int    
-    clear_memory::Int     
-    verbal_solver::Int 
-    use_single_precision_MUMPS::Int
-    use_METIS::Int    
-    nrhs::Int 
-    store_ordering::Int
+    clear_BC::Integer
+    clear_syst::Integer    
+    clear_memory::Integer     
+    verbal_solver::Integer 
+    use_single_precision_MUMPS::Integer
+    use_METIS::Integer    
+    nrhs::Int
+    store_ordering::Integer
     ordering    
-    analysis_only::Int    
-    nthreads_OMP::Int    
-    iterative_refinement::Int
+    analysis_only::Integer    
+    nthreads_OMP::Integer    
+    iterative_refinement::Integer
 
-    exclude_PML_in_field_profiles::Int
-    return_field_profile::Int
-    use_given_ordering::Int
+    exclude_PML_in_field_profiles::Integer
+    return_field_profile::Integer
+    use_given_ordering::Integer
 
     n0::Union{Real,Nothing}
     m0::Union{Real,Nothing}
-    use_continuous_dispersion::Union{Int,Nothing}    
-    symmetrize_K::Union{Int, Nothing}
+    use_continuous_dispersion::Union{Integer,Nothing}    
+    symmetrize_K::Union{Integer, Nothing}
     nz_low::Union{Int, Nothing}
     nz_high::Union{Int, Nothing}
 
     # the following four are for block low-rank
-    use_BLR::Int
+    use_BLR::Integer
     threshold_BLR::Real
     icntl_36::Int
     icntl_38::Int
     
     # this is only for MUMPS solver
-    parallel_dependency_graph::Int
+    parallel_dependency_graph::Integer
 
     Opts() = new()
 end
@@ -72,7 +72,7 @@ mutable struct Info
     timing_solve::Real
     ordering_method # This datatype changes during the code
     ordering # TODO:: Test and check this data type
-    itr_ref_nsteps::Int
+    itr_ref_nsteps::Integer
     itr_ref_omega_1::Array{Real}
     itr_ref_omega_2::Array{Real}
     xPML::Vector{PML}
@@ -778,14 +778,14 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                     set_icntl!(id,20,1;displaylevel=0) # tell MUMPS that the RHS is sparse
                     if opts.use_single_precision_MUMPS
                         # Convert the double-precision to single-precision
-                        if eltype(matrices.B) == Complex
-                            provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int}, matrices.B))
-                        elseif eltype(matrices.B) == Real
-                            provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int}, matrices.B))
-                        elseif eltype(matrices.B) == Complex{Int}
-                            provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int}, matrices.B))
-                        else eltype(matrices.B) == Int
-                            provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int}, matrices.B))
+                        if eltype(matrices.B) == ComplexF64
+                            provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B))
+                        elseif eltype(matrices.B) == Float64
+                            provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int64}, matrices.B))
+                        elseif eltype(matrices.B) == Complex{Int64}
+                            provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int64}, matrices.B))
+                        else eltype(matrices.B) == Int64
+                            provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int64}, matrices.B))
                         end
                     else
                         provide_rhs!(id,matrices.B) # no need to loop since we keep everything     
@@ -810,7 +810,7 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             else # Compute S=C*inv(A)*B
                 M_in = size(matrices.B, 2)
                 M_out = size(matrices.C, 1)
-                S = zeros(Complex, M_out, M_in)
+                S = zeros(ComplexF64, M_out, M_in)
                 # Storing the whole X=inv(A)*B wastes memory, so we solve for opts.nrhs columns of X each time and only keep its projection onto C.
                 if opts.solver == "MUMPS"
                     if opts.iterative_refinement
@@ -825,14 +825,14 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
                         set_icntl!(id,20,1;displaylevel=0) # tell MUMPS that the RHS is sparse
                         if opts.use_single_precision_MUMPS
                             # Convert the double-precision to single-precision
-                            if eltype(matrices.B) == Complex
-                                provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int}, matrices.B[:,in_list]))
-                            elseif eltype(matrices.B) == Real
-                                provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int}, matrices.B[:,in_list]))
-                            elseif eltype(matrices.B) == Complex{Int}
-                                provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int}, matrices.B[:,in_list]))
-                            else eltype(matrices.B) == Int
-                                provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int}, matrices.B[:,in_list]))
+                            if eltype(matrices.B) == ComplexF64
+                                provide_rhs!(id,convert(SparseMatrixCSC{ComplexF32, Int64}, matrices.B[:,in_list]))
+                            elseif eltype(matrices.B) == Float64
+                                provide_rhs!(id,convert(SparseMatrixCSC{Float32, Int64}, matrices.B[:,in_list]))
+                            elseif eltype(matrices.B) == Complex{Int64}
+                                provide_rhs!(id,convert(SparseMatrixCSC{Complex{Int32}, Int64}, matrices.B[:,in_list]))
+                            else eltype(matrices.B) == Int64
+                                provide_rhs!(id,convert(SparseMatrixCSC{Int32, Int64}, matrices.B[:,in_list]))
                             end
                         else
                             provide_rhs!(id,matrices.B[:,in_list])
@@ -907,7 +907,7 @@ end
 """
     JULIA_FACTORIZE calls JULIA's lu() to factorize matrix A
 """
-function JULIA_factorize(A::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Complex{Int}, Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex, Int}}, opts::Opts)
+function JULIA_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts)
 
     if opts.verbal; @printf("Factorizing ... "); end
     t1 = time()
@@ -927,13 +927,13 @@ function JULIA_factorize(A::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Comp
     info.timing_factorize = t2-t1
     info.timing_analyze = 0 # the analysis time is already counted in the factorization time 
     if opts.verbal; @printf("elapsed time: %7.3f secs\n", info.timing_factorize); end
-    return (Complex.(L), Complex.(U), Complex.(P), Complex.(Q), Complex.(R), info)
+    return (ComplexF64.(L), ComplexF64.(U), ComplexF64.(P), ComplexF64.(Q), ComplexF64.(R), info)
 end
 
 """
     MUMPS_ANALYZE_AND_FACTORIZE calls MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
 """
-function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int, Int},SparseMatrixCSC{Complex{Int}, Int},SparseMatrixCSC{Real, Int},SparseMatrixCSC{Complex, Int}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int},Nothing} = nothing, par = 1::Int)
+function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int},Nothing} = nothing, par = 1::Int)
 
     ## Initialize MUMPS
     N = size(A,1)
@@ -945,14 +945,14 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int, Int},SparseMa
     
     if opts.use_single_precision_MUMPS
         # Convert the element data type of A to the single-precision     
-        if eltype(A) == Complex
-            A = convert(SparseMatrixCSC{ComplexF32, Int}, A)
-        elseif eltype(A) == Real
-            A = convert(SparseMatrixCSC{Float32, Int}, A)
-        elseif eltype(A) == Complex{Int}
-            A = convert(SparseMatrixCSC{Complex{Int32}, Int}, A)
-        else eltype(A) == Int
-            A = convert(SparseMatrixCSC{Int32, Int}, A)
+        if eltype(A) == ComplexF64
+            A = convert(SparseMatrixCSC{ComplexF32, Int64}, A)
+        elseif eltype(A) == Float64
+            A = convert(SparseMatrixCSC{Float32, Int64}, A)
+        elseif eltype(A) == Complex{Int64}
+            A = convert(SparseMatrixCSC{Complex{Int32}, Int64}, A)
+        else eltype(A) == Int64
+            A = convert(SparseMatrixCSC{Int32, Int64}, A)
         end
     end
         
@@ -989,7 +989,7 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int, Int},SparseMa
     # Specify where the Schur block is
     # We should allow ind_schur to be an empty vector (for which the Schur complement is an empty matrix).
     if ~isa(ind_schur, Nothing)
-        if ~(all(x-> (isa(x, Int) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
+        if ~(all(x-> (isa(x, Integer) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
             throw(ArgumentError("ind_schur must be a row vector of positive integers not exceeding size(A,1) = $(N)."))
         end
         # This line should be changed in the future to use the distributed by columns.
