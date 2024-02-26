@@ -30,7 +30,7 @@ mutable struct Opts
     verbal_solver::Integer 
     use_single_precision_MUMPS::Integer
     use_METIS::Integer    
-    nrhs::Int
+    nrhs::Integer 
     store_ordering::Integer
     ordering    
     analysis_only::Integer    
@@ -45,14 +45,14 @@ mutable struct Opts
     m0::Union{Real,Nothing}
     use_continuous_dispersion::Union{Integer,Nothing}    
     symmetrize_K::Union{Integer, Nothing}
-    nz_low::Union{Int, Nothing}
-    nz_high::Union{Int, Nothing}
+    nz_low::Union{Integer, Nothing}
+    nz_high::Union{Integer, Nothing}
 
     # the following four are for block low-rank
     use_BLR::Integer
     threshold_BLR::Real
-    icntl_36::Int
-    icntl_38::Int
+    icntl_36::Integer
+    icntl_38::Integer
     
     # this is only for MUMPS solver
     parallel_dependency_graph::Integer
@@ -80,10 +80,10 @@ mutable struct Info
     zPML::Vector{PML}
 
     # Below are used in mesti2s() only    
-    ind_in_trivial_ch::Vector{Int}
-    ind_out_trivial_ch::Vector{Int}
-    ind_in_nontrivial_ch::Vector{Int}
-    ind_out_nontrivial_ch::Vector{Int}
+    ind_in_trivial_ch::Vector{Int64}
+    ind_out_trivial_ch::Vector{Int64}
+    ind_in_nontrivial_ch::Vector{Int64}
+    ind_out_nontrivial_ch::Vector{Int64}
     
     Info() = new()
 end
@@ -933,7 +933,7 @@ end
 """
     MUMPS_ANALYZE_AND_FACTORIZE calls MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
 """
-function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int},Nothing} = nothing, par = 1::Int)
+function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},SparseMatrixCSC{Complex{Int64}, Int64},SparseMatrixCSC{Float64, Int64},SparseMatrixCSC{ComplexF64, Int64}}, opts::Opts, is_symmetric::Bool, ind_schur::Union{UnitRange{Int64},Nothing} = nothing, par = 1::Int64)
 
     ## Initialize MUMPS
     N = size(A,1)
@@ -989,7 +989,7 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     # Specify where the Schur block is
     # We should allow ind_schur to be an empty vector (for which the Schur complement is an empty matrix).
     if ~isa(ind_schur, Nothing)
-        if ~(all(x-> (isa(x, Int) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
+        if ~(all(x-> (isa(x, Integer) &&  x > 0 && x <= size(A,1)), ind_schur) && size(ind_schur,2) == 1)
             throw(ArgumentError("ind_schur must be a row vector of positive integers not exceeding size(A,1) = $(N)."))
         end
         # This line should be changed in the future to use the distributed by columns.

@@ -4,14 +4,14 @@ export Side
 mutable struct Side
     # A composite data type to store the items on a side
     # See also: mesti_setup_longitudinal
-    N_prop::Int
-    kzdx_all::Vector{Complex}
-    ind_prop::Vector{Int}
-    kxdx_prop::Union{Vector{Real},Nothing}
-    kydx_prop::Vector{Real}
-    kzdx_prop::Vector{Real}
-    sqrt_nu_prop::Vector{Real}
-    ind_prop_conj::Vector{Int}
+    N_prop::Integer
+    kzdx_all::Vector{ComplexF64}
+    ind_prop::Vector{Int64}
+    kxdx_prop::Union{Vector{Float64},Nothing}
+    kydx_prop::Vector{Float64}
+    kzdx_prop::Vector{Float64}
+    sqrt_nu_prop::Vector{Float64}
+    ind_prop_conj::Vector{Int64}
     Side() = new() 
 end
 
@@ -83,7 +83,7 @@ end
                 A permutation vector that switches one propagating channel with one
                 having a complex-conjugated transverse profile. Now it only uses in 2D systems.
 """
-function mesti_setup_longitudinal(k0dx::Union{Real,Complex}, epsilon_bg::Union{Int,Real,Complex}, kxdx_all::Union{StepRangeLen{Real}, Vector{Real}, Nothing}, kydx_all::Union{StepRangeLen{Real}, Vector{Real}}, kLambda_x::Union{Int,Real,Complex,Nothing}=nothing, kLambda_y::Union{Int,Real,Complex,Nothing}=nothing, ind_zero_kx::Union{Int,Nothing}=nothing, ind_zero_ky::Union{Int,Nothing}=nothing, use_continuous_dispersion::Bool=false)
+function mesti_setup_longitudinal(k0dx::Union{Float64,ComplexF64}, epsilon_bg::Union{Int64,Float64,ComplexF64}, kxdx_all::Union{StepRangeLen{Float64}, Vector{Float64}, Nothing}, kydx_all::Union{StepRangeLen{Float64}, Vector{Float64}}, kLambda_x::Union{Int64,Float64,ComplexF64,Nothing}=nothing, kLambda_y::Union{Int64,Float64,ComplexF64,Nothing}=nothing, ind_zero_kx::Union{Int64,Nothing}=nothing, ind_zero_ky::Union{Int64,Nothing}=nothing, use_continuous_dispersion::Bool=false)
     
     if kxdx_all == nothing && kLambda_x == nothing && ind_zero_kx == nothing
         use_2D_TM = true 
