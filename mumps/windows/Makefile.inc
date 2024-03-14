@@ -103,7 +103,7 @@ FPIC_OPT = -fPIC
 SONAME = -soname
 # Adapt/uncomment RPATH_OPT to avoid modifying
 # LD_LIBRARY_PATH in case of shared libraries
-RPATH_OPT = -Wl,-rpath,/home/usc/MUMPS_5.6.2/lib/
+RPATH_OPT = -Wl,-rpath,/home/usc/Downloads/MUMPS_5.6.2/lib/
 OUTC    = -o 
 OUTF    = -o 
 # RM : remove files
