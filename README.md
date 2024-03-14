@@ -59,6 +59,13 @@ Problems that MESTI.jl does not handle:
 For eigenmode computation, such as waveguide mode solver and photonic band structure computation, one can use [<code>mesti_build_fdfd_matrix.jl</code>](./src/mesti_build_fdfd_matrix.jl) to build the matrix and then compute its eigenmodes. However, we don't currently provide a dedicated function to do so.
 
 ## Installation
+MESTI.jl is written and run in Julia programming language. Follow the standard process to download and install Julia. We can download Julia [here](https://julialang.org/downloads/). Suppose we installed the 1.9.3 version of Julia. After Julia is installed, we can add the path of your Julia to <code>PATH</code> through the terminal by 
+
+```shell
+export PATH=".../julia-1.9.3/bin/"
+```
+
+where  <code>... </code> is the path to your Julia.
 
 Before installing MESTI.jl, the user first need to install the parallel version of the sparse linear solver [MUMPS](https://mumps-solver.org/index.php). Without MUMPS, MESTI.jl can still run but cannot use the APF method and will only use a conventional method with the built-in linear solver, which can be orders of magnitude slower and uses much more memory (especially in 3D and for large 2D systems). See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
@@ -144,7 +151,7 @@ Here are some animations from the examples above:
    <img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="540" height="360"> 
 2. Focusing phase-conjugated light through disorder
    <img src="./examples/2d_focusing_inside_disorder_with_phase_conjugation/phase_conjugated_focusing.gif" width="540" height="360"> 
-3. Reflection matrix of a scatterer in Gaussian-beam basis:
+3. Reflection matrix of a scatterer in Gaussian-beam basis
    <img src="./examples/2d_reflection_matrix_Gaussian_beams/reflection_matrix_Gaussian_beams.gif" width="432" height="288">
 4. [Inverse designed wide-field-of-view metalens](https://github.com/complexphoton/metalens_inverse_design)
    <img src="https://github.com/complexphoton/MESTI.jl/assets/68754706/c87f1e1c-0105-40ef-8879-b46489efc3c3" width="405" height="596">
