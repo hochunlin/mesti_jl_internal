@@ -91,7 +91,7 @@ echo 'ENV["MUMPS_PREFIX"] = "/home/usc/Downloads/MUMPS_5.6.2/lib"' > ~/.julia/co
 Please remember to modify <code>"/home/usc/Downloads/MUMPS_5.6.2/lib"</code> to your own MUMPS libraries path. 
 
 
-When we run Julia interface for MUMPS, the machine may not find the libraries by itself. To solve those issues, please follow the steps depending on your OS.
+When we run Julia interface for MUMPS, the machine may not find the libraries by itself. To solve those issues, please follow the steps depending on your OS:
 
 - Linux or Windows
 
