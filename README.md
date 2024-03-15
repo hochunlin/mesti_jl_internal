@@ -27,7 +27,6 @@ MESTI.jl is a general-purpose solver with its interface written to provide maxim
  - Open boundary modeled by a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), with both imaginary-coordinate and real-coordinate stretching (so the PML can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves).
 - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
 - [Subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) for the geometric shapes handled by [GeometryPrimitives.jl](https://github.com/stevengj/GeometryPrimitives.jl) through function [<code>mesti_subpixel_smoothing()</code>](./src/mesti_subpixel_smoothing.jl).
-[<code>mesti_subpixel_smoothing()</code>](./src/mesti_subpixel_smoothing.jl)
  - Any material dispersion $\bar{\bar{\varepsilon}}$(*ω*), since this is a frequency-domain method.
  - Any list of input source profiles (user-specified or automatically built).
  - Any list of output projection profiles (or no projection, in which case the complete field profiles are returned).
@@ -37,6 +36,7 @@ MESTI.jl is a general-purpose solver with its interface written to provide maxim
  - Shared memory parallelism (with multithreaded BLAS and with OpenMP in MUMPS) and distributed memory parallelism (with MPI in MUMPS).
  - Single-precision or double-precision arithmetic.
 
+[<code>mesti_subpixel_smoothing()</code>](./src/mesti_subpixel_smoothing.jl)
 ## When to use MESTI.jl?
 
 MESTI.jl can perform most linear-response computations for arbitrary structures, such as
