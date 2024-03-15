@@ -76,12 +76,12 @@ import Pkg; Pkg.add("MESTI")
 ```
 
 ## Tests
-After compiling MUMPS and installation MESTI.jl, run <code>[install_packages.jl](./test/install_packages.jl)</code> to install other packages used in the tests and examples.
+After compiling MUMPS and installation MESTI.jl, run <code>[install_packages.jl](./test/install_packages.jl)</code> to install other Julia packages used in the tests and examples.
 
 Now we are ready to run the following test scripts
 
-- <code>[basic_solve.jl](./MUMPS/basic_solve.jl)</code>
-- <code>[schur_complement.jl](./MUMPS/schur_complement.jl)</code>
+- <code>[basic_solve.jl](./mumps/basic_solve.jl)</code>
+- <code>[schur_complement.jl](./mumps/schur_complement.jl)</code>
 
 If any of them does not run successfully, please look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
 
