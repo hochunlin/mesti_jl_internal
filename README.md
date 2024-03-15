@@ -143,7 +143,7 @@ shows 2 MPI processes with 4 threads each.
 Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI. Each example has its own folder, with its <code>.jl</code> and <code>.ipynb</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
 
 - [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
-- [Phase-conjugated focusing in disordered system](./examples/2d_focusing_phase_conjugated_light_through_disorder): 2D, using <code>mesti()</code> and <code>mesti2s()</code>, customized source & field profile with customized wavefronts.
+- [Phase-conjugated focusing in disordered system](./examples/2d_focusing_inside_disorder_with_phase_conjugation): 2D, using <code>mesti()</code> and <code>mesti2s()</code>, customized source & field profile with customized wavefronts.
 - [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
 
 Also see the following repository:
