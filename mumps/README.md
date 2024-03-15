@@ -125,24 +125,3 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 This should automatically find the OpenMPI installed in macOS.
 
 Now, you are ready to install MESTI.jl. Please go back to [install MESTI.jl](../#installation).
-
-## Test MUMPS
-
-After installing MESTI.jl and running <code>[install_packages.jl](../test/install_packages.jl)</code>, we are ready to run the following test scripts
-
-- <code>[basic_solve.jl](basic_solve.jl)</code>
-- <code>[schur_complement.jl](schur_complement.jl)</code>
-
-through 
-
-```shell
-julia basic_solve.jl
-```
-
-```shell
-julia schur_complement.jl
-```
-
-If any of them does not run successfully, please look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
-
-If they all pass, congratulations! You are done and be able to run MUMPS solver in Julia.
