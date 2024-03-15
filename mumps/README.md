@@ -51,7 +51,8 @@ Read the file <code>INSTALL</code>, copy the closest <code>Makefile.inc</code> f
  - <code>LAPACK</code>: how the Fortran compiler can link to the LAPACK library
  - <code>SCALAP</code>: how the Fortran compiler can link to the ScaLAPACK library
  - <code>LIBBLAS</code>: how the Fortran compiler can link to the BLAS library
- - <code>RPATH_OPT</code>: the path to shared libraries that will be built up, such as <code>/home/usc/Downloads/MUMPS_5.6.2/lib/</code>
+ - <code>RPATH_OPT</code>: the path to shared libraries that will be built up, such as <code>.../MUMPS_5.6.2/lib/</code>
+where <code>...</code> is the path to MUMPS_5.6.2 folder. 
 
 Note that from our experience, <code>RPATH_OPT</code> must be specified to successfully install the parallel version of MUMPS on Linux and Windows.
 
@@ -85,10 +86,10 @@ After compiling the parallel version of MUMPS, in <code>startup.jl</code> we sho
 
 ```shell
 mkdir ~/.julia/config
-echo 'ENV["MUMPS_PREFIX"] = "/home/usc/Downloads/MUMPS_5.6.2/lib"' > ~/.julia/config/startup.jl
+echo 'ENV["MUMPS_PREFIX"] = ".../MUMPS_5.6.2/lib"' >> ~/.julia/config/startup.jl
 ```
 
-Please remember to modify <code>"/home/usc/Downloads/MUMPS_5.6.2/lib"</code> to your own MUMPS libraries path. 
+where <code>...</code> is the path to MUMPS_5.6.2 folder.
 
 
 When we run Julia interface for MUMPS, the machine may not find the libraries by itself. To solve those issues, please follow the steps depending on your OS:
@@ -123,8 +124,7 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 ```
 This should automatically find the OpenMPI installed in macOS.
 
-
-Now, you are ready to install MESTI.jl. Please go back to [install MESTI.jl](../#installation) and continue to test MUMPS after installing MESTI.jl (since MUMPS Julia interface is currenlty included in MESTI.jl).
+Now, you are ready to install MESTI.jl. Please go back to [install MESTI.jl](../#installation).
 
 ## Test MUMPS
 

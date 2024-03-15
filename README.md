@@ -76,16 +76,22 @@ import Pkg; Pkg.add("MESTI")
 ```
 
 ## Tests
+After compiling MUMPS and installation MESTI.jl, run <code>[install_packages.jl](./test/install_packages.jl)</code> to install other packages used in the tests and examples.
 
-After installation, run <code>[install_packages.jl](./test/install_packages.jl)</code> to install other packages used in the tests and examples.
+Now we are ready to run the following test scripts
+
+- <code>[basic_solve.jl](./MUMPS/basic_solve.jl)</code>
+- <code>[schur_complement.jl](./MUMPS/schur_complement.jl)</code>
+
+If any of them does not run successfully, please look back at the compilation of MUMPS or the Julia interface to see if there were serious warning messages.
 
 Then, run <code>[runtests.jl](./test/runtests.jl)</code> in the [test](./test) folder. This script runs three tests:
 
-- `matrix_solver_test.jl`
-- `interface_t_r_test.jl`
-- `unitary_test.jl`
+- <code>[matrix_solver_test.jl](./test/matrix_solver_test.jl)</code>
+- <code>[interface_t_r_test.jl](./test/interface_t_r_test.jl)</code>
+- <code>[unitary_test.jl](./test/unitary_test.jl)</code>
 
-Check if they pass successfully.
+If all pass, congratulations! You are done and be able to run MESTI.jl with MUMPS solver.
 
 ## Usage Summary 
 
