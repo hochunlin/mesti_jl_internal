@@ -240,7 +240,7 @@ anim_pw = @animate for ii ∈ 0:(nframes_per_period-1)
     scatter!(plt1, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
              color=:black, legend=false, dpi = 450)
 end
-gif(anim_pw, "disorder_PW_input.gif", fps = 10)
+gif(anim_pw, "disorder_PW_input.gif", fps = 5)
 ```
 
 ![disorder_PW_input.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/1614a960-79f3-4743-a872-92420709b9c0)
@@ -256,7 +256,7 @@ anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
     scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.3, 
              color=:black, legend=false, dpi = 450)
 end
-gif(anim_open_ch, "disorder_open_channel.gif", fps = 10)
+gif(anim_open_ch, "disorder_open_channel.gif", fps = 5)
 ```
 
 ![disorder_open_channel.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/5fe96d41-029c-4335-bf76-177c8abb5600)

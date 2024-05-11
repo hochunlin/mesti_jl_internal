@@ -172,7 +172,7 @@ anim_pw = @animate for ii ∈ 0:(nframes_per_period-1)
             aspect_ratio=:equal, dpi = 450, 
             ticks = false, framestyle = :none,
             xlimits=(-55,145), ylimits=(0,360)))
-    scatter!(plt1, z0_list, y0_list,markersize=r0_list*0.88, alpha=0.1, color=:black, legend=false, dpi = 450)
+    scatter!(plt1, z0_list, y0_list,markersize=r0_list, alpha=0.3, color=:black, legend=false, dpi = 450)
 end
 gif(anim_pw, "disorder_PW_input.gif", fps = 5)
 
@@ -183,6 +183,6 @@ anim_open_ch = @animate for ii ∈ 0:(nframes_per_period-1)
             aspect_ratio=:equal, dpi = 450, 
             ticks = false, framestyle = :none,
             xlimits=(-55,145), ylimits=(0,360)))
-    scatter!(plt2, z0_list, y0_list,markersize=r0_list*0.88, alpha=0.3, color=:black, legend=false, dpi = 450)
+    scatter!(plt2, z0_list, y0_list,markersize=r0_list, alpha=0.3, color=:black, legend=false, dpi = 450)
 end
 gif(anim_open_ch, "disorder_open_channel.gif", fps = 5)
