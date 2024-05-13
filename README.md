@@ -155,13 +155,17 @@ Also see the following repository:
 Here are some animations from the examples above:
 
 1. Open channel propagating through disorder
-   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/68421516-db18-4793-9ef5-304079671113" width="540" height="360">
+
+   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/68421516-db18-4793-9ef5-304079671113" width="1080" height="720">
 2. Focusing phase-conjugated light through disorder
-   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/a1ddcb6a-f43a-44c1-a0b0-6a611e57bd98" width="540" height="360">
+
+   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/a1ddcb6a-f43a-44c1-a0b0-6a611e57bd98" width="1080" height="720">
 3. Reflection matrix of a scatterer in Gaussian-beam basis
-   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/27a99177-8ee1-4106-8bce-4e4166a1214c" width="432" height="288">
+
+   <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/27a99177-8ee1-4106-8bce-4e4166a1214c" width="864" height="576">
 4. [Inverse designed wide-field-of-view metalens](https://github.com/complexphoton/metalens_inverse_design)
-   <img src="https://github.com/complexphoton/MESTI.jl/assets/109620064/cfe707e5-445b-40b8-ab9a-6275041b1a7a" width="405" height="596">
+
+   <img src="https://github.com/complexphoton/MESTI.jl/assets/109620064/cfe707e5-445b-40b8-ab9a-6275041b1a7a" width="810" height="1192">
    
 ## Acknowledgment
 
