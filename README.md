@@ -165,7 +165,7 @@ Here are some animations from the examples above:
    <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/27a99177-8ee1-4106-8bce-4e4166a1214c" width="864" height="576">
 4. [Inverse designed wide-field-of-view metalens](https://github.com/complexphoton/metalens_inverse_design)
 
-   <img src="https://github.com/complexphoton/MESTI.jl/assets/109620064/cfe707e5-445b-40b8-ab9a-6275041b1a7a" width="810" height="1192">
+   <img src="https://github.com/complexphoton/MESTI.jl/assets/109620064/cfe707e5-445b-40b8-ab9a-6275041b1a7a" width="540" height="795">
    
 ## Acknowledgment
 
