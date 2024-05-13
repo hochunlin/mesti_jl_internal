@@ -243,7 +243,7 @@ end
 gif(anim_pw, "disorder_PW_input.gif", fps = 5)
 ```
 
-![disorder_PW_input.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/1614a960-79f3-4743-a872-92420709b9c0)
+![disorder_PW_input.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/71af5a7e-6dac-45a0-b900-9600b2786ba2)
 
 ```julia
 # animate the field profile of the open channel
@@ -259,4 +259,4 @@ end
 gif(anim_open_ch, "disorder_open_channel.gif", fps = 5)
 ```
 
-![disorder_open_channel.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/5fe96d41-029c-4335-bf76-177c8abb5600)
+![disorder_open_channel.gif](https://github.com/complexphoton/MESTI.jl/assets/44913081/68421516-db18-4793-9ef5-304079671113)
