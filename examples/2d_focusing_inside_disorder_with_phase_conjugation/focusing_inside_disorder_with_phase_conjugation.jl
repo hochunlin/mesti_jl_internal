@@ -28,8 +28,8 @@ rng_seed = 0   # random number generator seed
 # relative permittivity, unitless
 epsilon_scat = 1.2^2  # cylindrical scatterers
 epsilon_bg   = 1.0^2  # background in the scattering region
-epsilon_low  = 1.0^2  # frees space on the low side
-epsilon_high = 1.0^2  # frees space on the high side
+epsilon_low  = 1.0^2  # free space on the low side
+epsilon_high = 1.0^2  # free space on the high side
 
 yBC = "periodic" # boundary condition in y
 
