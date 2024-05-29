@@ -571,15 +571,10 @@ end
             opts.nthreads_OMP (positive integer scalar; optional):
                 Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
                 environment variable.
-            opts.use_L0_threads (logical scalar; optional, 
-                                 defaults to true in 1D/2D/2.5D and to false in full 3D):
-                If MUMPS is multithread, whether to use tree parallelism (so-called
-                L0-threads layer) in MUMPS. Please refer to Sec. 5.23 'Improved 
-                multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
-                This typically enhances the time performance, but marginally increases
-                the memory usage. In full 3D ((width in x)*(width in y)/(thickness in z) < 100), 
-                memory usage is critical and we set it false. Otherwise, it is enabled 
-                by default. 
+            opts.parallel_dependency_graph (logical scalar; optional, defaults to false):
+                If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+                This typically improve the time performance, but marginally increase 
+                the memory usage.
             opts.iterative_refinement (boolean scalar; optional, defaults to false):
                 Whether to use iterative refinement in MUMPS to lower round-off
                 errors. Iterative refinement can only be used when opts.solver =
@@ -1076,16 +1071,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     elseif ~isa(opts.use_METIS, Bool)
         throw(ArgumentError("opts.use_METIS must be a boolean, if given."))   
     end                                
-
-    # Use L0 threads in 1D/2D/2.5D by default
-    if ~isdefined(opts, :use_L0_threads) && ~use_2D_TM && nx_Ez*ny_Ez/nz_Ez < 100
-        opts.use_L0_threads = false # If this is 3D system, we enable L0 threads by default
-    elseif (~isdefined(opts, :use_L0_threads) && use_2D_TM) || (~isdefined(opts, :use_L0_threads) && ~use_2D_TM && nx_Ez*ny_Ez/nz_Ez >= 100)
-        opts.use_L0_threads = true # If this is 1D/2D/2.5D system, we disable L0 threads by default        
-    elseif ~isa(opts.use_L0_threads, Bool)
-        throw(ArgumentError("opts.use_L0_threads must be a boolean, if given."))   
-    end                              
-
+    
     # The following fields of opts will be checked/initialized in mesti_matrix_solver!():
     #    opts.solver
     #    opts.method
@@ -1096,6 +1082,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     #    opts.ordering
     #    opts.analysis_only
     #    opts.nthreads_OMP
+    #    opts.parallel_dependency_graph
     #    opts.iterative_refinement                
     #    opts.use_BLR
     #    opts.threshold_BLR

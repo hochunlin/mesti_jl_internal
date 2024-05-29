@@ -36,7 +36,6 @@ mutable struct Opts
     analysis_only::Integer    
     nthreads_OMP::Integer    
     iterative_refinement::Integer
-    use_L0_threads::Integer
 
     exclude_PML_in_field_profiles::Integer
     return_field_profile::Integer
@@ -49,11 +48,14 @@ mutable struct Opts
     nz_low::Union{Integer, Nothing}
     nz_high::Union{Integer, Nothing}
 
-    # the following four are for MUMPS block low-rank
+    # the following four are for block low-rank
     use_BLR::Integer
     threshold_BLR::Real
     icntl_36::Integer
     icntl_38::Integer
+    
+    # this is only for MUMPS solver
+    parallel_dependency_graph::Integer
 
     Opts() = new()
 end
@@ -208,11 +210,9 @@ end
             opts.nthreads_OMP (positive integer scalar; optional):
                 Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
                 environment variable.
-            opts.use_L0_threads (logical scalar; optional, defaults to true):
-                If MUMPS is multithread, whether to use tree parallelism (so-called
-                L0-threads layer) in MUMPS. Please refer to Sec. 5.23 'Improved 
-                multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
-                This typically enhances the time performance, but marginally increases
+            opts.parallel_dependency_graph (logical scalar; optional, defaults to false):
+                If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+                This typically improve the time performance, but marginally increase 
                 the memory usage.
             opts.iterative_refinement (logical scalar; optional, defaults to false):
                 Whether to use iterative refinement in MUMPS to lower round-off
@@ -467,11 +467,11 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             str_MUMPS_precision = " in double precision"
         end        
         
-        # We use L0-threads by default        
-        if ~isdefined(opts, :use_L0_threads)
-            opts.use_L0_threads = true
-        elseif ~isa(opts.use_L0_threads, Bool)
-            throw(ArgumentError("opts.use_L0_threads must be a boolean, if given."))    
+        # We don't use KEEP(401) = 1 by default        
+        if ~isdefined(opts, :parallel_dependency_graph)
+            opts.parallel_dependency_graph = false
+        elseif ~isa(opts.parallel_dependency_graph, Bool)
+            throw(ArgumentError("opts.parallel_dependency_graph must be a boolean, if given."))    
         end
 
         # We don't use BLR by default
@@ -1008,12 +1008,10 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     ## Analysis stage
     if opts.verbal; @printf("Analyzing   ... "); end
     t1 = time()
-    if opts.use_L0_threads
-        # Utilize L0-threads feature.
-        # This typically improves the time performance, but marginally increases the memory usage in full multithread.
-        set_icntl!(id,48,1;displaylevel=0)
-    else
-        set_icntl!(id,48,0;displaylevel=0)
+    if opts.parallel_dependency_graph
+        # Split dependency graph and processed independently by OpenMP threads.
+        # This typically improve the time performance, but marginally increase the memory usage in full multithread.
+        set_keep!(id,401,1)
     end
     set_job!(id,1) # what to do: analysis  
     if opts.use_given_ordering
