@@ -6,11 +6,12 @@
 # again to compute the field profile of the open channel while comparing to that
 # of a typical plane-wave input.
 
-# Call necessary packages
-using MESTI, GeometryPrimitives, Arpack, Printf
+# load necessary packages
+using MESTI, GeometryPrimitives, LinearAlgebra, Statistics, Printf
 
-# Include the function to build epsilon_xx for the disordered
+# include the function to build epsilon_xx for the disordered and plot the transmission eigvenvalue distribution
 include("build_epsilon_disorder.jl")
+include("plot_and_compare_distribution.jl")
 
 ## System parameters
 # dimensions of the system, in units of the wavelength lambda_0
@@ -39,7 +40,7 @@ build_epsilon_disorder(W, L, r_min, r_max, min_sep,
                        number_density, rng_seed, dx,
                        epsilon_scat, epsilon_bg, build_TM)
 
-## Compute the transmission matrix
+## compute the transmission matrix
 syst = Syst()
 syst.epsilon_xx = epsilon_xx
 syst.epsilon_low = epsilon_low
@@ -67,9 +68,20 @@ syst.zPML = [pml]
 t, channels, _ = mesti2s(syst, input, output)
 
 ## Compare an open channel and a plane-wave input
+# perform the singular value decomposition (SVD) on the transmission matrix
+_, sigma, v = svd(t)
+
+# transmission eigenvalue (eigenvalue of t^(dag)*t) is the square of the signular value of t 
+tau = sigma.^2
+
+# plot the transmission eigenvalue distribution and compare it with the DMPK theory
+using Plots
+plot_and_compare_distribution(sigma)
+
 # The most-open channels is the singular vector of the transmission matrix with 
 # the largest singular value.
-(_, sigma_max, v_open), _, _, _, _ = svds(t, nsv=1)
+v_open = v[:, 1]
+sigma_open = sigma[1]
 
 N_prop_low = channels.low.N_prop # number of propagating channels on the low side
 ind_normal = Int(round((N_prop_low+1)/2)) # index of the normal-incident plane-wave
@@ -77,7 +89,7 @@ ind_normal = Int(round((N_prop_low+1)/2)) # index of the normal-incident plane-w
 # compare the transmission
 T_avg = sum(abs.(t).^2)/N_prop_low # average over all channels
 T_PW  = sum(abs.(t[:,ind_normal]).^2) # normal-incident plane-wave
-T_open = sigma_max[1].^2 # open channel
+T_open = sigma_open.^2 # open channel
 
 println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f", T_PW), "\n T_open  = ", @sprintf("%.2f", T_open))
 
@@ -121,7 +133,7 @@ syst.yBC = yBC
 # put PML along z-direction
 pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
 pml.npixels = pml_npixels
-pml.direction = "z" # put
+pml.direction = "z"
 syst.PML = [pml]
 # in previous mesti2s() calculation, 
 # syst.zPML = [pml] (and do not need to specify pml.direction = "z")
@@ -156,7 +168,6 @@ println("Maximum absolute value of field difference between constructing the sou
          maximum(abs.(Ex[:,nz_low+1:end-nz_high-1,:] - Ex_prime[:,pml_npixels+1+1:end-pml_npixels-1-1,:])))
 
 ## Animate the field profiles
-using Plots
 # normalize the field amplitude with respect to the plane-wave-input profile
 Ex = Ex/maximum(abs.(Ex[:,:,1]))
 

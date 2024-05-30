@@ -3,11 +3,12 @@
 In this example, we show how to use mesti2s() to compute the transmission matrix of a strongly scattering disordered medium, analyze the transmission matrix to determine an incident wavefront that can penetrate the disorder with almost 100% transmission (called an "open channel"), and then use mesti2s() again to compute the field profile of the open channel while comparing to that of a typical plane-wave input.
 
 ```julia
-# Call necessary packages
-using MESTI, GeometryPrimitives, Arpack, Printf
+# load necessary packages
+using MESTI, GeometryPrimitives, LinearAlgebra, Statistics, Printf
 
-# Include the function to build epsilon_xx for the disordered
+# include the function to build epsilon_xx for the disordered and plot the transmission eigvenvalue distribution
 include("build_epsilon_disorder.jl")
+include("plot_and_compare_distribution.jl")
 ```
 
 # System parameters
@@ -87,9 +88,24 @@ Factorizing ... elapsed time: 122.678 secs
 # Compare an open channel and a plane-wave input
 
 ```julia
+# perform the singular value decomposition (SVD) on the transmission matrix
+_, sigma, v = svd(t)
+
+# transmission eigenvalue (eigenvalue of t^(dag)*t) is the square of the signular value of t 
+tau = sigma.^2
+
+# plot the transmission eigenvalue distribution and compare it with the DMPK theory
+using Plots
+plot_and_compare_distribution(sigma)
+```
+
+![transmission_eigenvalue_distribution_2d](https://github.com/complexphoton/MESTI.jl/assets/44913081/b691c9c3-c328-4a2b-b669-8e519df08f3b)
+
+```julia
 # The most-open channels is the singular vector of the transmission matrix with 
 # the largest singular value.
-(_, sigma_max, v_open), _, _, _, _ = svds(t, nsv=1)
+v_open = v[:, 1]
+sigma_open = sigma[1]
 
 N_prop_low = channels.low.N_prop # number of propagating channels on the low side
 ind_normal = Int(round((N_prop_low+1)/2)) # index of the normal-incident plane-wave
@@ -97,7 +113,7 @@ ind_normal = Int(round((N_prop_low+1)/2)) # index of the normal-incident plane-w
 # compare the transmission
 T_avg = sum(abs.(t).^2)/N_prop_low # average over all channels
 T_PW  = sum(abs.(t[:,ind_normal]).^2) # normal-incident plane-wave
-T_open = sigma_max[1].^2 # open channel
+T_open = sigma_open.^2 # open channel
 
 println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f", T_PW), "\n T_open  = ", @sprintf("%.2f", T_open))
 ```
@@ -221,7 +237,6 @@ Maximum absolute value of field difference between constructing the source matri
 # Animate the field profiles
 
 ```julia
-using Plots
 # normalize the field amplitude with respect to the plane-wave-input profile
 Ex = Ex/maximum(abs.(Ex[:,:,1]))
 
