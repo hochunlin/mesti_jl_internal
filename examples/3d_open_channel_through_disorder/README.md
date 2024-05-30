@@ -157,4 +157,5 @@ tau = sigma.^2
 using Plots
 plot_and_compare_distribution(tau)
 ```
-![transmission_eigenvalue_distribution_3d.png](https://github.com/complexphoton/MESTI.jl/assets/44913081/f9426518-ec70-4410-81f6-a08440f02739)
+<img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/f9426518-ec70-4410-81f6-a08440f02739" width="800" height="600">
+

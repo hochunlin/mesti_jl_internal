@@ -99,7 +99,7 @@ using Plots
 plot_and_compare_distribution(sigma)
 ```
 
-![transmission_eigenvalue_distribution_2d](https://github.com/complexphoton/MESTI.jl/assets/44913081/b691c9c3-c328-4a2b-b669-8e519df08f3b)
+<img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/b691c9c3-c328-4a2b-b669-8e519df08f3b" width="800" height="600">
 
 ```julia
 # The most-open channels is the singular vector of the transmission matrix with 
