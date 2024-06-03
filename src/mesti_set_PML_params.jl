@@ -4,8 +4,6 @@
 """
 function mesti_set_PML_params(pml::Vector{PML}, k0dx::Union{Real,Complex}, epsilon_bg::Union{Vector{Int64},Vector{Float64}}, direction::String)
     
-    wavelength_over_dx = ((2*pi)/k0dx)/sqrt(epsilon_bg)
-
     if ~(length(pml) == 2)
         throw(ArgumentError("$(direction)PML must be a vector of PML containing two elements."))
     end
@@ -17,7 +15,8 @@ function mesti_set_PML_params(pml::Vector{PML}, k0dx::Union{Real,Complex}, epsil
 
     # loop over PML parameters on two sides
     for ii = 1:2
-        # Number of PML pixels
+        wavelength_over_dx = ((2*pi)/k0dx)/sqrt(epsilon_bg[ii])
+	# Number of PML pixels
         if ~isdefined(pml[ii], :npixels)
             throw(ArgumentError("$(direction)PML[$(ii)] must contain field npixels."))
         else

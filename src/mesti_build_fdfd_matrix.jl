@@ -22,11 +22,9 @@ mutable struct PML
     
     # Construct default parameters from Table 7.1 of Taflove & Hagness's 2005 FDTD book
     # Without specifying pml.npixels
-    PML() = (pml = new(); pml.power_sigma=3.0; pml.alpha_max_over_omega=0.0; 
-              pml.power_alpha=1.0; pml.kappa_max=15.0; pml.power_kappa=3.0; return pml)
+    PML() = (pml = new(); return pml)
     # With specifying pml.npixels   
-    PML(n) = (pml = new(); pml.npixels=n; pml.power_sigma=3.0; pml.alpha_max_over_omega=0.0; 
-              pml.power_alpha=1.0; pml.kappa_max=15.0; pml.power_kappa=3.0; return pml) 
+    PML(n) = (pml = new(); pml.npixels=n; return pml) 
 end
 
 """
