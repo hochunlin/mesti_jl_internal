@@ -64,17 +64,40 @@ MESTI.jl is written and run in Julia programming language. Follow the standard p
 export PATH=".../julia-1.9.3/bin/"
 ```
 
-where  <code>... </code> is the path to your Julia.
+where  <code>...</code> is the path to your Julia.
 
 Before installing MESTI.jl, the user first need to install the parallel version of the sparse linear solver [MUMPS](https://mumps-solver.org/index.php). Without MUMPS, MESTI.jl can still run but cannot use the APF method and will only use a conventional method with the built-in linear solver, which can be orders of magnitude slower and uses much more memory (especially in 3D and for large 2D systems). See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
-After the MUMPS installation, to install MESTI.jl, simply open the command-line interface of Julia and type:  
+After the MUMPS installation, if you have a clean Julia environment (*i.e.* have not installed any Julia package before or have not installed new version of [Makie.jl](https://github.com/MakieOrg/Makie.jl)(v.0.20 and v.0.21) and [GeometryPrimitives.jl](https://github.com/stevengj/GeometryPrimitives.jl)(v.0.5.0), you can install MESTI.jl (v.0.4.2) by opening the command-line interface of Julia and typing:  
 
 ```julia
 import Pkg; Pkg.add("MESTI")
 ```
 
+On the other hand, if you have installed these two Julia packages: the new version of [Makie.jl](https://github.com/MakieOrg/Makie.jl)(v.0.20 and v.0.21) and [GeometryPrimitives.jl](https://github.com/stevengj/GeometryPrimitives.jl)(v.0.5.0). You will encounter some compatibility problems and the installation will fail. In this case, please run 
+
+```julia
+import Pkg; Pkg.add(Pkg.PackageSpec(;name="Makie", version="0.19.12")); Pkg.add("GeometryPrimitives"); Pkg.add("MESTI")
+```
+
+to downgrade them to the old version compatible with our MESTI.jl and then install MESTI.jl(v.0.4.2).
+
+After installing MESTI.jl, if the user happens to run the command to upgrade every Julia package to the latest version, such as *Pkg.update()*, it would install the latest version of Makie.jl and make MESTI.jl not compatible with it. So please rerun the line below to downgrade to the compatible version and reinstall MESTI.jl.
+
+To see whether you install the right version, you can always check the version of MESTI by opening the command-line interface of Julia and typing: 
+
+```julia
+import Pkg; Pkg.status("MESTI")
+```
+
+If you want our latest MESTI.jl, it should show
+
+```julia
+[8d7f31fa] MESTI v0.4.2
+```
+
 ## Tests
+
 After compiling MUMPS and installation MESTI.jl, run <code>[install_packages.jl](./test/install_packages.jl)</code> to install other Julia packages used in the tests and examples.
 
 Now we are ready to run the following test scripts
@@ -155,18 +178,13 @@ Also see the following repository:
 Here are some animations from the examples above:
 
 1. Open channel propagating through disorder
-
    <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/68421516-db18-4793-9ef5-304079671113" width="1080" height="720">
 2. Focusing phase-conjugated light through disorder
-
    <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/a1ddcb6a-f43a-44c1-a0b0-6a611e57bd98" width="1080" height="720">
 3. Reflection matrix of a scatterer in Gaussian-beam basis
-
    <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/27a99177-8ee1-4106-8bce-4e4166a1214c" width="864" height="576">
 4. [Inverse designed wide-field-of-view metalens](https://github.com/complexphoton/metalens_inverse_design)
-
    <img src="https://github.com/complexphoton/MESTI.jl/assets/109620064/cfe707e5-445b-40b8-ab9a-6275041b1a7a" width="540" height="795">
-   
 ## Acknowledgment
 
 We thank [William Sweeney](https://github.com/wrs28) for granting us permission to integrate his MUMPS-julia interface, [MUMPS3.jl](https://github.com/wrs28/MUMPS3.jl/tree/5.3.3-update), into this package. The files bearing the mumps3 prefix in the [src](./src) directory have been adopted from MUMPS3.jl.
