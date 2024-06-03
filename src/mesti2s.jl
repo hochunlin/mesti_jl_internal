@@ -230,19 +230,17 @@ end
                         Power of the polynomial grading for the conductivity sigma; 
                         defaults to 3.
                     sigma_max_over_omega (non-negative scalar; optional):
-                        Conductivity at the end of the PML; defaults to
-                        0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
-                        where epsilon_bg is the average relative permittivity along the
-                        last slice of the PML. This is used to attenuate propagating
-                        waves.
+                        Conductivity at the end of the PML; By default, it is
+                        set to an optimized value based on resolution and the 
+                        background refractive index. This is used to attenuate propagating waves.
                     power_kappa (non-negative scalar; optional): 
                         Power of the polynomial grading for the real-coordinate-stretching 
                         factor kappa; defaults to 3.
                     kappa_max (real scalar no smaller than 1; optional):
-                        Real-coordinate-stretching factor at the end of the PML;
-                        defaults to 15. This is used to accelerate the attenuation of
-                        evanescent waves. kappa_max = 1 means no real-coordinate
-                        stretching.
+                        Real-coordinate-stretching factor at the end of the PML; By default, 
+                        it is set to an optimized value based on resolution and the 
+                        background refractive index. This is used to accelerate the attenuation 
+                        of evanescent waves. kappa_max = 1 means no real-coordinate stretching.
                     power_alpha (non-negative scalar; optional): 
                         Power of the polynomial grading for the CFS alpha factor; 
                         defaults to 1.
@@ -538,7 +536,7 @@ end
                 the memory usage. In full 3D ((width in x)*(width in y)/(thickness in z) < 100), 
                 memory usage is critical and we set it false. Otherwise, it is enabled 
                 by default. 
-            opts.write_factor_to_disk (logical scalar; optional, defaults to true):
+            opts.write_LU_factor_to_disk (logical scalar; optional, defaults to true):
                 An out-of-core (disk is used as an extension to main memory) facility 
                 is utilized to write the complete matrix of factors to disk in the 
                 factorization phase and read them in the solve phase. This can signiﬁcantly 
@@ -1066,7 +1064,7 @@ function mesti2s(syst::Syst, input::Union{channel_type, channel_index, wavefront
     #    opts.ordering
     #    opts.analysis_only
     #    opts.nthreads_OMP
-    #    opts.write_factor_to_disk    
+    #    opts.write_LU_factor_to_disk    
     #    opts.iterative_refinement
     #    
     #    opts.use_BLR

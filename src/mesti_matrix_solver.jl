@@ -37,7 +37,7 @@ mutable struct Opts
     nthreads_OMP::Integer    
     iterative_refinement::Integer
     use_L0_threads::Integer
-    write_factor_to_disk::Integer
+    write_LU_factor_to_disk::Integer
 
     exclude_PML_in_field_profiles::Integer
     return_field_profile::Integer
@@ -215,7 +215,7 @@ end
                 multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
                 This typically enhances the time performance, but marginally increases
                 the memory usage.
-            opts.write_factor_to_disk (logical scalar; optional, defaults to true):
+            opts.write_LU_factor_to_disk (logical scalar; optional, defaults to true):
                 An out-of-core (disk is used as an extension to main memory) facility 
                 is utilized to write the complete matrix of factors to disk in the 
                 factorization phase and read them in the solve phase. This can signiﬁcantly 
@@ -351,10 +351,10 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
     end
 
     # No iterative refinement by default; only used in factorize_and_solve with MUMPS
-    if ~isdefined(opts, :write_factor_to_disk)
-        opts.write_factor_to_disk = false
-    elseif ~isa(opts.write_factor_to_disk, Bool)
-        throw(ArgumentError("opts.write_factor_to_disk must be a boolean, if given."))
+    if ~isdefined(opts, :write_LU_factor_to_disk)
+        opts.write_LU_factor_to_disk = false
+    elseif ~isa(opts.write_LU_factor_to_disk, Bool)
+        throw(ArgumentError("opts.write_LU_factor_to_disk must be a boolean, if given."))
     end
 
     # By default, if C is given and opts.iterative_refinement = false, then "APF" is used when opts.solver = "MUMPS", and "C*inv(U)*inv(L)*B" is used when opts.solver = "JULIA". Otherwise, "factorize_and_solve" is used.
@@ -571,8 +571,8 @@ function mesti_matrix_solver!(matrices::Matrices, opts::Union{Opts,Nothing}=noth
             @warn("opts.nthreads_OMP is only used when opts.solver = \"MUMPS\"; will be ignored.")
         end
 
-        if isdefined(opts, :write_factor_to_disk)
-            @warn("opts.write_factor_to_disk is only used when opts.solver = \"MUMPS\"; will be ignored.")
+        if isdefined(opts, :write_LU_factor_to_disk)
+            @warn("opts.write_LU_factor_to_disk is only used when opts.solver = \"MUMPS\"; will be ignored.")
         end
         
         if isdefined(opts, :use_BLR)
@@ -1072,7 +1072,7 @@ function MUMPS_analyze_and_factorize(A::Union{SparseMatrixCSC{Int64, Int64},Spar
     ## Factorize stage
     t1 = time()
     set_job!(id,2) # what to do: factorize
-    if opts.write_factor_to_disk
+    if opts.write_LU_factor_to_disk
         # Out-of-core factorization and solve phases
         # The complete matrix of factors is written to disk
         set_icntl!(id,22,1)
