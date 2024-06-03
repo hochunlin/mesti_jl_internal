@@ -62,9 +62,8 @@ input.side = "low"
 output.side = "high"
 
 # put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
-pml_npixels = 15
-pml.npixels = pml_npixels
+pml_npixels = 20
+pml = PML(pml_npixels)
 syst.zPML = [pml]
 
 # transmission matrix: input from the low side, output to the high side
@@ -72,7 +71,7 @@ t, channels, _ = mesti2s(syst, input, output)
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1349 => 1391 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
 Building B,C... elapsed time:   4.179 secs
@@ -145,7 +144,7 @@ Ex, _, _ = mesti2s(syst, input, opts)
 ```
 ```text:Output
 ===System size===
-ny_Ex = 5400; nz_Ex = 1349 => 1381 for Ex(y,z)
+ny_Ex = 5400; nz_Ex = 1349 => 1391 for Ex(y,z)
 [N_prop_low, N_prop_high] = [725, 725] per polarization
 yBC = periodic; zBC = [PML, PML]
 Building B,C... elapsed time:   0.549 secs
@@ -179,9 +178,9 @@ syst.dx = dx
 syst.yBC = yBC 
 
 # put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
-pml.npixels = pml_npixels
-pml.direction = "z" # put
+pml_npixels = 20
+pml = PML(pml_npixels)
+pml.direction = "z"
 syst.PML = [pml]
 # in previous mesti2s() calculation, 
 # syst.zPML = [pml] (and do not need to specify pml.direction = "z")

@@ -82,9 +82,8 @@ output.side = "high"
 output.polarization = "both"
 
 # put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
 pml_npixels = 20
-pml.npixels = pml_npixels
+pml = PML(pml_npixels)
 syst.zPML = [pml]
 
 opts = Opts()

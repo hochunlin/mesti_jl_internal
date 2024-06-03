@@ -59,9 +59,8 @@ input.side = "low"
 output.side = "high"
 
 # put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
-pml_npixels = 15
-pml.npixels = pml_npixels
+pml_npixels = 20
+pml = PML(pml_npixels)
 syst.zPML = [pml]
 
 # transmission matrix: input from the low side, output to the high side
@@ -131,8 +130,7 @@ syst.dx = dx
 syst.yBC = yBC 
 
 # put PML along z-direction
-pml = mesti_optimal_pml_params(syst.wavelength/syst.dx)
-pml.npixels = pml_npixels
+pml = PML(pml_npixels)
 pml.direction = "z"
 syst.PML = [pml]
 # in previous mesti2s() calculation, 
