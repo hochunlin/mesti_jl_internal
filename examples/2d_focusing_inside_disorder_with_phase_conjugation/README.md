@@ -267,5 +267,5 @@ display(intensity_plot)
 println("I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = ", @sprintf("%d", round(abs.(Ex[m0_focus,opts.nz_low+l0_focus,2]).^2/abs.(Ex[m0_focus,opts.nz_low+l0_focus,1]).^2, digits=-2)))
 ```
 ```text:Output
-I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = 1800
+I_phase_congugation(y_0,z_0)/I_reg(y_0,z_0) = 1700
 ```

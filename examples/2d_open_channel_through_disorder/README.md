@@ -95,7 +95,7 @@ tau = sigma.^2
 
 # plot the transmission eigenvalue distribution and compare it with the DMPK theory
 using Plots
-plot_and_compare_distribution(sigma)
+plot_and_compare_distribution(tau)
 ```
 
 <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/b691c9c3-c328-4a2b-b669-8e519df08f3b" width="800" height="600">
@@ -127,9 +127,10 @@ println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f"
 # (1) normal-incident plane-wave
 # (2) open channel
 input = wavefront()
-input.v_low = zeros(ComplexF64, N_prop_low, 2)
-input.v_low[ind_normal, 1] = 1
-input.v_low[:, 2] = v_open
+v_low = zeros(ComplexF64, N_prop_low, 2)
+v_low[ind_normal, 1] = 1
+v_low[:, 2] = v_open
+input.v_low = v_low
 
 # we will also get the field profile in the free spaces on the two sides, for
 # plotting purpose.

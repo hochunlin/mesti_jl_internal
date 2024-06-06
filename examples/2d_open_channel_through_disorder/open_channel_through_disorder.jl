@@ -75,7 +75,7 @@ tau = sigma.^2
 
 # plot the transmission eigenvalue distribution and compare it with the DMPK theory
 using Plots
-plot_and_compare_distribution(sigma)
+plot_and_compare_distribution(tau)
 
 # The most-open channels is the singular vector of the transmission matrix with 
 # the largest singular value.
@@ -95,10 +95,10 @@ println(" T_avg   = ", @sprintf("%.2f", T_avg), "\n T_PW    = ", @sprintf("%.2f"
 # specify two input incident wavefronts:
 # (1) normal-incident plane-wave
 # (2) open channel
+input = wavefront()
 v_low = zeros(ComplexF64, N_prop_low, 2)
 v_low[ind_normal, 1] = 1
 v_low[:, 2] = v_open
-input = wavefront()
 input.v_low = v_low
 
 # we will also get the field profile in the free spaces on the two sides, for
