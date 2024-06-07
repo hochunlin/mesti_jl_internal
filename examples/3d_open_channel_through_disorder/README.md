@@ -180,8 +180,8 @@ output = nothing
 input.v_low_s = zeros(ComplexF64, N_prop_low_per_pol, 2)
 input.v_low_p = zeros(ComplexF64, N_prop_low_per_pol, 3)
 # wavefront for closed channel
-input.v_low_s[:,1] = v_close[1:N_prop_low_per_pol,1]
-input.v_low_p[:,1] = v_close[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
+input.v_low_s[:,1] = v_closed[1:N_prop_low_per_pol,1]
+input.v_low_p[:,1] = v_closed[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
 # wavefront for open channel
 input.v_low_s[:,2] = v_open[1:N_prop_low_per_pol,1]
 input.v_low_p[:,2] = v_open[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
