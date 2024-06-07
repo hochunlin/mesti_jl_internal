@@ -213,14 +213,14 @@ nx_Ey = 76, ny_Ey = 76; nz_Ey = 38 => 80
 nx_Ez = 76, ny_Ez = 76; nz_Ez = 39 => 81
 [N_prop_low, N_prop_high] = [185, 185] per polarization
 xBC = periodic; yBC = periodic; zBC = [PML, PML]
-Building B,C... elapsed time:   7.841 secs
-            ... elapsed time:   1.404 secs
-Building A  ... elapsed time:  11.075 secs
+Building B,C... elapsed time:   1.203 secs
+            ... elapsed time:   0.618 secs
+Building A  ... elapsed time:   2.757 secs
 < Method: factorize_and_solve using MUMPS in single precision with METIS ordering >
-Analyzing   ... elapsed time:  15.494 secs
-Factorizing ... elapsed time: 427.935 secs
-Solving     ... elapsed time:   3.894 secs
-          Total elapsed time: 473.917 secs
+Analyzing   ... elapsed time:  14.699 secs
+Factorizing ... elapsed time: 488.263 secs
+Solving     ... elapsed time: 246.227 secs
+          Total elapsed time: 755.135 secs
 ```
 
 # Plot the field profiles
