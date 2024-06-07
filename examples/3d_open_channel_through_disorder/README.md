@@ -9,7 +9,7 @@ using MESTI, LinearAlgebra, Statistics, Printf
 # include the function to build permittivity tensor for the disordered 
 # and plot the transmission eigenvalue distribution
 include("build_epsilon_disorder_3d.jl")
-include("plot_and_compare_distribution.jl")
+include("plot_and_compare_distribution.jl");
 ```
 
 # System parameters
@@ -47,7 +47,7 @@ z2 = (ceil(Int, L/dx)+1) * dx - r_min
  epsilon_zx, epsilon_zy, epsilon_zz) = build_epsilon_disorder_3d(W_x, W_y, L, r_min, 
                                                                 r_max, min_sep, number_density, 
                                                                 rng_seed, dx, epsilon_scat,                                                                           epsilon_bg, 
-                                                                x1, x2, y1, y2, z1, z2)
+                                                                x1, x2, y1, y2, z1, z2);
 ```
 
 # Compute the transmission matrix 
@@ -96,7 +96,7 @@ opts.clear_BC = true
 # utilizting mutlithreading is highly recommended 
 t, channels, _ = mesti2s(syst, input, output, opts)
 
-(_, sigma_max, v_open), _, _, _, _ = svds(t, nsv=1)
+(_, sigma_max, v_open), _, _, _, _ = svds(t, nsv=1);
 ```
 ```text:Output
 ===System size===
@@ -143,12 +143,13 @@ T_PW  = sum(abs.(t[:,ind_normal]).^2) # normal-incident plane-wave
 T_closed = sigma_closed.^2 # closed channel
 T_open = sigma_open.^2 # open channel
 
-println(" T_avg   = ", @sprintf("%.4f", T_avg), "\n T_PW    = ", @sprintf("%.4f", T_PW), "\n T_closed  = ", @sprintf("%.4f", T_closed), "\n T_open  = ", @sprintf("%.4f", T_open))
+println(" T_avg   = ", @sprintf("%.4f", T_avg), "\n T_PW    = ", @sprintf("%.4f", T_PW), "\n T_closed= ", @sprintf("%.4f", T_closed), "\n T_open  = ", @sprintf("%.4f", T_open))
 ```
 ```text:Output
- T_avg   = 0.1448
+ T_avg   = 0.1449
  T_PW    = 0.1501
- T_open  = 0.9995
+ T_closed= 0.0000
+ T_open  = 0.9997
 ```
 
 # Plot the the transmission eigenvalue distribution
@@ -160,7 +161,7 @@ tau = sigma.^2
 # plot the transmission eigenvalue distribution from transmission matrix t
 # and compare it with the analytic distribution (bimodal DMPK distribution)
 using Plots
-plot_and_compare_distribution(tau)
+plot_and_compare_distribution(tau);
 ```
 <img src="https://github.com/complexphoton/MESTI.jl/assets/44913081/f9426518-ec70-4410-81f6-a08440f02739" width="800" height="600">
 
@@ -176,16 +177,16 @@ plot_and_compare_distribution(tau)
 input = wavefront()
 output = nothing
 
-input.v_low_s = zeros(ComplexF64, N_prop_per_side_per_pol, 2)
-input.v_low_p = zeros(ComplexF64, N_prop_per_side_per_pol, 3)
+input.v_low_s = zeros(ComplexF64, N_prop_low_per_pol, 2)
+input.v_low_p = zeros(ComplexF64, N_prop_low_per_pol, 3)
 # wavefront for closed channel
-input.v_low_s[:,1] = v_close[1:N_prop_per_side_per_pol,1]
-input.v_low_p[:,1] = v_close[N_prop_per_side_per_pol+1:N_prop_per_side_per_pol*2,1]
+input.v_low_s[:,1] = v_close[1:N_prop_low_per_pol,1]
+input.v_low_p[:,1] = v_close[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
 # wavefront for open channel
-input.v_low_s[:,2] = v_open[1:N_prop_per_side_per_pol,1]
-input.v_low_p[:,2] = v_open[N_prop_per_side_per_pol+1:N_prop_per_side_per_pol*2,1]
+input.v_low_s[:,2] = v_open[1:N_prop_low_per_pol,1]
+input.v_low_p[:,2] = v_open[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
 # wavefront for normal-incident plane-wave
-input.v_low_p[Int(ceil(N_prop_per_side_per_pol/2)),3] = 1
+input.v_low_p[Int(ceil(N_prop_low_per_pol/2)),3] = 1
 
 opts = Opts()
 # clear variables to reduce peak memory usage
@@ -200,7 +201,7 @@ ENV["MUMPS_OOC_TMPDIR"] = "." # write the out-of-core (LU factors) files in curr
 # note this field-profile calculation may take between one to two hours in single-core,
 # but a few minutes in mutlithreading calculation.
 # utilizting mutlithreading is highly recommended 
-(Ex, Ey, Ez, channels, info)= mesti2s(syst, input, output, opts)
+(Ex, Ey, Ez, channels, info)= mesti2s(syst, input, output, opts);
 # Ex, Ey, and Ez are 4D array. 
 # For example, Ex(:,:,:,i) is the field profile Ex given the i-th input source profile.
 ```

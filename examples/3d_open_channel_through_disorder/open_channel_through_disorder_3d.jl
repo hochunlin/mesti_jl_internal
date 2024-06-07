@@ -118,8 +118,7 @@ T_PW  = sum(abs.(t[:,ind_normal]).^2) # normal-incident plane-wave
 T_closed = sigma_closed.^2 # closed channel
 T_open = sigma_open.^2 # open channel
 
-println(" T_avg   = ", @sprintf("%.4f", T_avg), "\n T_PW    = ", @sprintf("%.4f", T_PW), "\n T_closed  = ", @sprintf("%.4f", T_closed), "\n T_open  = ", @sprintf("%.4f", T_open))
-
+println(" T_avg   = ", @sprintf("%.4f", T_avg), "\n T_PW    = ", @sprintf("%.4f", T_PW), "\n T_closed= ", @sprintf("%.4f", T_closed), "\n T_open  = ", @sprintf("%.4f", T_open))
 ## Plot the the transmission eigenvalue distribution
 # transmission eigenvalue (eigenvalue of t^(dag)*t) is the square of the signular value of t 
 tau = sigma.^2
@@ -139,16 +138,16 @@ plot_and_compare_distribution(tau)
 input = wavefront()
 output = nothing
 
-input.v_low_s = zeros(ComplexF64, N_prop_per_side_per_pol, 2)
-input.v_low_p = zeros(ComplexF64, N_prop_per_side_per_pol, 3)
+input.v_low_s = zeros(ComplexF64, N_prop_low_per_pol, 2)
+input.v_low_p = zeros(ComplexF64, N_prop_low_per_pol, 3)
 # wavefront for closed channel
-input.v_low_s[:,1] = v_close[1:N_prop_per_side_per_pol,1]
-input.v_low_p[:,1] = v_close[N_prop_per_side_per_pol+1:N_prop_per_side_per_pol*2,1]
+input.v_low_s[:,1] = v_close[1:N_prop_low_per_pol,1]
+input.v_low_p[:,1] = v_close[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
 # wavefront for open channel
-input.v_low_s[:,2] = v_open[1:N_prop_per_side_per_pol,1]
-input.v_low_p[:,2] = v_open[N_prop_per_side_per_pol+1:N_prop_per_side_per_pol*2,1]
+input.v_low_s[:,2] = v_open[1:N_prop_low_per_pol,1]
+input.v_low_p[:,2] = v_open[N_prop_low_per_pol+1:N_prop_low_per_pol*2,1]
 # wavefront for normal-incident plane-wave
-input.v_low_p[Int(ceil(N_prop_per_side_per_pol/2)),3] = 1
+input.v_low_p[Int(ceil(N_prop_low_per_pol/2)),3] = 1
 
 opts = Opts()
 # clear variables to reduce peak memory usage
