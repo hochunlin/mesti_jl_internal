@@ -72,7 +72,7 @@ w_0 = syst.wavelength/(pi*NA) # beam radius at z = z_f
 y_f = y_f_start:dy_f:y_f_end # list of focal positions in y
 M_in = length(y_f) # number of inputs
 
-# Step 1: Generate the list of E^in(z=z_f, y).
+# Step 1: Generate the list of E_yf(z=z_f, y).
 # Here, y is an ny_Ex-by-1 column vector, and y_f is a M_in-by-1 column vector.
 # So, y .- transpose(y_f) is an ny_Ex-by-M_in matrix by implicit expansion.
 # Then, E_yf is an ny_Ex-by-M_in matrix whose m-th column is the cross section
@@ -82,7 +82,7 @@ E_yf = exp.(-(y .- transpose(y_f)).^2/(w_0^2)) # size(E_yf) = [ny_Ex, M_in]
 # Get properties of propagating channels in the free space.
 # We use PEC as the boundary condition for such channels since the default
 # boundary condition in mesti() is PEC for TM waves, but the choice has
-# little effect since E^in should be exponentially small at the boundary of
+# little effect since E_yf should be exponentially small at the boundary of
 # the simulation domain.
 channels = mesti_build_channels(ny_Ex, "PEC", (2*pi/syst.wavelength)*syst.dx, n_bg^2)
 
@@ -108,7 +108,7 @@ v_s = exp.(1im*kz*(z_s-z_f)).*v_f # size(v_s) = [N_prop, M_in]
 # In a closed geometry with no PML in y, a line source of
 # -2i*sqrt(nu[a])*u[:,a] generates outgoing waves with transverse profile
 # u[:,a]/sqrt(nu[a]). With PML in y, this is not strictly true but is sufficiently
-# accurate since E^in(y,z=z_source) decays exponentially in y.
+# accurate since E_yf(y,z=z_source) decays exponentially in y.
 # Note we use implicit expansion here.
 B_low = (u.*transpose(channels.sqrt_nu_prop))*v_s # size(B_low) = [ny_Ex, M_in]
 

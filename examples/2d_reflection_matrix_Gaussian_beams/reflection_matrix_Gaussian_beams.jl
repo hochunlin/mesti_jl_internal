@@ -119,7 +119,7 @@ v_s = exp.(1im*kz*(z_s-z_f)).*v_f # size(v_s) = [N_prop, M_in]
 # In a closed geometry with no PML in y, a line source of
 # -2i*sqrt(nu[a])*u[:,a] generates outgoing waves with transverse profile
 # u[:,a]/sqrt(nu[a]). With PML in y, this is not strictly true but is sufficiently
-# accurate since E^in(y,z=z_s) decays exponentially in y.
+# accurate since E_yf(y,z=z_s) decays exponentially in y.
 # Note we use implicit expansion here.
 B_low = (u.*transpose(channels.sqrt_nu_prop))*v_s # size(B_low) = [ny_Ex, M_in]
 
