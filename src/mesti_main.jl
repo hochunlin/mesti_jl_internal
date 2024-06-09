@@ -191,7 +191,7 @@ end
                         Number of PML pixels.
                         Note this is within syst.epsilon_ij (i = x,y,z and j = x,y,z),
                         not in addition to.
-                    direction (string; optional): 
+                    direction (string; required): 
                         Direction(s) where PML is placed. Available choices are (case-insensitive):
                             "all" - (default) PML in x, y, and z directions for 3D and PML in y and z directions for 2D TM
                             "x"   - PML in x direction
@@ -845,8 +845,10 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
     end
     
     # Defaults to no PML anywhere
-    if ~isdefined(syst, :PML) 
-        syst.PML = [PML(0)]
+    if ~isdefined(syst, :PML)
+        pml = PML(0)
+        pml.direction = "all"
+        syst.PML = [pml]
     elseif isa(syst.PML, PML) 
         # If user specifies PML structure instead of vector of PML strcture, transform it to vector of PML strcture. 
         syst.PML = [syst.PML]
@@ -869,7 +871,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         end
         
         # Number of PML pixels must be given
-        # Other fields are optional and will be checked in mesti_build_fdfd_matrix()
+        # Other PML parameters are optional and will be checked in mesti_build_fdfd_matrix()
         if ~isdefined(PML_ii, :npixels)
             throw(ArgumentError("syst.PML[$(ii)] must contain field \"npixels\"."))
         end
@@ -878,9 +880,9 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
             use_PML = true
         end
                 
-        # If PML is specified, we put it on both x, y, and z directions by default for 3D, and both y and z directions by default for 2D
+        # Direction(s) where PML is placed must be given
         if ~isdefined(PML_ii, :direction)
-            PML_ii.direction = "all"
+            throw(ArgumentError("syst.PML[$(ii)] must contain field \"direction\"."))
         elseif ~(lowercase(PML_ii.direction) in ["all", "x", "y", "z"])
             throw(ArgumentError("syst.PML[$(ii)].direction = \"$(PML_ii.direction)\" is not a supported option; use \"all\", \"x\", \"y\", or \"z\".")) 
         end
