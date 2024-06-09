@@ -890,7 +890,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
         if ~isdefined(PML_ii, :direction)
             throw(ArgumentError("syst.PML[$(ii)] must contain field \"direction\"."))
         elseif ~(lowercase(PML_ii.direction) in ["all", "x", "y", "z", "xy", "xz", "yz", "yx", "zx", "zy"])
-            throw(ArgumentError("syst.PML[$(ii)].direction = \"$(PML_ii.direction)\" is not a supported option; use \"all\", \"x\", \"y\", \"z\", \"xy\", \"xz\", or \"yz\".")) 
+            throw(ArgumentError("syst.PML[$(ii)].direction = \"$(PML_ii.direction)\" is not a supported option; use \"all\", \"x\", \"y\", \"z\", \"xy\", \"xz\", \"yz\", \"yx\", \"zx\", or \"zy\"."))  
         end
 
         # If PML is specified, we put it on both sides by default
