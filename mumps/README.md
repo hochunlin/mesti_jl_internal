@@ -112,16 +112,19 @@ export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_scalapack_lp64.so
 
 or
 
-- macOS
+- <a name="mpi-config"></a> macOS
 
-We can configure [MPI.jl](https://juliaparallel.org/MPI.jl/stable/configuration/) before running MUMPS in Julia. The steps are straightforward using MPIPreferences.jl. First, install MPIPreferences.jl by entering
+To use MUMPS.jl, we need to install and [configure](https://juliaparallel.org/MPI.jl/stable/configuration/) MPI.jl. Begin by installing MPI.jl and MPIPreferences.jl with the following command in Julia:
 ```
-julia --project -e 'using Pkg; Pkg.add("MPIPreferences")'
+using Pkg; Pkg.add(["MPI", "MPIPreferences"])
 ```
-in terminal. Then run <code>MPIPreferences.use_system_binary()</code> in Julia or through the command line:
+Once the installation is complete, run the following command in Julia to configure MPI.jl:
 ```
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
+using MPIPreferences; MPIPreferences.use_system_binary()
 ```
-This should automatically find the OpenMPI installed in macOS.
+This will automatically find the OpenMPI library installed by Homebrew. If MPIPreferences cannot locate the library, you need to specify the library path manually:
 
+```
+MPIPreferences.use_system_binary(; library_names=["/path/to/open-mpi/5.x.x/lib/libmpi"])
+```
 Now, you are ready to install MESTI.jl. Please go back to [install MESTI.jl](../#installation).
