@@ -37,10 +37,10 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LMETISDIR
 After installing METIS, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. In 3D, METIS is strongly recommended, which is much faster than AMD. By default, 2D systems use AMD, while 3D systems use METIS (if it is available).
 
 ## Compile MUMPS
-Suppose you downloaded the 5.6.2 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
+Suppose you downloaded the 5.7.1 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
 ```shell
-tar zxvf ~/Downloads/MUMPS_5.6.2.tar.gz
-cd MUMPS_5.6.2
+tar zxvf ~/Downloads/MUMPS_5.7.1.tar.gz
+cd MUMPS_5.7.1
 ```
 in terminal.
 
@@ -51,8 +51,8 @@ Read the file <code>INSTALL</code>, copy the closest <code>Makefile.inc</code> f
  - <code>LAPACK</code>: how the Fortran compiler can link to the LAPACK library
  - <code>SCALAP</code>: how the Fortran compiler can link to the ScaLAPACK library
  - <code>LIBBLAS</code>: how the Fortran compiler can link to the BLAS library
- - <code>RPATH_OPT</code>: the path to shared libraries that will be built up, such as <code>.../MUMPS_5.6.2/lib/</code>
-where <code>...</code> is the path to MUMPS_5.6.2 folder. 
+ - <code>RPATH_OPT</code>: the path to shared libraries that will be built up, such as <code>.../MUMPS_5.7.1/lib/</code>
+where <code>...</code> is the path to MUMPS_5.7.1 folder. 
 
 Note that from our experience, <code>RPATH_OPT</code> must be specified to successfully install the parallel version of MUMPS on Linux and Windows.
 
@@ -86,10 +86,10 @@ After compiling the parallel version of MUMPS, in <code>startup.jl</code> we sho
 
 ```shell
 mkdir ~/.julia/config
-echo 'ENV["MUMPS_PREFIX"] = ".../MUMPS_5.6.2/lib"' >> ~/.julia/config/startup.jl
+echo 'ENV["MUMPS_PREFIX"] = ".../MUMPS_5.7.1/lib"' >> ~/.julia/config/startup.jl
 ```
 
-where <code>...</code> is the path to MUMPS_5.6.2 folder.
+where <code>...</code> is the path to MUMPS_5.7.1 folder.
 
 
 When we run Julia interface for MUMPS, the machine may not find the libraries by itself. To solve those issues, please follow the steps depending on your OS:
