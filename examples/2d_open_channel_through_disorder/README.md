@@ -227,7 +227,7 @@ Solving     ... elapsed time:   5.059 secs
 ```julia
 # Excluding the extra padding and PML region, compare these field profiles
 println("Maximum absolute value of field difference between constructing the source matrix B through mesti2s() and constructing by users = ", 
-maximum(abs.(Ex[:,nz_low:end-nz_high,:] - Ex_prime[:,pml_npixels+1:end-pml_npixels-1,:])))
+maximum(abs.(Ex[:,nz_low+1:end-nz_high-1,:] - Ex_prime[:,pml_npixels+1+1:end-pml_npixels-1-1,:])))
 ```
 ```text:Output
 Maximum absolute value of field difference between constructing the source matrix B through mesti2s() and constructing by users = 0.0
