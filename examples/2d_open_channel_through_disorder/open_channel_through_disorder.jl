@@ -108,6 +108,7 @@ nz_low  = round(Int,(L_tot-L)/2/dx)
 nz_high = nz_low
 opts.nz_low = nz_low
 opts.nz_high = nz_high
+opts.use_L0_threads = false
 
 # compute the field-profiles through mesti()
 Ex, _, _ = mesti2s(syst, input, opts)
@@ -158,6 +159,7 @@ Bx.pos = [[1,pml_npixels+1,ny_Ex,1]]
 opts = Opts()
 # the -2i prefactor would be multiplied by.
 opts.prefactor = -2im
+opts.use_L0_threads = false
 
 Ex_prime, _ = mesti(syst, [Bx], opts)
 
@@ -172,7 +174,7 @@ Ex = Ex/maximum(abs.(Ex[:,:,1]))
 nframes_per_period = 10
 
 # extend the x coordinate to include free spaces on the two sides
-z_Ex = vcat(z_Ex[1] .- (opts.nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:opts.nz_high)*dx)
+z_Ex = vcat(z_Ex[1] .- (nz_low:-1:1)*dx, z_Ex, z_Ex[end] .+ (1:nz_high)*dx)
 
 # animate the field profile with plane-wave input
 anim_pw = @animate for ii ∈ 0:(nframes_per_period-1)

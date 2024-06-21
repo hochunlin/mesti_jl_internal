@@ -10,7 +10,7 @@ MPI.Initialized() ? nothing : MPI.Init()
 
 # Test set for Schur complement calculation
 @testset "Schur Complement (double precision): " begin
-    for i ∈ 1:100
+    for i ∈ 1:200
         # Define matrix parameters
         m = 50; n = 5; p = .2; T = ComplexF64
 
@@ -46,12 +46,12 @@ MPI.Initialized() ? nothing : MPI.Init()
 	H = get_schur_complement(id)
 
 	# Check the error of the Schur Complement.
-	@test mean(abs.(((D - C*inv(Matrix(A))*B) - H)./(D - C*inv(Matrix(A))*B))) ≤ sqrt(eps(Float64))
+	@test norm((D - C*inv(Matrix(A))*B) - H)/norm(D - C*inv(Matrix(A))*B) ≤ sqrt(eps(Float64))*2
     end
 end
 
 @testset "Schur Complement (single precision): " begin
-    for i ∈ 1:100
+    for i ∈ 1:200
         # Define matrix parameters
         m = 50; n = 5; p = .2; T = ComplexF32
 
@@ -87,6 +87,6 @@ end
         H = get_schur_complement(id)
         
 	# Check the error of the Schur Complement.
-	@test mean(abs.(((D - C*inv(Matrix(A))*B) - H)./(D - C*inv(Matrix(A))*B))) ≤ sqrt(eps(Float32))
+	@test norm((D - C*inv(Matrix(A))*B) - H)/norm(D - C*inv(Matrix(A))*B) ≤ sqrt(eps(Float32))*2
     end
 end

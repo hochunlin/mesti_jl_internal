@@ -69,7 +69,7 @@ end
         The incident wavefronts from low and/or high are specified by variable "input".
             The returned "Ex", "Ey", "Ez" is a 4D array, such as Ex(:,:,:,i), 
         being the field profile Ex given the i-th input source profile. Same data structure for Ey and Ez. 
-        The inuormation of the computation is returned in structure "info".
+        The information of the computation is returned in structure "info".
 
         ---2D TM field profile---
         (Ex, channels, info) = MESTI2S(syst, input) returns the spatial

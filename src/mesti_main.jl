@@ -1286,7 +1286,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     end
                     ind_list = zeros(N_tot)
                     a_list = zeros(N_tot)
-                    v_list = zeros(N_tot)
+                    v_list = zeros(ComplexF64, N_tot)
                     N = 0
                     M = 0
                 else
@@ -1505,7 +1505,7 @@ function mesti(syst::Syst, B::Union{SparseMatrixCSC{Int64,Int64},SparseMatrixCSC
                     end
                     ind_list = zeros(N_tot)
                     a_list = zeros(N_tot)
-                    v_list = zeros(N_tot)
+                    v_list = zeros(ComplexF64, N_tot)
                     N = 0
                     M = 0
                 else
