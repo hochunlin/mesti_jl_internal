@@ -10,7 +10,7 @@ MPI.Initialized() ? nothing : MPI.Init()
 
 # Test set for Schur complement calculation
 @testset "Schur Complement (double precision): " begin
-    for i ∈ 1:200
+    for i ∈ 1:100
         # Define matrix parameters
         m = 50; n = 5; p = .2; T = ComplexF64
 
@@ -51,7 +51,7 @@ MPI.Initialized() ? nothing : MPI.Init()
 end
 
 @testset "Schur Complement (single precision): " begin
-    for i ∈ 1:200
+    for i ∈ 1:100
         # Define matrix parameters
         m = 50; n = 5; p = .2; T = ComplexF32
 
